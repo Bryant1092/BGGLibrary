@@ -25,6 +25,33 @@ export class UserService {
     return this.firestore.setDocData(user, USERS_DB.USERS, user.uid);
   }
 
+  /**
+   * Creates the profile document if it doesn't exist yet. This also repairs
+   * accounts whose profile failed to save at sign-up.
+   */
+  ensureUserProfile(user: User): Promise<void> {
+    return this.firestore.docExists(USERS_DB.USERS, user.uid).then(exists => {
+      if (!exists) {
+        return this.addUser(user).then(() => undefined);
+      }
+      return undefined;
+    });
+  }
+
+  /** Splits a display name into first/last without producing undefined (Firestore rejects undefined fields). */
+  static splitDisplayName(displayName: string | null | undefined, email?: string | null): { firstName: string, lastName: string } {
+    const parts = (displayName || '').trim().split(/\s+/).filter(Boolean);
+    return {
+      firstName: parts[0] || (email || '').split('@')[0] || 'Player',
+      lastName: parts.slice(1).join(' ')
+    };
+  }
+
+  /** Available as soon as Firebase Auth restores the session, unlike the profile document. */
+  getCurrentUid(): string | undefined {
+    return this.auth.currentUser?.uid;
+  }
+
   fetchUser(uid: string): Observable<User> {
     return this.firestore.getDocData(USERS_DB.USERS, uid).pipe(
       tap(user => {

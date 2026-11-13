@@ -38,7 +38,7 @@
             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#renameModal" [disabled]="checkIfUserGameListEmptyOrNull()">Rename List</button>
             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#shareModal" [disabled]="checkIfUserGameListEmptyOrNull()">Share List</button>
             <div class="dropdown-divider"></div>
-            <button class="dropdown-item" type="button" [disabled]="checkIfUserGameListEmptyOrNull()" (click)="deleteGameListAndReferences()">Delete List</button>
+            <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteModal" [disabled]="checkIfUserGameListEmptyOrNull()">{{ isCurrentListOwner() ? 'Delete List' : 'Leave List' }}</button>
           </ul>
         </div>
       </div>
@@ -65,6 +65,16 @@
                           </div>
                       </div>
                   </td>
+              }
+              @else if (loadError) {
+                  <tr>
+                      <td [attr.colspan]="getColSpan()">
+                          <div class="single-item-container flex-column gap-2 text-center">
+                              <p class="mb-0">Couldn't reach the game library. Check your connection.</p>
+                              <button type="button" class="btn btn-primary" (click)="getBggInfo()">Try again</button>
+                          </div>
+                      </td>
+                  </tr>
               }
               @else if (items && items.length > 0) {
                   <ng-container *ngFor="let item of items; let i = index">
@@ -225,3 +235,24 @@
   </div>
 </div>
 
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="deleteModalLabel">{{ isCurrentListOwner() ? 'Delete List' : 'Leave List' }}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        @if (isCurrentListOwner()) {
+          <p class="mb-0">Delete <strong>{{ currentListRef?.name }}</strong>? It will also be removed for everyone you shared it with. This can't be undone.</p>
+        } @else {
+          <p class="mb-0">Remove <strong>{{ currentListRef?.name }}</strong> from your lists? The owner and anyone else it's shared with will still have it.</p>
+        }
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal" (click)="deleteOrLeaveSelectedList()">{{ isCurrentListOwner() ? 'Delete list' : 'Leave list' }}</button>
+      </div>
+    </div>
+  </div>
+</div>

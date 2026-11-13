@@ -2,11 +2,10 @@ import { inject, Injectable } from '@angular/core';
 import { FirestoreService } from './firestore.service';
 import { USERS_DB, UserService } from './user.service';
 import { Game } from '../model/game.model';
-import { arrayRemove, arrayUnion, where } from '@angular/fire/firestore';
+import { where } from '@angular/fire/firestore';
 import { firstValueFrom } from 'rxjs';
 import { GameList } from '../model/gamelist.model';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
-import { User } from '../model/user.model';
 
 export const DATALIST_DB = {
   DATA_LISTS: 'dataLists'
@@ -32,33 +31,43 @@ export class GameService {
    });
   }
 
+  /** Adds the game unless a game with the same id is already in the list. */
   addGameToList(listId: string, game: Game): Promise<string> {
-    return this.firestore.updateDocData({
-      gameList: arrayUnion(game)
+    return this.firestore.transactUpdate<GameList>(current => {
+      const gameList = current?.gameList || [];
+      if (gameList.some(g => g.id === game.id)) {
+        return { gameList };
+      }
+      return { gameList: [...gameList, game] };
     }, DATALIST_DB.DATA_LISTS, listId);
   }
 
+  /** Removes every entry with the game's id, even if other stored fields (like the photo URL) changed. */
   removeGamefromList(listId: string, game: Game): Promise<string> {
-    return this.firestore.updateDocData({
-      gameList: arrayRemove(game)
-    }, DATALIST_DB.DATA_LISTS, listId);
+    return this.firestore.transactUpdate<GameList>(current => ({
+      gameList: (current?.gameList || []).filter(g => g.id !== game.id)
+    }), DATALIST_DB.DATA_LISTS, listId);
   }
 
   createUserGameList(gameListId: string, gameListName: string): Promise<string> {
-   return this.createSpecifiedUserGameList({
-    id: gameListId,
-    name: gameListName,
-   }, this.userService.getCurrentUserData());
+    const uid = this.userService.getCurrentUid();
+    if (!uid) {
+      return Promise.reject(new Error('Not signed in'));
+    }
+    return this.createSpecifiedUserGameList({
+      id: gameListId,
+      name: gameListName,
+    }, uid);
   }
 
-  private createSpecifiedUserGameList(gameList: UserGameListRef, user: User): Promise<string> {
+  private createSpecifiedUserGameList(gameList: UserGameListRef, uid: string): Promise<string> {
     let data = {
       id: gameList.id,
       name: gameList.name,
-      userId: user.uid,
-      owner: gameList?.owner ? gameList.owner : user.uid 
+      userId: uid,
+      owner: gameList?.owner ? gameList.owner : uid
     }
-    return this.firestore.createSubDocData(data, USERS_DB.USERS, user.uid, USERS_DB.GAME_LISTS, gameList.id);
+    return this.firestore.createSubDocData(data, USERS_DB.USERS, uid, USERS_DB.GAME_LISTS, gameList.id);
   }
 
   fetchGameList(gameListId: string): Promise<GameList> {
@@ -69,15 +78,35 @@ export class GameService {
     return this.firestore.queryCollectionGroupData(USERS_DB.GAME_LISTS, where('id', '==', gameListId));
   }
 
+  /**
+   * Lists without an owner field predate ownership tracking, so their
+   * holders keep the old behavior and are treated as owners.
+   */
+  isListOwner(gameList: UserGameListRef | undefined): boolean {
+    if (!gameList) {
+      return false;
+    }
+    return !gameList.owner || gameList.owner === this.userService.getCurrentUid();
+  }
+
+  /** Owner only: deletes the list and removes it from everyone it was shared with. */
   deleteGameListAndReferences(gameListId: string): Promise<string> {
-    return this.firestore.deleteDocument(DATALIST_DB.DATA_LISTS, gameListId).then((id) => {
-      return this.fetchUsersWithGameList(gameListId).then(dataArray => {
-        dataArray.forEach(userGameList => {
-          this.firestore.deleteDocument(USERS_DB.USERS, userGameList.userId!, USERS_DB.GAME_LISTS, gameListId);
-        });
-        return id;
+    return this.fetchUsersWithGameList(gameListId).then(dataArray => {
+      return this.firestore.deleteDocument(DATALIST_DB.DATA_LISTS, gameListId).then(id => {
+        return Promise.all(dataArray.map(userGameList =>
+          this.firestore.deleteDocument(USERS_DB.USERS, userGameList.userId!, USERS_DB.GAME_LISTS, gameListId)
+        )).then(() => id);
       });
     });
+  }
+
+  /** Removes a shared list from the current user's account only. The owner and others keep it. */
+  leaveGameList(gameListId: string): Promise<string> {
+    const uid = this.userService.getCurrentUid();
+    if (!uid) {
+      return Promise.reject(new Error('Not signed in'));
+    }
+    return this.firestore.deleteDocument(USERS_DB.USERS, uid, USERS_DB.GAME_LISTS, gameListId);
   }
 
   shareGameList(gameList: UserGameListRef, email: string): Promise<string> {
@@ -86,7 +115,7 @@ export class GameService {
         console.error(`No user found with email: ${email}`);
         return '';
       }
-      return this.createSpecifiedUserGameList(gameList, users[0]);
+      return this.createSpecifiedUserGameList(gameList, users[0].uid);
     });
   }
 

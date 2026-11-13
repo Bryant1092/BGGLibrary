@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { addDoc, arrayUnion, collection, collectionData, collectionGroup, deleteDoc, doc, docData, Firestore, getDocs, limitToLast, orderBy, query, QueryFieldFilterConstraint, setDoc, updateDoc, where } from '@angular/fire/firestore';
+import { addDoc, arrayUnion, collection, collectionData, collectionGroup, deleteDoc, doc, docData, Firestore, getDoc, getDocs, limitToLast, orderBy, query, QueryFieldFilterConstraint, runTransaction, setDoc, updateDoc, where } from '@angular/fire/firestore';
 import { debounceTime, exhaustAll, lastValueFrom, mergeAll, Observable, takeLast, tap, firstValueFrom } from 'rxjs';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
 
@@ -36,6 +36,28 @@ export class FirestoreService {
     return updateDoc(ref, data).then(() => {
       return ref.id;
     });
+  }
+
+  /**
+   * Reads a document and writes back changes computed from its current data,
+   * atomically. Use this instead of arrayUnion/arrayRemove when array items are
+   * objects, because those only match when every field is identical.
+   */
+  transactUpdate<T>(computeUpdate: (current: T) => Partial<T>, ...pathSegments: string[]): Promise<string> {
+    const ref = doc(this.firestore, pathSegments.shift()!, ...pathSegments);
+    return runTransaction(this.firestore, async transaction => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists()) {
+        throw new Error(`Document not found: ${ref.path}`);
+      }
+      transaction.update(ref, computeUpdate(snapshot.data() as T) as any);
+      return ref.id;
+    });
+  }
+
+  docExists(...pathSegments: string[]): Promise<boolean> {
+    const ref = doc(this.firestore, pathSegments.shift()!, ...pathSegments);
+    return getDoc(ref).then(snapshot => snapshot.exists());
   }
 
   createSubDocData(data: any, ...pathSegments: string[]) {

@@ -103,9 +103,19 @@ export class UserComponent implements OnInit, AfterViewInit {
 
   getBggInfo() {
     this.bggGameMap.clear();
+    let errorShown = false;
     this.filteredGameList.flat()?.forEach((game: Game) => {
-      this.bggService.getBggGameInfo(game.id!).subscribe((item: any) => {
-        this.bggGameMap.set(game.id!, item.result);
+      this.bggService.getBggGameInfo(game.id!).subscribe({
+        next: (item: any) => {
+          this.bggGameMap.set(game.id!, item.result);
+        },
+        error: (err) => {
+          console.error(`Failed to load details for ${game.name}`, err);
+          if (!errorShown) {
+            errorShown = true;
+            this.openAlert("Some game details couldn't load. Use Refresh List to try again.", true);
+          }
+        }
       });
     });
   }
@@ -130,6 +140,10 @@ export class UserComponent implements OnInit, AfterViewInit {
 
   onSelected(showLoading = true, overrideSelectedListId = '') {
     if (!this.selectListValue) {
+      // No list left (e.g. the last one was deleted): don't keep showing its games.
+      this.currentGameList = [];
+      this.filterList();
+      this.loading = false;
       return;
     }
     this.loading = showLoading
@@ -149,6 +163,10 @@ export class UserComponent implements OnInit, AfterViewInit {
       setTimeout(() => {
         this.loading = false;
       }, 200)
+    }).catch(err => {
+      console.error('Failed to load game list', err);
+      this.loading = false;
+      this.openAlert("Couldn't load your list. Check your connection and use Refresh List.", true);
     });
   }
 
@@ -158,11 +176,32 @@ export class UserComponent implements OnInit, AfterViewInit {
     );
   }
 
-  deleteGameListAndReferences() {
-    this.gameService.deleteGameListAndReferences(this.selectListValue).then(listId => {
-      this.userGameLists = this.userGameLists?.filter(list => list.id !== listId);
-      this.selectListValue = this.userGameLists?.[0].id || '';
+  get currentListRef(): UserGameListRef | undefined {
+    return this.userGameLists?.find(list => list.id === this.selectListValue);
+  }
+
+  isCurrentListOwner(): boolean {
+    return this.gameService.isListOwner(this.currentListRef);
+  }
+
+  /** Owners delete the list for everyone; people it was shared with only remove it from their account. */
+  deleteOrLeaveSelectedList() {
+    const list = this.currentListRef;
+    if (!list) {
+      return;
+    }
+    const isOwner = this.isCurrentListOwner();
+    const action = isOwner
+      ? this.gameService.deleteGameListAndReferences(list.id)
+      : this.gameService.leaveGameList(list.id);
+    action.then(() => {
+      this.userGameLists = this.userGameLists?.filter(l => l.id !== list.id) || [];
+      this.selectListValue = this.userGameLists[0]?.id || '';
       this.onSelected();
+      this.openAlert(isOwner ? 'List deleted' : 'You left the list');
+    }).catch(err => {
+      console.error('Failed to delete/leave list', err);
+      this.openAlert(isOwner ? "Couldn't delete the list" : "Couldn't leave the list", true);
     });
   }
 
@@ -211,6 +250,9 @@ export class UserComponent implements OnInit, AfterViewInit {
       this.selectListValue = id;
       this.newListName = '';
       this.onSelected(true, id);
+    }).catch(err => {
+      console.error('Failed to create list', err);
+      this.openAlert("Couldn't create the list. Try again.", true);
     });
   }
 
@@ -248,6 +290,10 @@ export class UserComponent implements OnInit, AfterViewInit {
       setTimeout(() => {
         this.buttonLoading.delete(index);
       }, 200);
+    }).catch(err => {
+      console.error('Failed to remove game from list', err);
+      this.buttonLoading.delete(index);
+      this.openAlert("Couldn't remove the game. Check your connection and try again.", true);
     });
   }
 

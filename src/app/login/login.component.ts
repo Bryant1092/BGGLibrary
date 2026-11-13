@@ -132,13 +132,15 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   onSubmitRegister() {
     this.userService.createUser(this.loginForm.value.email, this.loginForm.value.password).then((userCredential: any) => {
       let additionalInfo = getAdditionalUserInfo(userCredential);
-      this.userService.addUser({
+      // Wait for the profile to save so pages that need it don't load first.
+      return this.userService.addUser({
         uid: userCredential.user.uid,
-        firstName: this.loginForm.value.firstName,
-        lastName: this.loginForm.value.lastName,
+        firstName: this.loginForm.value.firstName?.trim(),
+        lastName: this.loginForm.value.lastName?.trim(),
         provider: (additionalInfo?.providerId || 'firebase'),
-        email: userCredential.user.email?.toLocaleLowerCase()
+        email: userCredential.user.email?.toLocaleLowerCase() || ''
       });
+    }).then(() => {
       this.router.navigate([this.redirectUrl]);
     }).catch((error: any) => {
       console.error('Error registering:', error);
@@ -148,16 +150,18 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
 
   googleLogin() {
     this.userService.signUserInWithGoogle().then((userCredential: any) => {
-      let additionalInfo = getAdditionalUserInfo(userCredential);
-      if (additionalInfo?.isNewUser) {
-        this.userService.addUser({
-          uid: userCredential.user.uid,
-          firstName: userCredential.user.displayName.split(' ')[0],
-          lastName: userCredential.user.displayName.split(' ')[1],
-          provider: userCredential.providerId,
-          email: userCredential.user.email?.toLocaleLowerCase()
-        });
-      }
+      const googleUser = userCredential.user;
+      const { firstName, lastName } = UserService.splitDisplayName(googleUser.displayName, googleUser.email);
+      // Runs on every Google sign-in, not just new users, so accounts whose
+      // profile failed to save before get repaired.
+      return this.userService.ensureUserProfile({
+        uid: googleUser.uid,
+        firstName,
+        lastName,
+        provider: userCredential.providerId || 'google.com',
+        email: googleUser.email?.toLocaleLowerCase() || ''
+      });
+    }).then(() => {
       this.router.navigate([this.redirectUrl]);
     }).catch(error => {
       console.error('Error logging in with Google:', error);

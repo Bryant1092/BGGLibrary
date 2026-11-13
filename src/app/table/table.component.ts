@@ -37,6 +37,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   stopRefresh = false;
 
   loading: boolean = false;
+  loadError: boolean = false;
   buttonLoading: Map<number, boolean> = new Map();
   userSignedIn: boolean = false;
 
@@ -88,11 +89,20 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   getBggInfo() {
     this.loading = true;
-    this.bggService.getBggLibraryInfo(this._searchTerm, this._pageNumber, this._pageSize, this.sortColumn, this.sortDirection).subscribe((data: any) => {
-      this.loading = false;
-      this.bggData = data;
-      this.items = data.result.items
-      this.paging = data.result.paging
+    this.loadError = false;
+    this.bggService.getBggLibraryInfo(this._searchTerm, this._pageNumber, this._pageSize, this.sortColumn, this.sortDirection).subscribe({
+      next: (data: any) => {
+        this.loading = false;
+        this.bggData = data;
+        this.items = data?.result?.items || [];
+        this.paging = data?.result?.paging || {};
+      },
+      error: (err) => {
+        console.error('Failed to load library games', err);
+        this.loading = false;
+        this.loadError = true;
+        this.items = [];
+      }
     });
   }
 
@@ -138,6 +148,10 @@ export class TableComponent implements OnInit, AfterViewInit {
       setTimeout(() => {
         this.buttonLoading.delete(index);
       }, 200);
+    }).catch(err => {
+      console.error('Failed to add game to list', err);
+      this.buttonLoading.delete(index);
+      this.openAlert("Couldn't add the game. Check your connection and try again.", true);
     });
   }
 
@@ -153,6 +167,10 @@ export class TableComponent implements OnInit, AfterViewInit {
       setTimeout(() => {
         this.buttonLoading.delete(index);
       }, 200);
+    }).catch(err => {
+      console.error('Failed to remove game from list', err);
+      this.buttonLoading.delete(index);
+      this.openAlert("Couldn't remove the game. Check your connection and try again.", true);
     });
   }
 
@@ -160,6 +178,9 @@ export class TableComponent implements OnInit, AfterViewInit {
     this.gameService.createGameList(this.newListName).then((id: string) => {
       this.newListName = '';
       this.onSelected(id);
+    }).catch(err => {
+      console.error('Failed to create list', err);
+      this.openAlert("Couldn't create the list. Try again.", true);
     });
   }
 
@@ -168,7 +189,12 @@ export class TableComponent implements OnInit, AfterViewInit {
   }
 
   onSelected(overrideSelectedListId = '') {
-    if (!this.selectListValue || this.stopRefresh) {
+    if (!this.selectListValue) {
+      // No list left (e.g. the last one was deleted): clear stale "in list" state.
+      this.currentGameList = [];
+      return;
+    }
+    if (this.stopRefresh) {
       return;
     }
     this.gameService.fetchGameList(this.selectListValue).then(data => {
@@ -203,11 +229,32 @@ export class TableComponent implements OnInit, AfterViewInit {
     });
   }
 
-  deleteGameListAndReferences() {
-    this.gameService.deleteGameListAndReferences(this.selectListValue).then(listId => {
-      this.userGameLists = this.userGameLists?.filter(list => list.id !== listId);
-      this.selectListValue = this.userGameLists?.[0].id || '';
+  get currentListRef(): UserGameListRef | undefined {
+    return this.userGameLists?.find(list => list.id === this.selectListValue);
+  }
+
+  isCurrentListOwner(): boolean {
+    return this.gameService.isListOwner(this.currentListRef);
+  }
+
+  /** Owners delete the list for everyone; people it was shared with only remove it from their account. */
+  deleteOrLeaveSelectedList() {
+    const list = this.currentListRef;
+    if (!list) {
+      return;
+    }
+    const isOwner = this.isCurrentListOwner();
+    const action = isOwner
+      ? this.gameService.deleteGameListAndReferences(list.id)
+      : this.gameService.leaveGameList(list.id);
+    action.then(() => {
+      this.userGameLists = this.userGameLists?.filter(l => l.id !== list.id) || [];
+      this.selectListValue = this.userGameLists[0]?.id || '';
       this.onSelected();
+      this.openAlert(isOwner ? 'List deleted' : 'You left the list');
+    }).catch(err => {
+      console.error('Failed to delete/leave list', err);
+      this.openAlert(isOwner ? "Couldn't delete the list" : "Couldn't leave the list", true);
     });
   }
 

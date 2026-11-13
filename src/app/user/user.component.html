@@ -44,7 +44,7 @@
                 <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#renameModal" [disabled]="checkIfUserGameListEmptyOrNull()">Rename List</button>
                 <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#shareModal" [disabled]="checkIfUserGameListEmptyOrNull()">Share List</button>
                 <div class="dropdown-divider"></div>
-                <button class="dropdown-item" type="button" [disabled]="checkIfUserGameListEmptyOrNull()" (click)="deleteGameListAndReferences()">Delete List</button>
+                <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteModal" [disabled]="checkIfUserGameListEmptyOrNull()">{{ isCurrentListOwner() ? 'Delete List' : 'Leave List' }}</button>
               </ul>
             </div>
           </div>
@@ -72,7 +72,7 @@
                           </div>
                       </td>
                   }
-                  @else if (currentGameList[listIndex()] && filteredGameList[listIndex()].length > 0) {
+                  @else if ((filteredGameList[listIndex()] || []).length > 0) {
                       <ng-container *ngFor="let item of filteredGameList[listIndex()]; let i = index">
                           <tr>
                               <td>
@@ -273,4 +273,24 @@
       </div>
     </div>
   </div>
-  
+  <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="deleteModalLabel">{{ isCurrentListOwner() ? 'Delete List' : 'Leave List' }}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        @if (isCurrentListOwner()) {
+          <p class="mb-0">Delete <strong>{{ currentListRef?.name }}</strong>? It will also be removed for everyone you shared it with. This can't be undone.</p>
+        } @else {
+          <p class="mb-0">Remove <strong>{{ currentListRef?.name }}</strong> from your lists? The owner and anyone else it's shared with will still have it.</p>
+        }
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal" (click)="deleteOrLeaveSelectedList()">{{ isCurrentListOwner() ? 'Delete list' : 'Leave list' }}</button>
+      </div>
+    </div>
+  </div>
+</div>

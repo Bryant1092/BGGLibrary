@@ -70,7 +70,7 @@ export class NavBarComponent implements OnInit, AfterViewInit, OnDestroy {
   getUserData(uid: string) {
     this.userService.fetchUser(uid).subscribe((user: any) => {
       if (!!user) {
-        this.displayName = `${user?.firstName} ${user?.lastName}`.normalize();
+        this.displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim().normalize();
         this.email = user.email;
       }
     });
