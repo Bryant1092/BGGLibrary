@@ -1,7 +1,7 @@
 {
   "configVersion": 1,
-  "timestamp": 1794603786927,
-  "index": "C:/Program Files/Git/BGGLibrary/index.html",
+  "timestamp": 1794603832023,
+  "index": "/BGGLibrary/index.html",
   "assetGroups": [
     {
       "name": "app",
@@ -11,14 +11,14 @@
         "ignoreVary": true
       },
       "urls": [
-        "C:/Program Files/Git/BGGLibrary/chunk-5EHEGI5U.js",
-        "C:/Program Files/Git/BGGLibrary/chunk-S4FOUWUJ.js",
-        "C:/Program Files/Git/BGGLibrary/favicon.ico",
-        "C:/Program Files/Git/BGGLibrary/index.html",
-        "C:/Program Files/Git/BGGLibrary/main-27SFSS6C.js",
-        "C:/Program Files/Git/BGGLibrary/manifest.webmanifest",
-        "C:/Program Files/Git/BGGLibrary/polyfills-RP2QB4T4.js",
-        "C:/Program Files/Git/BGGLibrary/styles-EZYSQH65.css"
+        "/BGGLibrary/chunk-5EHEGI5U.js",
+        "/BGGLibrary/chunk-S4FOUWUJ.js",
+        "/BGGLibrary/favicon.ico",
+        "/BGGLibrary/index.html",
+        "/BGGLibrary/main-27SFSS6C.js",
+        "/BGGLibrary/manifest.webmanifest",
+        "/BGGLibrary/polyfills-RP2QB4T4.js",
+        "/BGGLibrary/styles-EZYSQH65.css"
       ],
       "patterns": []
     },
@@ -30,40 +30,40 @@
         "ignoreVary": true
       },
       "urls": [
-        "C:/Program Files/Git/BGGLibrary/icons/icon-128x128.png",
-        "C:/Program Files/Git/BGGLibrary/icons/icon-144x144.png",
-        "C:/Program Files/Git/BGGLibrary/icons/icon-152x152.png",
-        "C:/Program Files/Git/BGGLibrary/icons/icon-192x192.png",
-        "C:/Program Files/Git/BGGLibrary/icons/icon-384x384.png",
-        "C:/Program Files/Git/BGGLibrary/icons/icon-512x512.png",
-        "C:/Program Files/Git/BGGLibrary/icons/icon-72x72.png",
-        "C:/Program Files/Git/BGGLibrary/icons/icon-96x96.png",
-        "C:/Program Files/Git/BGGLibrary/media/bootstrap-icons-OCU552PF.woff",
-        "C:/Program Files/Git/BGGLibrary/media/bootstrap-icons-X6UQXWUS.woff2"
+        "/BGGLibrary/icons/icon-128x128.png",
+        "/BGGLibrary/icons/icon-144x144.png",
+        "/BGGLibrary/icons/icon-152x152.png",
+        "/BGGLibrary/icons/icon-192x192.png",
+        "/BGGLibrary/icons/icon-384x384.png",
+        "/BGGLibrary/icons/icon-512x512.png",
+        "/BGGLibrary/icons/icon-72x72.png",
+        "/BGGLibrary/icons/icon-96x96.png",
+        "/BGGLibrary/media/bootstrap-icons-OCU552PF.woff",
+        "/BGGLibrary/media/bootstrap-icons-X6UQXWUS.woff2"
       ],
       "patterns": []
     }
   ],
   "dataGroups": [],
   "hashTable": {
-    "C:/Program Files/Git/BGGLibrary/chunk-5EHEGI5U.js": "fb5a1e9f922bd63b86443d57c658dffe1afeb948",
-    "C:/Program Files/Git/BGGLibrary/chunk-S4FOUWUJ.js": "13dbdf16885f7d35bafaaed28cc6d47be5238357",
-    "C:/Program Files/Git/BGGLibrary/favicon.ico": "6603ccb19430f0aa1aaa57fcac7b6fbd21441556",
-    "C:/Program Files/Git/BGGLibrary/icons/icon-128x128.png": "55d65cf0cced2791ab981e41bbf75b4acec7c707",
-    "C:/Program Files/Git/BGGLibrary/icons/icon-144x144.png": "f92e7fddd8f68c1143a04dc0da6d01277fa18164",
-    "C:/Program Files/Git/BGGLibrary/icons/icon-152x152.png": "7d558c4dcb3b4b63f0099d5197948af929777da0",
-    "C:/Program Files/Git/BGGLibrary/icons/icon-192x192.png": "aaa524faf8a1d5869df3cf3c500b488c81978c8e",
-    "C:/Program Files/Git/BGGLibrary/icons/icon-384x384.png": "b79091dca2f8827bb4829d1d98d8a578418b477f",
-    "C:/Program Files/Git/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
-    "C:/Program Files/Git/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
-    "C:/Program Files/Git/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
-    "C:/Program Files/Git/BGGLibrary/index.html": "c2601b1fc96d1d6fd69fb6d66e61ec53be8bc4bb",
-    "C:/Program Files/Git/BGGLibrary/main-27SFSS6C.js": "ebb36c340cb12e0682ff13d6ab4688c523d22f72",
-    "C:/Program Files/Git/BGGLibrary/manifest.webmanifest": "7d4d1207e18f23862bb9da768885d4d95fecb8d3",
-    "C:/Program Files/Git/BGGLibrary/media/bootstrap-icons-OCU552PF.woff": "d5831fd39baf13aff7626e483b9a089730f18604",
-    "C:/Program Files/Git/BGGLibrary/media/bootstrap-icons-X6UQXWUS.woff2": "020c3c6f9280a315e8425d7f92e15bcd0cdda1b2",
-    "C:/Program Files/Git/BGGLibrary/polyfills-RP2QB4T4.js": "564af71887c6213936c122321804cb5b5ebf6324",
-    "C:/Program Files/Git/BGGLibrary/styles-EZYSQH65.css": "4e5ef8e213c1dea2e4cdd699052b24b50d326030"
+    "/BGGLibrary/chunk-5EHEGI5U.js": "fb5a1e9f922bd63b86443d57c658dffe1afeb948",
+    "/BGGLibrary/chunk-S4FOUWUJ.js": "13dbdf16885f7d35bafaaed28cc6d47be5238357",
+    "/BGGLibrary/favicon.ico": "6603ccb19430f0aa1aaa57fcac7b6fbd21441556",
+    "/BGGLibrary/icons/icon-128x128.png": "55d65cf0cced2791ab981e41bbf75b4acec7c707",
+    "/BGGLibrary/icons/icon-144x144.png": "f92e7fddd8f68c1143a04dc0da6d01277fa18164",
+    "/BGGLibrary/icons/icon-152x152.png": "7d558c4dcb3b4b63f0099d5197948af929777da0",
+    "/BGGLibrary/icons/icon-192x192.png": "aaa524faf8a1d5869df3cf3c500b488c81978c8e",
+    "/BGGLibrary/icons/icon-384x384.png": "b79091dca2f8827bb4829d1d98d8a578418b477f",
+    "/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
+    "/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
+    "/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
+    "/BGGLibrary/index.html": "9fce2a0a08712910fd6033e8e227656d95797c36",
+    "/BGGLibrary/main-27SFSS6C.js": "ebb36c340cb12e0682ff13d6ab4688c523d22f72",
+    "/BGGLibrary/manifest.webmanifest": "7d4d1207e18f23862bb9da768885d4d95fecb8d3",
+    "/BGGLibrary/media/bootstrap-icons-OCU552PF.woff": "d5831fd39baf13aff7626e483b9a089730f18604",
+    "/BGGLibrary/media/bootstrap-icons-X6UQXWUS.woff2": "020c3c6f9280a315e8425d7f92e15bcd0cdda1b2",
+    "/BGGLibrary/polyfills-RP2QB4T4.js": "564af71887c6213936c122321804cb5b5ebf6324",
+    "/BGGLibrary/styles-EZYSQH65.css": "4e5ef8e213c1dea2e4cdd699052b24b50d326030"
   },
   "navigationUrls": [
     {
