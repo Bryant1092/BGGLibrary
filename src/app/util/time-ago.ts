@@ -20,9 +20,11 @@ const YEAR = 365 * DAY;
 /**
  * Parses Tabletop.Events timestamps ("2026-09-19 21:51:49").
  *
- * They carry no timezone, and the previous code treated them as UTC
- * (moment.tz(value, 'UTC')), so this keeps that assumption. If times turn out
- * to be off by a few hours at a convention, this is the one place to change.
+ * They carry no timezone marker but are UTC. Checked against ~1,150 library
+ * checkout/check-in times: there are none between 06:00-12:59 UTC in Nov 2025
+ * (CST, UTC-6) and 05:00-11:59 UTC in May 2026 (CDT, UTC-5). Both are the
+ * library being closed midnight-7 AM Dallas time. The gap moved by exactly the
+ * daylight saving hour, which only happens if the stored times are UTC.
  */
 export function parseTteDate(value: string | null | undefined): Date | null {
   if (!value) {
