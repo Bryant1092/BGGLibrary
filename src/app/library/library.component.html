@@ -31,25 +31,27 @@
       <button type="button" class="bl-chip" [class.on]="!!filters().playTime" (click)="sheet.set('time')">
         {{ playTimeChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
       </button>
-      <button type="button" class="bl-chip" (click)="toggleSort()" [attr.aria-label]="'Sort: ' + (filters().sort === 'name' ? 'A to Z' : 'Available first') + '. Tap to change.'">
-        <bl-icon name="sort" [size]="16" /> {{ filters().sort === 'name' ? 'A–Z' : 'Available first' }}
-      </button>
     </div>
 
     <div class="bl-subrow">
       @if (signedIn()) {
-        <span>
+        <span style="display: flex; align-items: center; min-width: 0">
           Adding to
-          <button type="button" class="bl-link-btn" (click)="sheet.set('lists')">
-            {{ currentList()?.name || 'Choose a list' }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+          <button type="button" class="bl-link-btn" style="min-width: 0" (click)="sheet.set('lists')">
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ currentList()?.name || 'Choose a list' }}</span>
+            <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
           </button>
         </span>
       } @else {
         <span>Sign in to save games to lists</span>
       }
-      @if (!loading() && !loadError()) {
-        <span>{{ countLabel() }}</span>
-      }
+      <!--
+        Sort lives here rather than in the chip row: as a fourth chip it was
+        scrolled off-screen on phones, so people didn't know it existed.
+      -->
+      <button type="button" class="bl-link-btn" style="flex: none" (click)="sheet.set('sort')" [attr.aria-label]="'Sort: ' + sortChip() + '. Change sort'">
+        <bl-icon name="sort" [size]="15" /> {{ sortChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+      </button>
     </div>
   </header>
 
@@ -157,6 +159,19 @@
       <div class="bl-option-grid">
         @for (option of playTimeOptions; track option[0]) {
           <button type="button" class="bl-option" [attr.aria-pressed]="filters().playTime === option[0]" (click)="setPlayTime(option[0])">{{ option[1] }}</button>
+        }
+      </div>
+    </app-sheet>
+  }
+  @case ('sort') {
+    <app-sheet label="Sort by" (closed)="closeSheet()">
+      <h2>Sort by</h2>
+      <div>
+        @for (option of sortOptions; track option.value) {
+          <button type="button" class="bl-choice" [attr.aria-pressed]="filters().sort === option.value" (click)="setSort(option.value)">
+            <span class="bl-radio"></span>
+            <span class="text"><strong>{{ option.label }}</strong><small>{{ option.note }}</small></span>
+          </button>
         }
       </div>
     </app-sheet>

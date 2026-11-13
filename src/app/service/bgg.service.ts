@@ -9,6 +9,24 @@ export interface SearchResult {
   }
 }
 
+/**
+ * Sort choices. Tabletop.Events sorts by a single field only (no tiebreaker),
+ * so e.g. "Available first" isn't alphabetical within each group. Each was
+ * checked against the live API. Play time sorts were left out: the data has
+ * placeholder values (1 minute, 1200 minutes) that would fill the top of the list.
+ */
+export type LibrarySort = 'name' | 'nameDesc' | 'availability' | 'popular' | 'newest';
+
+const SORT_PARAMS: Record<LibrarySort, { orderBy: string; order: 'asc' | 'desc' }> = {
+  name: { orderBy: 'name', order: 'asc' },
+  nameDesc: { orderBy: 'name', order: 'desc' },
+  availability: { orderBy: 'is_checked_out', order: 'asc' },
+  // How many times the game has been checked out across past conventions.
+  popular: { orderBy: 'checkout_count', order: 'desc' },
+  // When the game was added to the library, so new arrivals come first.
+  newest: { orderBy: 'date_created', order: 'desc' },
+};
+
 /** Play-time filter choices; each maps to a Tabletop.Events `max_play_time` condition. */
 export type PlayTimeFilter = 'upTo30' | 'upTo60' | 'over60';
 
@@ -21,7 +39,7 @@ export interface LibrarySearch {
   /** Only games that support exactly this many players. */
   players: number | null;
   playTime: PlayTimeFilter | null;
-  sort: 'name' | 'availability';
+  sort: LibrarySort;
 }
 
 /**
@@ -52,12 +70,13 @@ export class BggService {
   // Note: `_include_options=1` is not requested. It added the list of allowed
   // values for every field (~35% of each response), and the app never reads it.
   searchLibrary(search: LibrarySearch) {
+    const sort = SORT_PARAMS[search.sort] || SORT_PARAMS.name;
     let params = new HttpParams()
         .append('_include', 'bgg_icon_uri')
         .append('_items_per_page', search.pageSize)
-        .append('_order_by', search.sort === 'availability' ? 'is_checked_out' : 'name')
+        .append('_order_by', sort.orderBy)
         .append('_page_number', search.page)
-        .append('_sort_order', 'asc')
+        .append('_sort_order', sort.order)
         .append('is_in_circulation', '1')
         .append('query', search.query || '');
     if (search.availableOnly) {

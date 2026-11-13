@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { BehaviorSubject, catchError, EMPTY, ignoreElements, map, merge, of, Subject, switchMap } from 'rxjs';
 import { BggItem } from '../model/bgg.model';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
-import { BggService, LibrarySearch, PlayTimeFilter } from '../service/bgg.service';
+import { BggService, LibrarySearch, LibrarySort, PlayTimeFilter } from '../service/bgg.service';
 import { GameService } from '../service/game.service';
 import { ToastService } from '../service/toast.service';
 import { UserService } from '../service/user.service';
@@ -25,12 +25,21 @@ const PLAY_TIME_LABELS: Record<PlayTimeFilter, string> = {
   over60: 'Over 1 hour',
 };
 
+/** Shown in the Sort sheet; `chip` is the short label on the sort chip. */
+const SORT_OPTIONS: { value: LibrarySort; label: string; chip: string; note: string }[] = [
+  { value: 'name', label: 'Name A–Z', chip: 'A–Z', note: 'Alphabetical' },
+  { value: 'nameDesc', label: 'Name Z–A', chip: 'Z–A', note: 'Reverse alphabetical' },
+  { value: 'availability', label: 'Available first', chip: 'Available first', note: 'Checked-out games go to the end' },
+  { value: 'popular', label: 'Most played', chip: 'Most played', note: 'Checked out most often at past conventions' },
+  { value: 'newest', label: 'Newest to the library', chip: 'Newest', note: 'Games added most recently come first' },
+];
+
 interface Filters {
   query: string;
   availableOnly: boolean;
   players: number | null;
   playTime: PlayTimeFilter | null;
-  sort: 'name' | 'availability';
+  sort: LibrarySort;
 }
 
 const DEFAULT_FILTERS: Filters = { query: '', availableOnly: false, players: null, playTime: null, sort: 'name' };
@@ -67,6 +76,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
 
   readonly playerOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   readonly playTimeOptions = Object.entries(PLAY_TIME_LABELS) as [PlayTimeFilter, string][];
+  readonly sortOptions = SORT_OPTIONS;
 
   filters = signal<Filters>({ ...this.saved.filters });
   items = signal<BggItem[]>(this.saved.items);
@@ -90,7 +100,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
   /** Games with an add/remove in progress, keyed by id. */
   busyIds = signal<Set<string>>(new Set());
 
-  sheet = signal<'details' | 'players' | 'time' | 'lists' | null>(null);
+  sheet = signal<'details' | 'players' | 'time' | 'sort' | 'lists' | null>(null);
   selected = signal<BggItem | null>(null);
   /** A game the user tried to add before choosing/creating a list; added once they do. */
   private pendingAdd: BggItem | null = null;
@@ -105,14 +115,11 @@ export class LibraryComponent implements OnInit, OnDestroy {
   status = computed(() => libraryStatus(this.now()));
   hasHotGames = computed(() => currentOrNextConvention(this.now())?.hasHotGames ?? false);
   hasMore = computed(() => this.items().length < this.total());
-  countLabel = computed(() => {
-    const total = this.total();
-    return total === 1 ? '1 game' : `${total.toLocaleString()} games`;
-  });
   playersChip = computed(() => {
     const p = this.filters().players;
     return p ? `${p} ${p === 1 ? 'player' : 'players'}` : 'Players';
   });
+  sortChip = computed(() => SORT_OPTIONS.find(o => o.value === this.filters().sort)?.chip || 'A–Z');
   playTimeChip = computed(() => {
     const t = this.filters().playTime;
     return t ? PLAY_TIME_LABELS[t] : 'Play time';
@@ -279,10 +286,12 @@ export class LibraryComponent implements OnInit, OnDestroy {
     this.search();
   }
 
-  /** Tabletop.Events can sort by one field only, so "Available first" isn't alphabetical within each group. */
-  toggleSort(): void {
-    this.filters.update(f => ({ ...f, sort: f.sort === 'name' ? 'availability' : 'name' }));
-    this.search();
+  setSort(sort: LibrarySort): void {
+    this.sheet.set(null);
+    if (sort !== this.filters().sort) {
+      this.filters.update(f => ({ ...f, sort }));
+      this.search();
+    }
   }
 
   clearAll(input: HTMLInputElement): void {
