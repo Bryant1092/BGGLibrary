@@ -19,9 +19,11 @@ export class BggService {
 
   constructor(private http: HttpClient) { }
 
+  // Note: `_include_options=1` was removed from both requests. It added the
+  // list of allowed values for every field (~35% of each response) to every
+  // game, and the app never reads `_options`.
   getBggLibraryInfo(query?: string, page = 1, pageSize = 10, orderBy = 'name', sortBy = 'asc') {
     const params = new HttpParams()
-        .append('_include_options', '1')
         .append('_include', 'bgg_icon_uri')
         .append('_items_per_page', pageSize)
         .append('_order_by', orderBy)
@@ -32,12 +34,12 @@ export class BggService {
     return this.http.get(this.libraryUrl, {params});
   }
 
+  // Only the game's own fields are used. The related library object and
+  // relationship links that were also requested made each response ~2.5x larger
+  // (about 1.9 KB -> 0.76 KB), which adds up because the User page requests one per game.
   getBggGameInfo(id: string) {
     const params = new HttpParams()
-        .append('_include_options', '1')
-        .append('_include', 'bgg_icon_uri')
-        .append('_include_related_objects', 'library')
-        .append('_include_relationships', '1');
+        .append('_include', 'bgg_icon_uri');
     return this.http.get<BggItem>(this.itemUrl(id), {params});
   }
 }

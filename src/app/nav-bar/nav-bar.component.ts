@@ -1,9 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, HostListener, inject, OnDestroy, OnInit } from '@angular/core';
-import { Auth, authState, signOut, user } from '@angular/fire/auth';
+import { AfterViewInit, Component, DestroyRef, inject, OnDestroy, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { traceUntilFirst } from '@angular/fire/performance';
-import { map } from 'rxjs';
+import { EMPTY, switchMap } from 'rxjs';
 import { UserService } from '../service/user.service';
 import { User } from '../model/user.model';
 import { ActiveService } from '../service/active.service';
@@ -21,6 +20,7 @@ export class NavBarComponent implements OnInit, AfterViewInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private userService = inject(UserService);
   private activeService = inject(ActiveService);
+  private destroyRef = inject(DestroyRef);
   active: number = 1;
   loggedIn: boolean = false;
   userSubscription: any;
@@ -37,19 +37,31 @@ export class NavBarComponent implements OnInit, AfterViewInit, OnDestroy {
         this.redirectUrl = { redirectUrl: '/' };
       }
     });
-    this.userSubscription = this.userService.checkAuth().subscribe((user: any) => {
+    // switchMap replaces the previous profile listener whenever the auth state
+    // changes. Before, getUserData() opened a new Firestore listener on every
+    // auth change without closing the old one.
+    this.userSubscription = this.userService.checkAuth().pipe(
+      switchMap((user: any) => {
         this.loggedIn = !!user;
-        if (!!user?.uid) {
-          this.getUserData(user.uid);
-          if (![1,2,3].includes(this.active)) {
-            this.activeService.setActiveNavTab(1);
-          }
+        if (!user?.uid) {
+          this.displayName = undefined;
+          this.email = undefined;
+          return EMPTY;
         }
-    });
+        if (![1,2,3].includes(this.active)) {
+          this.activeService.setActiveNavTab(1);
+        }
+        return this.userService.fetchUser(user.uid);
+      })
+    ).subscribe((user: any) => this.setUserData(user));
   }
 
   ngAfterViewInit(): void {
-    this.activeService.checkActiveNavTab().subscribe((active: number) => {
+    // The nav bar normally lives for the whole session, but unsubscribing on
+    // destroy keeps it leak-free if it is ever removed (e.g. the login page hides it).
+    this.activeService.checkActiveNavTab().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((active: number) => {
       this.active = active;
     });
   }
@@ -67,14 +79,12 @@ export class NavBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
 
-  getUserData(uid: string) {
-    this.userService.fetchUser(uid).subscribe((user: any) => {
-      if (!!user) {
-        // Last name can be empty (e.g. one-word Google names); avoid showing "Cher undefined".
-        this.displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim().normalize();
-        this.email = user.email;
-      }
-    });
+  private setUserData(user: any) {
+    if (!!user) {
+      // Last name can be empty (e.g. one-word Google names); avoid showing "Cher undefined".
+      this.displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim().normalize();
+      this.email = user.email;
+    }
   }
 
   logout() {

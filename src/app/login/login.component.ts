@@ -1,4 +1,5 @@
-import { AfterViewInit, Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, inject, OnDestroy, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators, ValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Subscription, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -24,6 +25,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   private fb = inject(FormBuilder);
   private userService = inject(UserService);
   private activeService = inject(ActiveService)
+  private destroyRef = inject(DestroyRef);
   userSubscription?: Subscription;
   loginForm!: FormGroup;
   isRegister: boolean = false;
@@ -42,7 +44,9 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.route.queryParams.subscribe(params => {
+    // takeUntilDestroyed: this subscription was never closed, so every visit to
+    // the login page left one behind.
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       this.redirectUrl = params['redirectUrl'] ? decodeURIComponent(params['redirectUrl']) : '/';
     });
   }

@@ -1,19 +1,18 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, DestroyRef, HostListener, inject, OnInit, QueryList, ViewChildren } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, inject, OnInit, QueryList, ViewChildren } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, map, of, Subject, switchMap } from 'rxjs';
+import { catchError, EMPTY, ignoreElements, map, merge, of, Subject, switchMap } from 'rxjs';
 import { NgbdSortableHeader } from '../directive/ngbd-sortable-header.directive';
 import { BggService } from '../service/bgg.service';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
-import 'moment-timezone';
-import moment from 'moment';
 import { BggItem } from '../model/bgg.model';
 import { UserService } from '../service/user.service';
 import { GameService } from '../service/game.service';
-import { User } from '../model/user.model';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
 import { ActiveService } from '../service/active.service';
+import { LayoutService } from '../service/layout.service';
+import { timeAgo } from '../util/time-ago';
 
 @Component({
   selector: 'app-table',
@@ -28,6 +27,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   private gameService = inject(GameService);
   private activeService = inject(ActiveService);
   private destroyRef = inject(DestroyRef);
+  private layout = inject(LayoutService);
   /**
    * Every library fetch goes through this stream instead of calling the API
    * directly. TTE responses take 1-10s, so if each search subscribed on its
@@ -49,7 +49,12 @@ export class TableComponent implements OnInit, AfterViewInit {
   loading: boolean = false;
   /** True when the last library request failed, so the table shows a retry message instead of spinning forever. */
   loadError: boolean = false;
-  buttonLoading: Map<number, boolean> = new Map();
+  /**
+   * Games with an add/remove request in progress, keyed by game id. Keyed by
+   * id rather than row index so the spinner stays on the right game even if
+   * the rows re-render or reorder while the request is running.
+   */
+  buttonLoading: Set<string> = new Set();
   userSignedIn: boolean = false;
 
   _searchTerm: string = '';
@@ -102,17 +107,31 @@ export class TableComponent implements OnInit, AfterViewInit {
       this.paging = data?.result?.paging || {};
     });
 
-    this.userService.checkAuth().subscribe((user: any) => {
-      if (user) {
-        this.userSignedIn = true;
-        this.userService.fetchUser(user.uid).subscribe((user: User) => {});
-        this.userService.fetchUserGameLists(user.uid).subscribe((gameLists: any) => {
-          this.userGameLists = this.userService.getCurrentUserGameLists();
-          if (this.firstLoad) {
-            this.onSelected();
-            this.firstLoad = false;
-          }
-        });
+    // These were nested subscribe() calls that were never unsubscribed. Each
+    // visit to this page (and each auth change) opened new live Firestore
+    // listeners on top of the old ones, so the app got slower and used more
+    // data/battery the longer it was open. switchMap closes the previous
+    // listeners when the user changes (including sign-out), and
+    // takeUntilDestroyed closes them all when the page is left.
+    this.userService.checkAuth().pipe(
+      switchMap((user: any) => {
+        this.userSignedIn = !!user;
+        if (!user) {
+          return EMPTY;
+        }
+        return merge(
+          // fetchUser is subscribed only for its side effect (it caches the
+          // profile in UserService); its values aren't used here.
+          this.userService.fetchUser(user.uid).pipe(ignoreElements()),
+          this.userService.fetchUserGameLists(user.uid)
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      this.userGameLists = this.userService.getCurrentUserGameLists();
+      if (this.firstLoad) {
+        this.onSelected();
+        this.firstLoad = false;
       }
     });
   }
@@ -152,17 +171,11 @@ export class TableComponent implements OnInit, AfterViewInit {
   }
 
   getLastcheckoutTime(datetime: any) {
-    let timezone = moment.tz.guess();
-    if (datetime == null){ return ""; }
-    var date = moment.tz(datetime, 'UTC');
-    if (timezone != null) {
-        date = date.tz(timezone);
-    }
-    return date.fromNow();
+    return timeAgo(datetime);
   }
 
-  addGameToList(index: number, game: BggItem) {
-    this.buttonLoading.set(index, true);
+  addGameToList(game: BggItem) {
+    this.buttonLoading.add(game.id);
     this.gameService.addGameToList(this.selectListValue, {
       bgg_id: game?.bgg_id,
       name: game?.name,
@@ -171,17 +184,17 @@ export class TableComponent implements OnInit, AfterViewInit {
     }).then((id: string) => {
       this.onSelected();
       setTimeout(() => {
-        this.buttonLoading.delete(index);
+        this.buttonLoading.delete(game.id);
       }, 200);
     }).catch(err => {
       console.error('Failed to add game to list', err);
-      this.buttonLoading.delete(index);
+      this.buttonLoading.delete(game.id);
       this.openAlert("Couldn't add the game. Check your connection and try again.", true);
     });
   }
 
-  removeGameFromList(index: number, game: BggItem) {
-    this.buttonLoading.set(index, true);
+  removeGameFromList(game: BggItem) {
+    this.buttonLoading.add(game.id);
     this.gameService.removeGamefromList(this.selectListValue, {
       bgg_id: game?.bgg_id,
       name: game?.name,
@@ -190,11 +203,11 @@ export class TableComponent implements OnInit, AfterViewInit {
     }).then(() => {
       this.onSelected();
       setTimeout(() => {
-        this.buttonLoading.delete(index);
+        this.buttonLoading.delete(game.id);
       }, 200);
     }).catch(err => {
       console.error('Failed to remove game from list', err);
-      this.buttonLoading.delete(index);
+      this.buttonLoading.delete(game.id);
       this.openAlert("Couldn't remove the game. Check your connection and try again.", true);
     });
   }
@@ -216,42 +229,52 @@ export class TableComponent implements OnInit, AfterViewInit {
   onSelected(overrideSelectedListId = '') {
     if (!this.selectListValue) {
       // No list left (e.g. the last one was deleted): clear stale "in list" state.
-      this.currentGameList = [];
+      this.setCurrentGameList([]);
       return;
     }
     if (this.stopRefresh) {
       return;
     }
     this.gameService.fetchGameList(this.selectListValue).then(data => {
-      this.currentGameList = data?.gameList;
+      this.setCurrentGameList(data?.gameList || []);
       this.userGameLists = this.userService.getCurrentUserGameLists();
       if (overrideSelectedListId !== '') {
         this.stopRefresh = true
         this.selectListValue = overrideSelectedListId;
         this.stopRefresh = false;
       }
+    }).catch(err => {
+      console.error('Failed to load selected game list', err);
+      this.openAlert("Couldn't load your list. Check your connection.", true);
     });
+  }
+
+  /**
+   * Ids of the games in the selected list. gameExistsInList() runs for every
+   * row on every change-detection pass, so a Set lookup replaces scanning the
+   * whole list each time.
+   */
+  private listGameIds = new Set<string>();
+
+  private setCurrentGameList(gameList: any[]) {
+    this.currentGameList = gameList;
+    this.listGameIds = new Set(gameList.map(game => game.id));
   }
 
   gameExistsInList(bggGame: BggItem) {
-    return this.currentGameList?.some(game => game.id === bggGame.id);
+    return this.listGameIds.has(bggGame.id);
   }
 
+  // colspan/rowspan now come from LayoutService (a cached media-query signal)
+  // instead of measuring the header cells with getComputedStyle on every
+  // render, and the window resize listener that patched the DOM is no longer
+  // needed because the template reacts to the signal.
   getColSpan(): number {
-    return Array.from(document?.getElementById('headerRow')?.children!).filter(el => {
-      return getComputedStyle(el).display !== 'none';
-    }).length;
+    return this.layout.colSpan();
   }
 
   getRowSpan(): number {
-    return this.getColSpan() <= 3 ? 2 : 1;
-  }
-
-  @HostListener('window:resize', ['$event'])
-  onResize(event: any) {
-    document.querySelectorAll('.dynamic-rowspan').forEach(el => {
-      el.setAttribute('rowspan', this.getRowSpan().toString());
-    });
+    return this.layout.rowSpan();
   }
 
   get currentListRef(): UserGameListRef | undefined {

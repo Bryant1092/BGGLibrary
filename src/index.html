@@ -10,7 +10,13 @@
   <meta name="theme-color" content="#1976d2">
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-kQtW33rZJAHjgefvhyyzcGF3C5TFyBQBA13V1RKPf4uH+bwyzQxZ6CmMZHmNBEfJ" crossorigin="anonymous"></script>
+  <!--
+    Bootstrap's JS (modals, dropdowns, navbar collapse) is bundled from the
+    installed npm package via the "scripts" entry in angular.json, instead of
+    a CDN <script> tag here. The CDN tag loaded Bootstrap 5.1.2 JS while the
+    CSS comes from 5.3.3 (version mismatch), blocked page rendering while it
+    downloaded, and needed an extra network request that fails on bad wifi.
+  -->
 </head>
 <body>
   <app-root></app-root>

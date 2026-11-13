@@ -22,8 +22,13 @@
     cursor: pointer;
 }
 
+/* BGG thumbnails are square. The explicit width (plus the width/height
+   attributes in the template) reserves space before the image loads so rows
+   don't jump; object-fit keeps any non-square image from stretching. */
 img {
     height: 70px;
+    width: 70px;
+    object-fit: contain;
 }
 
 .rounded {
@@ -33,6 +38,7 @@ img {
 @media (max-width: 768px) {
     img {
         height: 48px;
+        width: 48px;
     }
 }
 

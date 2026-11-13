@@ -1,5 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, HostListener, inject, OnInit, QueryList, ViewChildren } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, inject, OnInit, QueryList, ViewChildren } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { catchError, EMPTY, finalize, from, ignoreElements, map, merge, mergeMap, of, Subject, switchMap } from 'rxjs';
 import { BggService } from '../service/bgg.service';
 import { UserService } from '../service/user.service';
 import { GameService } from '../service/game.service';
@@ -8,10 +10,17 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
 import { BggItem } from '../model/bgg.model';
-import { User } from '../model/user.model';
-import moment from 'moment';
 import { Game } from '../model/game.model';
 import { ActiveService } from '../service/active.service';
+import { LayoutService } from '../service/layout.service';
+import { timeAgo } from '../util/time-ago';
+
+/**
+ * How many game-detail requests to send to Tabletop.Events at once. Before,
+ * every game in the list was requested simultaneously (60 games = 60 parallel
+ * requests), which is slow on convention wifi and unkind to TTE's server.
+ */
+const DETAIL_REQUEST_CONCURRENCY = 4;
 
 @Component({
   selector: 'app-user',
@@ -25,6 +34,8 @@ export class UserComponent implements OnInit, AfterViewInit {
   private userService = inject(UserService);
   private gameService = inject(GameService);
   private activeService = inject(ActiveService);
+  private destroyRef = inject(DestroyRef);
+  private layout = inject(LayoutService);
 
   @ViewChildren(NgbdSortableHeader) headers!: QueryList<NgbdSortableHeader>;
 
@@ -32,8 +43,21 @@ export class UserComponent implements OnInit, AfterViewInit {
   stopRefresh = false;
 
   loading: boolean = false;
-  buttonLoading: Map<number, boolean> = new Map();
+  /** Games with a remove request in progress, keyed by game id so the spinner can't land on the wrong row. */
+  buttonLoading: Set<string> = new Set();
+  /**
+   * TTE details (availability, players, time, location) per game id. Kept for
+   * as long as this page is open, so changing pages, searching, or removing a
+   * game no longer re-downloads details for every game in the list. Use
+   * "Refresh List" (or leave and come back) to get fresh availability.
+   */
   bggGameMap: Map<string, BggItem> = new Map();
+  /** Ids queued or in flight, so overlapping loads don't request the same game twice. */
+  private pendingDetailIds = new Set<string>();
+  /** Ids whose detail request failed; the template stops the loading shimmer for these. */
+  private failedDetailIds = new Set<string>();
+  /** Each emission is a batch of game ids to fetch; see the pipeline in ngOnInit. */
+  private detailRequests = new Subject<string[]>();
   userSignedIn: boolean = false;
 
   _searchTerm: string = '';
@@ -58,18 +82,60 @@ export class UserComponent implements OnInit, AfterViewInit {
 
 
   ngOnInit() {
-    this.userService.checkAuth().subscribe((user: any) => {
-      if (user) {
-        this.userSignedIn = true;
-        this.userService.fetchUser(user.uid).subscribe((user: User) => {
-        });
-        this.userService.fetchUserGameLists(user.uid).subscribe((gameLists: any) => {
-          this.userGameLists = this.userService.getCurrentUserGameLists();
-          if (this.firstLoad || !this.selectListValue) {
-            this.onSelected();
-            this.firstLoad = false;
-          }
-        });
+    // Game details are fetched through one stream so that:
+    //  - mergeMap(..., DETAIL_REQUEST_CONCURRENCY) caps parallel requests;
+    //  - catchError per request means one failure doesn't stop the others;
+    //  - finalize clears the pending flag whether the request succeeds or fails;
+    //  - takeUntilDestroyed cancels anything still queued when the page is left.
+    let errorShownForBatch = false;
+    this.detailRequests.pipe(
+      mergeMap(ids => {
+        errorShownForBatch = false;
+        return from(ids);
+      }),
+      mergeMap(id => this.bggService.getBggGameInfo(id).pipe(
+        map((response: any) => ({ id, item: response?.result as BggItem | undefined, error: null })),
+        catchError(error => of({ id, item: undefined, error })),
+        finalize(() => this.pendingDetailIds.delete(id))
+      ), DETAIL_REQUEST_CONCURRENCY),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(({ id, item, error }) => {
+      if (error || !item) {
+        console.error(`Failed to load details for game ${id}`, error);
+        this.failedDetailIds.add(id);
+        // Many requests can fail together on bad wifi; show one alert, not one per game.
+        if (!errorShownForBatch) {
+          errorShownForBatch = true;
+          this.openAlert("Some game details couldn't load. Use Refresh List to try again.", true);
+        }
+        return;
+      }
+      this.failedDetailIds.delete(id);
+      this.bggGameMap.set(id, item);
+    });
+
+    // Previously nested subscribe() calls that were never unsubscribed, so each
+    // visit to this page stacked more live Firestore listeners. switchMap closes
+    // the previous user's listeners (including on sign-out) and
+    // takeUntilDestroyed closes everything when the page is left.
+    this.userService.checkAuth().pipe(
+      switchMap((user: any) => {
+        this.userSignedIn = !!user;
+        if (!user) {
+          return EMPTY;
+        }
+        return merge(
+          // Subscribed only for its side effect of caching the profile in UserService.
+          this.userService.fetchUser(user.uid).pipe(ignoreElements()),
+          this.userService.fetchUserGameLists(user.uid)
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      this.userGameLists = this.userService.getCurrentUserGameLists();
+      if (this.firstLoad || !this.selectListValue) {
+        this.onSelected();
+        this.firstLoad = false;
       }
     });
   }
@@ -101,46 +167,61 @@ export class UserComponent implements OnInit, AfterViewInit {
     }, delay);
   }
 
-  getBggInfo() {
-    this.bggGameMap.clear();
-    // One request per game can fail many times at once on bad wifi; only show
-    // the alert once per refresh instead of stacking a message per game.
-    let errorShown = false;
-    this.filteredGameList.flat()?.forEach((game: Game) => {
-      this.bggService.getBggGameInfo(game.id!).subscribe({
-        next: (item: any) => {
-          this.bggGameMap.set(game.id!, item.result);
-        },
-        error: (err) => {
-          console.error(`Failed to load details for ${game.name}`, err);
-          if (!errorShown) {
-            errorShown = true;
-            this.openAlert("Some game details couldn't load. Use Refresh List to try again.", true);
-          }
-        }
-      });
+  /**
+   * Requests TTE details for games in the selected list that aren't already
+   * loaded or in flight. Details are loaded for the whole list (not just the
+   * visible page) because sorting by Availability needs every game's status.
+   *
+   * @param force discard cached details first (used by "Refresh List" to get
+   *   up-to-date availability).
+   */
+  getBggInfo(force = false) {
+    if (force) {
+      this.bggGameMap.clear();
+      this.failedDetailIds.clear();
+    }
+    const ids = this.currentGameList
+      .map(game => game.id!)
+      .filter(id => !!id && !this.bggGameMap.has(id) && !this.pendingDetailIds.has(id));
+    if (ids.length === 0) {
+      return;
+    }
+    ids.forEach(id => {
+      this.pendingDetailIds.add(id);
+      this.failedDetailIds.delete(id);
     });
+    this.detailRequests.next(ids);
+  }
+
+  /** "Refresh List" menu action: reload the list from Firestore and re-download all game details. */
+  refreshList() {
+    this.onSelected(true, '', true);
   }
 
   getBggGameInfo(game: Game): BggItem {
     return this.bggGameMap.get(game.id!)!;
   }
 
+  /** True when this game's details failed to load, so the template shows a static placeholder instead of a loading shimmer forever. */
+  detailsFailed(game: Game): boolean {
+    return this.failedDetailIds.has(game.id!);
+  }
+
+  // colspan/rowspan come from LayoutService (a cached media-query signal)
+  // instead of measuring header cells with getComputedStyle on every render.
   getColSpan(): number {
-    return Array.from(document?.getElementById('headerRow')?.children!).filter(el => {
-      return getComputedStyle(el).display !== 'none';
-    }).length;
+    return this.layout.colSpan();
   }
 
   getRowSpan(): number {
-    return this.getColSpan() <= 3 ? 2 : 1;
+    return this.layout.rowSpan();
   }
 
   checkIfUserGameListEmptyOrNull() {
     return !this.userGameLists || (this.userGameLists?.length || 0) < 1;
   }
 
-  onSelected(showLoading = true, overrideSelectedListId = '') {
+  onSelected(showLoading = true, overrideSelectedListId = '', forceDetailRefresh = false) {
     if (!this.selectListValue) {
       // No list left (e.g. the last one was deleted): don't keep showing its games.
       this.currentGameList = [];
@@ -155,7 +236,8 @@ export class UserComponent implements OnInit, AfterViewInit {
       });
       this.currentGameList = newList || [];
       this.filterList();
-      this.getBggInfo();
+      // Only fetches games not already loaded, unless this is a manual refresh.
+      this.getBggInfo(forceDetailRefresh);
       this.userGameLists = this.userService.getCurrentUserGameLists();
       if (overrideSelectedListId !== '') {
         this.stopRefresh = true
@@ -258,13 +340,7 @@ export class UserComponent implements OnInit, AfterViewInit {
   }
 
   getLastcheckoutTime(datetime: any) {
-    let timezone = moment.tz.guess();
-    if (datetime == null){ return ""; }
-    var date = moment.tz(datetime, 'UTC');
-    if (timezone != null) {
-        date = date.tz(timezone);
-    }
-    return date.fromNow();
+    return timeAgo(datetime);
   }
 
   createNewList() {
@@ -296,12 +372,19 @@ export class UserComponent implements OnInit, AfterViewInit {
     return this.pageNumber - 1;
   }
 
+  /**
+   * Called for every row on every change-detection pass. It used to flatten
+   * and scan the whole filtered list each time; a Set built once per list
+   * load makes it a constant-time lookup.
+   */
   gameExistsInList(game: Game) {
-    return this.filteredGameList.flat()?.some(g => g.id === game.id);
+    return this.listGameIds.has(game.id!);
   }
 
-  removeGameFromList(index: number, game: Game) {
-    this.buttonLoading.set(index, true);
+  private listGameIds = new Set<string>();
+
+  removeGameFromList(game: Game) {
+    this.buttonLoading.add(game.id!);
     this.gameService.removeGamefromList(this.selectListValue, {
       bgg_id: game?.bgg_id,
       name: game?.name,
@@ -310,11 +393,11 @@ export class UserComponent implements OnInit, AfterViewInit {
     }).then(() => {
       this.onSelected(false);
       setTimeout(() => {
-        this.buttonLoading.delete(index);
+        this.buttonLoading.delete(game.id!);
       }, 200);
     }).catch(err => {
       console.error('Failed to remove game from list', err);
-      this.buttonLoading.delete(index);
+      this.buttonLoading.delete(game.id!);
       this.openAlert("Couldn't remove the game. Check your connection and try again.", true);
     });
   }
@@ -324,6 +407,7 @@ export class UserComponent implements OnInit, AfterViewInit {
   }
 
   filterList() {
+    this.listGameIds = new Set(this.currentGameList.map(game => game.id!));
     let newList = this.currentGameList.filter(g => {
       return g.name?.toLocaleLowerCase().includes(this.searchTerm.toLocaleLowerCase())
     });
@@ -362,13 +446,6 @@ export class UserComponent implements OnInit, AfterViewInit {
     }, 3000);
   }
 
-  @HostListener('window:resize', ['$event'])
-  onResize(event: any) {
-    document.querySelectorAll('.dynamic-rowspan').forEach(el => {
-      el.setAttribute('rowspan', this.getRowSpan().toString());
-    });
-  }
-
   get pageNumber() {
     return this._pageNumber;
   }
@@ -381,15 +458,17 @@ export class UserComponent implements OnInit, AfterViewInit {
     return this._searchTerm;
   }
 
+  // Changing page or page size used to re-download TTE details for every game
+  // in the list. Details are now loaded once per list (see getBggInfo), so
+  // these only need to re-slice the already-loaded list locally.
   set pageNumber(pageNumber: number) {
     this._pageNumber = pageNumber;
-    this.startFetch(200, false, true);
   }
 
   set pageSize(pageSize: number) {
     this._pageNumber = 1;
     this._pageSize = pageSize;
-    this.startFetch(200, true, true);
+    this.startFetch(200, true);
   }
 
   set searchTerm(searchTerm: string) {

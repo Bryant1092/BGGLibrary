@@ -81,11 +81,13 @@
                   </tr>
               }
               @else if (items && items.length > 0) {
-                  <ng-container *ngFor="let item of items; let i = index">
+                  <!-- `track item.id` lets Angular reuse the existing rows for games that are still in the results instead of rebuilding every row (and re-requesting every image) on each fetch. -->
+                  @for (item of items; track item.id) {
                       <tr>
                           <td>
                               <div class="flex-container" style="min-width: 200px">
-                                  <img class="img-thumbnail img-fluid" alt="Game Icon" [attr.src]="item.bgg_icon_uri">
+                                  <!-- width/height reserve space so rows don't jump as images load; lazy loading skips off-screen thumbnails until they're scrolled near. -->
+                                  <img class="img-thumbnail img-fluid game-thumb" alt="Game Icon" width="70" height="70" loading="lazy" decoding="async" [attr.src]="item.bgg_icon_uri">
                                   <a target="_blank" href="https://boardgamegeek.com/boardgame/{{item.bgg_id}}"><ngb-highlight [result]="item.name.normalize('NFC')" [term]="searchTerm" /></a>
                               </div>
                           </td>
@@ -111,18 +113,18 @@
                           </td>
                           <td [attr.rowspan]="getRowSpan()" class="dynamic-rowspan">
                             <div class="d-flex align-items-center justify-content-center">
-                              @if (buttonLoading.get(i)) {
+                              @if (buttonLoading.has(item.id)) {
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
                               }
                               @else if (userSignedIn && gameExistsInList(item)) {
-                                <button class="btn btn-danger rounded" (click)="removeGameFromList(i, item)">
+                                <button class="btn btn-danger rounded" (click)="removeGameFromList(item)">
                                   <i class="bi bi-dash-lg"></i>
                                 </button>
                               }
                               @else {
-                                <button class="btn btn-primary rounded" [disabled]="checkIfUserGameListEmptyOrNull() || !userSignedIn" (click)="addGameToList(i, item)">
+                                <button class="btn btn-primary rounded" [disabled]="checkIfUserGameListEmptyOrNull() || !userSignedIn" (click)="addGameToList(item)">
                                     <i class="bi bi-plus-lg"></i>
                                 </button>
                               }
@@ -143,7 +145,7 @@
                           </div>
                         </td>
                       </tr>
-                  </ng-container>
+                  }
               }
               @else {
                   <tr>

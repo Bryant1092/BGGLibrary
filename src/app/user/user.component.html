@@ -38,7 +38,8 @@
               </div>
               <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="!userSignedIn"><i class="bi bi-gear-fill"></i></button>
               <ul class="dropdown-menu dropdown-menu-end">
-                <button class="dropdown-item" type="button" (click)="onSelected()">Refresh List</button>
+                <!-- Refresh re-downloads every game's details; normal navigation reuses the ones already loaded. -->
+                <button class="dropdown-item" type="button" (click)="refreshList()">Refresh List</button>
                 <div class="dropdown-divider"></div>
                 <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#confirmModal">Create List</button>
                 <div class="dropdown-divider"></div>
@@ -77,17 +78,20 @@
                   }
                   <!-- The current page can be missing (e.g. right after deleting the last list), so treat it as empty instead of throwing. -->
                   @else if ((filteredGameList[listIndex()] || []).length > 0) {
-                      <ng-container *ngFor="let item of filteredGameList[listIndex()]; let i = index">
+                      <!-- `track item.id` reuses existing rows for unchanged games instead of rebuilding the whole table on every update. -->
+                      @for (item of filteredGameList[listIndex()]; track item.id) {
                           <tr>
                               <td>
                                   <div class="flex-container" style="min-width: 200px">
-                                      <img class="img-thumbnail img-fluid" alt="Game Icon" [attr.src]="item?.photo">
+                                      <!-- width/height reserve space so rows don't jump as images load; off-screen thumbnails load lazily. -->
+                                      <img class="img-thumbnail img-fluid game-thumb" alt="Game Icon" width="70" height="70" loading="lazy" decoding="async" [attr.src]="item?.photo">
                                       <a target="_blank" href="https://boardgamegeek.com/boardgame/{{item?.bgg_id}}"><ngb-highlight [result]="item?.name?.normalize('NFC')" [term]="searchTerm" /></a>
                                   </div>
                               </td>
                               <td>
                                     @if(!getBggGameInfo(item)) {
-                                        <div class="placeholder-glow">
+                                        <!-- Grey placeholders shimmer while details load; the shimmer stops if loading failed (detailsFailed) so it doesn't look like it is still working. -->
+                                        <div [class.placeholder-glow]="!detailsFailed(item)">
                                             <span class="placeholder col-5"></span>
                                         </div>
                                     }
@@ -99,7 +103,7 @@
                               </td>
                               <td class="mobile-hide">
                                     @if(!getBggGameInfo(item)) {
-                                        <div class="placeholder-glow">
+                                        <div [class.placeholder-glow]="!detailsFailed(item)">
                                             <span class="placeholder col-5"></span>
                                         </div>
                                     }
@@ -111,7 +115,7 @@
                               </td>
                               <td class="mobile-hide">
                                 @if(!getBggGameInfo(item)) {
-                                    <div class="placeholder-glow">
+                                    <div [class.placeholder-glow]="!detailsFailed(item)">
                                         <span class="placeholder col-5"></span>
                                     </div>
                                 }
@@ -123,7 +127,7 @@
                               </td>
                               <td class="mobile-hide">
                                 @if(!getBggGameInfo(item)) {
-                                    <div class="placeholder-glow">
+                                    <div [class.placeholder-glow]="!detailsFailed(item)">
                                         <span class="placeholder col-3"></span>
                                     </div>
                                 }
@@ -135,13 +139,13 @@
                               </td>
                               <td [attr.rowspan]="getRowSpan()" class="dynamic-rowspan">
                                 <div class="d-flex align-items-center justify-content-center">
-                                  @if (buttonLoading.get(i)) {
+                                  @if (buttonLoading.has(item.id!)) {
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
                                   }
                                   @else if (userSignedIn && gameExistsInList(item)) {
-                                    <button class="btn btn-danger rounded" (click)="removeGameFromList(i, item)">
+                                    <button class="btn btn-danger rounded" (click)="removeGameFromList(item)">
                                       <i class="bi bi-dash-lg"></i>
                                     </button>
                                   }
@@ -154,7 +158,7 @@
                                 <div class="row row-cols-2">
                                   <div class="col">Player Count:</div>
                                   @if(!getBggGameInfo(item)) {
-                                    <div class="placeholder-glow">
+                                    <div [class.placeholder-glow]="!detailsFailed(item)">
                                         <span class="placeholder col-3"></span>
                                     </div>
                                   }
@@ -163,7 +167,7 @@
                                   }
                                   <div class="col">Play Time:</div>
                                   @if(!getBggGameInfo(item)) {
-                                    <div class="placeholder-glow">
+                                    <div [class.placeholder-glow]="!detailsFailed(item)">
                                         <span class="placeholder col-3"></span>
                                     </div>
                                   }
@@ -172,7 +176,7 @@
                                   }
                                   <div class="col">Location:</div>
                                   @if(!getBggGameInfo(item)) {
-                                    <div class="placeholder-glow">
+                                    <div [class.placeholder-glow]="!detailsFailed(item)">
                                         <span class="placeholder col-3"></span>
                                     </div>
                                   }
@@ -183,7 +187,7 @@
                               </div>
                             </td>
                           </tr>
-                      </ng-container>
+                      }
                   }
                   @else {
                       <tr>
