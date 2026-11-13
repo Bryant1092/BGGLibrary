@@ -1,4 +1,6 @@
-<app-nav-bar *ngIf="!isHideNav"></app-nav-bar>
-<div class="body">
-   <router-outlet /> 
-</div>
+<router-outlet />
+<!-- Hidden only on the 404 page, which has its own full-screen layout. -->
+@if (!isHideNav) {
+  <app-toast />
+  <app-tab-bar />
+}

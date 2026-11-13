@@ -18,12 +18,13 @@
 
 .login-container {
   display: flex;
-  height: calc(100vh - 56px);
+  /* Fills the screen above the bottom tab bar (--bl-tabbar-h, in styles.css). */
+  height: calc(100vh - var(--bl-tabbar-h));
   /* On mobile, 100vh is the height with the browser toolbar hidden, so while
      the toolbar shows the page was taller than the screen and the bottom of
      the card was cut off. dvh tracks the visible height; browsers without
      dvh keep the 100vh line above. */
-  height: calc(100dvh - 56px);
+  height: calc(100dvh - var(--bl-tabbar-h) - env(safe-area-inset-bottom));
 }
 
 @media (max-width: 449px) {

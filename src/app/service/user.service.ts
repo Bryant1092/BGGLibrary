@@ -11,6 +11,8 @@ export const USERS_DB = {
     GAME_LISTS: 'gameLists'
   };
 
+const REMEMBERED_LIST_KEY = 'bgglibrary.currentListId';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -64,9 +66,12 @@ export class UserService {
     return this.firestore.getCollectionData(USERS_DB.USERS, uid, USERS_DB.GAME_LISTS).pipe(
       tap(gameLists => {
         this.gameLists = gameLists;
-        if (!this.getCurrentGameList()) {
-          this.setCurrentGameList(gameLists[0]);
-        }
+        // Keep the current list's latest name, and fall back to the list
+        // remembered from the last visit (then the first list) when there's
+        // no current list or it was deleted/left.
+        const current = gameLists.find((l: UserGameListRef) => l.id === this.currentGameList?.id);
+        const remembered = gameLists.find((l: UserGameListRef) => l.id === this.readRememberedListId());
+        this.setCurrentGameList(current || remembered || gameLists[0]);
       })
     );
   }
@@ -87,8 +92,26 @@ export class UserService {
     return this.currentGameList;
   }
 
+  /**
+   * The list the Library page's + button adds to. It's remembered on this
+   * device so it stays the "last list you added to" across visits, instead of
+   * resetting to the first list every time the app opens.
+   */
   setCurrentGameList(gameList: UserGameListRef | undefined): void {
     this.currentGameList = gameList;
+    if (gameList?.id) {
+      try {
+        localStorage.setItem(REMEMBERED_LIST_KEY, gameList.id);
+      } catch { /* storage blocked (e.g. private mode): just don't remember */ }
+    }
+  }
+
+  private readRememberedListId(): string | null {
+    try {
+      return localStorage.getItem(REMEMBERED_LIST_KEY);
+    } catch {
+      return null;
+    }
   }
 
   checkAuth(): Observable<any> {
@@ -110,6 +133,10 @@ export class UserService {
   }
 
   signUserOut(): Promise<void> {
+    // Forget the in-memory lists so the next person to sign in on this phone
+    // never sees the previous account's lists, even briefly.
+    this.gameLists = [];
+    this.currentGameList = undefined;
     return signOut(this.auth).then(() => {
       console.log('User signed out');
     }, err => console.error('error signing out', err));

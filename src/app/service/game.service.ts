@@ -3,7 +3,7 @@ import { FirestoreService } from './firestore.service';
 import { USERS_DB, UserService } from './user.service';
 import { Game } from '../model/game.model';
 import { where } from '@angular/fire/firestore';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
 import { GameList } from '../model/gamelist.model';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
 
@@ -72,6 +72,22 @@ export class GameService {
 
   fetchGameList(gameListId: string): Promise<GameList> {
     return firstValueFrom(this.firestore.getDocData(DATALIST_DB.DATA_LISTS, gameListId));
+  }
+
+  /**
+   * Live view of a list: emits again whenever anyone it's shared with adds,
+   * removes or ticks a game, so friends' changes show up without refreshing.
+   * Works offline from the Firestore cache.
+   */
+  watchGameList(gameListId: string): Observable<GameList | undefined> {
+    return this.firestore.getDocData(DATALIST_DB.DATA_LISTS, gameListId);
+  }
+
+  /** Sets a game's Played tick. A transaction, like add/remove, so two people ticking at once can't overwrite each other's changes. */
+  setPlayed(listId: string, gameId: string, played: boolean): Promise<string> {
+    return this.firestore.transactUpdate<GameList>(current => ({
+      gameList: (current?.gameList || []).map(g => g.id === gameId ? { ...g, played } : g)
+    }), DATALIST_DB.DATA_LISTS, listId);
   }
 
   fetchUsersWithGameList(gameListId: string): Promise<UserGameListRef[]> {

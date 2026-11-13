@@ -1,30 +1,27 @@
-import { AfterViewInit, Component, DestroyRef, inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnDestroy, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators, ValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Subscription, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { HideNavService } from '../service/hide-nav.service';
-import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UserService } from '../service/user.service';
 import { UserCredential } from 'firebase/auth';
 import { User } from '../model/user.model';
 import { getAdditionalUserInfo } from '@angular/fire/auth';
-import { ActiveService } from '../service/active.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, NgbModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
-export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
+export class LoginComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private userService = inject(UserService);
-  private activeService = inject(ActiveService)
   private destroyRef = inject(DestroyRef);
   userSubscription?: Subscription;
   loginForm!: FormGroup;
@@ -52,10 +49,6 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
       // like ?redirectUrl=https://...) just goes to the home page.
       this.redirectUrl = requested.startsWith('/') ? requested : '/';
     });
-  }
-
-  ngAfterViewInit(): void {
-      this.activeService.setActiveNavTab(3)
   }
 
   ngOnDestroy(): void {

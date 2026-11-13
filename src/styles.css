@@ -1,65 +1,250 @@
-/* You can add global styles to this file, and also import other style files */
-
-/* Importing Bootstrap SCSS file. */
+/* Bootstrap still styles the login and 404 pages; Bootstrap Icons is used on the login page. */
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import "bootstrap-icons/font/bootstrap-icons.css";
 
-th[sortable] {
-    cursor: pointer;
-    user-select: none;
-    -webkit-user-select: none;
+/*
+ * Design tokens for the Library / My Lists / Account screens.
+ * - Accent is the logo's orange, darkened to #C2410C so white text on it and
+ *   orange text on white both pass WCAG AA contrast (4.5:1).
+ * - Status colors differ in lightness as well as hue, and always come with a
+ *   text label ("Available", "Out 45m"), so they work for color-blind users.
+ * - Dark mode follows the phone setting (handy in dim convention halls).
+ */
+:root {
+  --bl-surface: #ffffff;
+  --bl-text: #1c1b1a;
+  --bl-muted: #5e5955;
+  --bl-hair: #e7e4e0;
+  --bl-field: #f1efec;
+  --bl-accent: #c2410c;
+  --bl-accent-text: #c2410c;
+  --bl-accent-soft: #f8e8e2;
+  --bl-on-accent: #ffffff;
+  --bl-avail-bg: #ddf3e5;
+  --bl-avail-fg: #14632f;
+  --bl-out-bg: #eceae7;
+  --bl-out-fg: #4f4a45;
+  --bl-due-bg: #eaf1ff;
+  --bl-due-border: #c3d5fb;
+  --bl-due-fg: #1d4ed8;
+  --bl-late-bg: #fef3c7;
+  --bl-late-border: #f5d27a;
+  --bl-late-fg: #8a4b08;
+  --bl-toast-bg: #1c1b1a;
+  --bl-toast-fg: #ffffff;
+  --bl-toast-action: #f0a07e;
+  --bl-open: #16a34a;
+  --bl-danger: #b42318;
+  --bl-tabbar-h: 64px;
+  --bl-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-th[sortable].desc:before,th[sortable].asc:before {
-    content: "";
-    display: block;
-    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAmxJREFUeAHtmksrRVEUx72fH8CIGQNJkpGUUmakDEiZSJRIZsRQmCkTJRmZmJgQE0kpX0D5DJKJgff7v+ru2u3O3vvc67TOvsdatdrnnP1Y///v7HvvubdbUiIhBISAEBACQkAICAEhIAQ4CXSh2DnyDfmCPEG2Iv9F9MPlM/LHyAecdyMzHYNwR3fdNK/OH9HXl1UCozD24TCvILxizEDWIEzA0FcM8woCgRrJCoS5PIwrANQSMAJX1LEI9bqpQo4JYNFFKRSvIgsxHDVnqZgIkPnNBM0rIGtYk9YOOsqgbgepRCfdbmFtqhFkVEDVPjJp0+Z6e6hRHhqBKgg6ZDCvYBygVmUoEGoh5JTRvIJwhJo1aUOoh4CLPMyvxxi7EWOMgnCGsXXI1GIXlZUYX7ucU+kbR8NW8lh3O7cue0Pk32MKndfUxQFAwxdirk3fHappAnc0oqDPzDfGTBrCfHP04dM4oTV8cxr0SVzH9FF07xD3ib6xCDE+M+aUcVygtWzzbtGX2rPBrEUYfecfQkaFzYi6HjVnGBdtL7epqAlc1+jRdAap74RrnPc4BCijttY2tRcdN0g17w7HqZrXhdJTYAuS3hd8z+vKgK3V1zWPae0mZDMykadBn1hTQBLnZNwVrJpSe/NwEeDsEwCctEOsJTsgxLvCqUl2ACftEGvJDgjxrnBqkh3ASTvEWrIDQrwrnJpkB3DSDrGW7IAQ7wqnJtkBnLRztejXXVu4+mxz/nQ9jR1w5VB86ejLTFcnnDwhzV+F6T+CHZlx6THSjn76eyyBIOPHyDakhBAQAkJACAgBISAEhIAQYCLwC8JxpAmsEGt6AAAAAElFTkSuQmCC) no-repeat;
-    background-size: 22px;
-    width: 22px;
-    height: 22px;
-    float: left;
-    margin-left: -10px;
-    margin-right: 0;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bl-surface: #191817;
+    --bl-text: #f2f0ed;
+    --bl-muted: #b5afa9;
+    --bl-hair: #2f2d2a;
+    --bl-field: #272523;
+    --bl-accent-text: #dd9779;
+    --bl-accent-soft: #482414;
+    --bl-avail-bg: #173a25;
+    --bl-avail-fg: #8ee6ae;
+    --bl-out-bg: #33302c;
+    --bl-out-fg: #d4cec7;
+    --bl-due-bg: #16203a;
+    --bl-due-border: #2c3f6e;
+    --bl-due-fg: #9dbbff;
+    --bl-late-bg: #352410;
+    --bl-late-border: #6b4a1c;
+    --bl-late-fg: #fcc97a;
+    --bl-toast-bg: #f2f0ed;
+    --bl-toast-fg: #191817;
+    --bl-toast-action: #c2410c;
+    --bl-open: #4ade80;
+    --bl-danger: #f97066;
+  }
 }
 
-th[sortable]:before {
-    content: "";
-    display: block;
-    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAADjUlEQVR4nO3bT4gcRRTH8Q/LIkFCWEIIImERWYIHkVwElRAEISpEhSBhBQ8SNYj/ULxIECFIDh48iQTJwbN4CMlFxH+IJCAeBCUGFVHUIIq6inE3Oq56KBs2vT3T3dPdVdPLfOFdut++fr/HbFV19Sva4T6cxQCf4QnMtBR74nke/xbY8ZRJxeJpxeIzey5dat1zyGjxmT2UKsEuOYBV1Qqwiv1p0uyGvfhTNfGZrWBPimTb5ib8oZ74zH7GtfFTbo/rsGQ88Zl9ix2xE2+DBXyvmfjMzmIubvrNuBJfakd8Zu9jU0wR47IVn2hXfGYnTPhqcTM+0I34zI5FU1OTy/CmbsVndjiSplq8plry406JeTsYR1Y17lYt6S+EZe4on5eE+b8s1gC7YojLUzQI3VXh777DLfixxO8c7sByid8snqzw3NYpKkDZ9PQTbsU3FZ9xBvfg7xK/hYrxWqWoAO+N8L+A2/FpzeecwiMlPlUL2jmb8JHiAe/mnO/+Ar+19mjO/8gQv1UT9rI0Jwxg5/EbXlc8SNUtAGGTZLDGZwUPtJt+PMYpAFyFe7GI7Z1nOYLZRM/9+n9LzkSvxWMwLUDqBFLTpwIs4rSwq/Qu9qVNJzDuLFCXZ4fEf7il+GMTowDzLl035BdnjbbX+vAvsMfw6fpy3NAkeB8KsLnk/pYmwftQgE6ZFiB1AqmZFiB1AqmZFqDh3/9acv+XhvE7p2kBzgibpEUs462G8TunaQEu4n78lbv+Dx5Tvm2enDZ2hE7hekHwgrC7+7Lw65h42toS+xgPthQrKtNZIHUCqUm1KxyDncKr8jLeMYFT8hV4BT8IzVcnhKTzlH2BPpDzn8GLLu1j/F346j0xbFXcd7Rk/ReougU4NsRvoKBNL9UY8BSuLrg+hzcU/xKq8IzhrbmzCmaqVAXYPeLedqE9p24/4UHlzdnz+QupCnCx5P68UIRtFePtExZfZXyev5CqACcr+FwjfJUu2/O7Ea8qn9EuqFakKMzibdV6kdpoxBrgzijKarAFH2ouroodiqSpNtuERqouxR+JpmZMduAr3YjvzbmlncKKsE3xJ/Vsqb9L8/MImZ0WPpv1jt2aj/rnhKV2b7lN/TNJmZ1XsNrrI4uqn0rLbEk41rNhKHsLXGsr1jdxbggOKxe/av0r8YbiBaML0FYbzkRzXLH4oymTiskMHhcOaQyEo3etnDL5D04FfoVx6MwlAAAAAElFTkSuQmCC) no-repeat;
-    background-size: 22px;
-    width: 22px;
-    height: 22px;
-    float: left;
-    margin-left: -10px;
-    margin-right: 4px;
+/* Bootstrap's system font stack, not Roboto from Google Fonts: no download, no
+   render blocking, works offline, and it is Roboto on Android anyway. */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
-
-th[sortable].desc:before {
-    transform: rotate(180deg);
-    -ms-transform: rotate(180deg)
-}
-
-ul.pagination {
-    margin-top: unset;
-    margin-bottom: unset;
+body {
+  font-family: var(--bl-font);
+  background: var(--bl-surface);
+  color: var(--bl-text);
 }
 
 .form-floating > label {
-    z-index: 5;
+  z-index: 5;
 }
 
-html, body {
-    height: calc(100% - 58px);
-    margin: 0;
-    padding: 0;
-    min-width: 300px;
-}
+/* ---------- Page layout ---------- */
 
-app-root {
-  margin-top: 56px;
+/* Centered single column; the bottom padding keeps the last row clear of the fixed tab bar. */
+.bl-page {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding-bottom: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom) + 16px);
+  background: var(--bl-surface);
+  color: var(--bl-text);
 }
+.bl-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bl-surface);
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--bl-hair);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bl-title-row { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+.bl-title-row img { width: 30px; height: 30px; border-radius: 8px; }
+.bl-title-row h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; flex: 1; }
+.bl-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--bl-muted); text-align: right; }
+.bl-dot { width: 8px; height: 8px; border-radius: 4px; background: var(--bl-muted); flex: none; }
+.bl-dot.open { background: var(--bl-open); }
+.bl-subrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; font-size: 14px; color: var(--bl-muted); }
+.bl-section { margin: 0; padding: 16px 16px 6px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-muted); }
 
-/* Bootstrap's system font stack (system-ui, Segoe UI, Roboto, Helvetica Neue...)
-   instead of Roboto from Google Fonts: no download, no render blocking, works
-   offline, and it is Roboto on Android anyway. See the note in index.html. */
-body { margin: 0; font-family: var(--bs-body-font-family); }
+/* ---------- Controls ---------- */
+
+.bl-page button, .bl-sheet button, .bl-tabbar a, .bl-toast button { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.bl-page :focus-visible, .bl-sheet :focus-visible, .bl-tabbar :focus-visible, .bl-toast :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.bl-icon-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--bl-muted); display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 0; border-radius: 22px; }
+.bl-icon-btn.accent { color: var(--bl-accent-text); }
+
+.bl-search { position: relative; height: 48px; }
+.bl-search svg { position: absolute; left: 14px; top: 14px; color: var(--bl-muted); pointer-events: none; }
+.bl-search input {
+  width: 100%; height: 48px; box-sizing: border-box; border: 0; border-radius: 12px;
+  padding: 0 48px 0 44px; font-size: 16px; background: var(--bl-field); color: var(--bl-text);
+  -webkit-appearance: none; appearance: none;
+}
+.bl-search input::placeholder { color: var(--bl-muted); }
+/* The browser's own clear (x) is replaced by a 44px button that's easier to hit. */
+.bl-search input::-webkit-search-cancel-button { display: none; }
+.bl-search .bl-icon-btn { position: absolute; right: 2px; top: 2px; }
+
+/* Horizontally scrolling chip row; the negative margin lets chips scroll edge to edge. */
+.bl-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+.bl-chips::-webkit-scrollbar { display: none; }
+.bl-chip {
+  flex: none; height: 44px; padding: 0 16px; border-radius: 22px; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 15px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--bl-hair); background: var(--bl-surface); color: var(--bl-text);
+}
+.bl-chip.on { background: var(--bl-accent); border-color: var(--bl-accent); color: var(--bl-on-accent); }
+.bl-chip.dashed { border-style: dashed; border-color: var(--bl-muted); color: var(--bl-muted); width: 44px; padding: 0; justify-content: center; }
+
+.bl-link-btn { border: 0; background: transparent; padding: 4px 6px; margin: -4px 0; min-height: 36px; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--bl-accent-text); }
+
+.bl-btn {
+  min-height: 52px; border-radius: 14px; font-size: 16px; font-weight: 700; padding: 0 20px;
+  border: 0; background: var(--bl-accent); color: var(--bl-on-accent); display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.bl-btn.secondary { background: transparent; border: 1.5px solid var(--bl-hair); color: var(--bl-text); }
+.bl-btn.outline { background: transparent; border: 1.5px solid var(--bl-accent-text); color: var(--bl-accent-text); min-height: 44px; border-radius: 22px; font-size: 15px; }
+.bl-btn.danger { background: var(--bl-danger); color: #fff; }
+.bl-btn:disabled { opacity: .5; cursor: default; }
+
+.bl-input {
+  width: 100%; height: 48px; box-sizing: border-box; border-radius: 12px; border: 1.5px solid var(--bl-hair);
+  background: var(--bl-surface); color: var(--bl-text); padding: 0 14px; font-size: 16px;
+}
+.bl-input:focus { border-color: var(--bl-accent-text); outline: none; }
+
+/* ---------- Game rows ---------- */
+
+.bl-row { display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--bl-hair); }
+.bl-row-main { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 12px; border: 0; background: transparent; padding: 0; text-align: left; color: inherit; }
+.bl-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex: none; background: var(--bl-field); }
+.bl-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.bl-name { font-size: 16px; font-weight: 600; line-height: 20px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.bl-status-line { display: flex; align-items: center; gap: 10px; font-size: 13px; flex-wrap: wrap; }
+.bl-shelf { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; }
+.bl-meta { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--bl-muted); flex-wrap: wrap; }
+.bl-meta > span { display: inline-flex; align-items: center; gap: 4px; }
+.bl-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 11px; font-size: 13px; font-weight: 600; background: var(--bl-avail-bg); color: var(--bl-avail-fg); white-space: nowrap; }
+.bl-pill.out { background: var(--bl-out-bg); color: var(--bl-out-fg); }
+.bl-add {
+  flex: none; width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; padding: 0;
+  border: 1.5px solid var(--bl-accent-text); background: transparent; color: var(--bl-accent-text);
+}
+.bl-add.on { background: var(--bl-accent); border-color: var(--bl-accent); color: var(--bl-on-accent); }
+.bl-add:disabled { opacity: .6; }
+
+/* Shelf badge on My Lists: where to walk to is the first thing you need there. */
+.bl-shelf-badge { flex: none; width: 56px; height: 56px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; text-align: center; background: var(--bl-accent-soft); color: var(--bl-accent-text); }
+.bl-shelf-badge.out { background: var(--bl-field); color: var(--bl-muted); }
+.bl-shelf-badge small { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
+.bl-shelf-badge strong { font-size: 22px; font-weight: 800; line-height: 24px; }
+.bl-shelf-badge.long strong { font-size: 12px; line-height: 13px; padding: 0 4px; }
+
+.bl-check { flex: none; width: 52px; min-height: 52px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 600; color: var(--bl-muted); padding: 0; }
+.bl-box { width: 24px; height: 24px; border-radius: 7px; box-sizing: border-box; border: 2px solid var(--bl-muted); display: flex; align-items: center; justify-content: center; }
+.bl-check[aria-checked="true"] .bl-box { background: var(--bl-accent); border: 0; color: var(--bl-on-accent); }
+
+/* Placeholder rows while results load, so the layout doesn't jump. */
+.bl-skel { background: var(--bl-field); border-radius: 6px; animation: bl-pulse 1.2s ease-in-out infinite; }
+@keyframes bl-pulse { 50% { opacity: .5; } }
+
+.bl-empty { padding: 48px 32px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.bl-empty p { margin: 0; }
+.bl-empty .title { font-size: 17px; font-weight: 600; }
+.bl-empty .body { font-size: 15px; line-height: 21px; color: var(--bl-muted); max-width: 340px; }
+.bl-more { display: flex; justify-content: center; padding: 16px; }
+
+/* ---------- Bottom sheets ---------- */
+
+.bl-scrim { position: fixed; inset: 0; z-index: 50; border: 0; padding: 0; background: rgba(0, 0, 0, .45); }
+.bl-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 51; max-width: 640px; margin: 0 auto; box-sizing: border-box;
+  border-radius: 20px 20px 0 0; padding: 8px 20px calc(24px + env(safe-area-inset-bottom));
+  background: var(--bl-surface); color: var(--bl-text); display: flex; flex-direction: column; gap: 16px;
+  max-height: 90dvh; overflow-y: auto; box-shadow: 0 -8px 30px rgba(0, 0, 0, .2);
+  animation: bl-slide-up .2s ease-out;
+}
+@keyframes bl-slide-up { from { transform: translateY(24px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bl-sheet, .bl-skel { animation: none; } }
+.bl-grab { width: 40px; height: 5px; border-radius: 3px; align-self: center; background: var(--bl-hair); flex: none; }
+.bl-sheet h2 { margin: 0; font-size: 20px; font-weight: 700; line-height: 25px; }
+.bl-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bl-sheet-note { margin: 0; font-size: 14px; color: var(--bl-muted); }
+.bl-option-grid { display: grid; gap: 8px; }
+.bl-option { min-height: 48px; border-radius: 12px; font-size: 16px; font-weight: 600; border: 1.5px solid var(--bl-hair); background: var(--bl-surface); color: var(--bl-text); }
+.bl-option[aria-pressed="true"] { background: var(--bl-accent); border-color: var(--bl-accent); color: var(--bl-on-accent); }
+.bl-choice { width: 100%; min-height: 56px; display: flex; align-items: center; gap: 12px; border: 0; border-bottom: 1px solid var(--bl-hair); background: transparent; padding: 0; text-align: left; color: inherit; }
+.bl-choice span.text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.bl-choice strong { font-size: 16px; font-weight: 600; }
+.bl-choice small { font-size: 13px; color: var(--bl-muted); }
+.bl-choice.danger strong { color: var(--bl-danger); }
+.bl-radio { flex: none; width: 22px; height: 22px; border-radius: 11px; box-sizing: border-box; border: 2px solid var(--bl-muted); }
+.bl-choice[aria-pressed="true"] .bl-radio { border: 7px solid var(--bl-accent); }
+
+/* ---------- Toast and tab bar ---------- */
+
+.bl-toast {
+  position: fixed; left: 12px; right: 12px; bottom: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom) + 12px); z-index: 60;
+  max-width: 616px; margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 16px; min-height: 52px; box-sizing: border-box;
+  border-radius: 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, .22); font-size: 15px; background: var(--bl-toast-bg); color: var(--bl-toast-fg);
+}
+.bl-sheet-open .bl-toast { bottom: auto; top: calc(12px + env(safe-area-inset-top)); }
+.bl-toast.error { background: var(--bl-danger); color: #fff; }
+.bl-toast span { flex: 1; padding: 8px 0; }
+.bl-toast button { min-height: 44px; padding: 0 14px; border: 0; background: transparent; font-weight: 700; color: var(--bl-toast-action); }
+.bl-toast.error button { color: #fff; text-decoration: underline; }
+
+.bl-tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; height: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom); box-sizing: border-box; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--bl-hair); background: var(--bl-surface);
+}
+.bl-tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; font-size: 12px; font-weight: 500; color: var(--bl-muted); }
+.bl-tabbar a.active { color: var(--bl-accent-text); font-weight: 700; }

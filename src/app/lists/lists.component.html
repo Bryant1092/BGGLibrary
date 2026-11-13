@@ -1,0 +1,161 @@
+<div class="bl-page">
+  <header class="bl-header">
+    <div class="bl-title-row">
+      <img src="icons/icon-72x72.png" alt="" width="30" height="30">
+      <h1>My Lists</h1>
+      @if (selectedList()) {
+        <!-- Re-downloads availability for every game in the list. -->
+        <button type="button" class="bl-icon-btn accent" aria-label="Refresh availability" [disabled]="refreshing()" (click)="refresh()">
+          <bl-icon name="refresh" [size]="22" />
+        </button>
+        <button type="button" class="bl-icon-btn accent" aria-label="List options" style="margin-right: -8px" (click)="sheet.set('actions')">
+          <bl-icon name="more" [size]="24" [stroke]="2.4" />
+        </button>
+      }
+    </div>
+
+    @if (lists()?.length) {
+      <div class="bl-chips" role="group" aria-label="Your lists">
+        @for (list of lists(); track list.id) {
+          <button type="button" class="bl-chip" [class.on]="list.id === selectedId()" [attr.aria-pressed]="list.id === selectedId()" (click)="select(list.id)">
+            {{ list.name }}
+          </button>
+        }
+        <button type="button" class="bl-chip dashed" aria-label="New list" (click)="openForm('create')"><bl-icon name="plus" [size]="18" [stroke]="2.4" /></button>
+      </div>
+      <div class="bl-subrow">
+        <span>{{ summary() }}</span>
+        <span>{{ refreshing() ? 'Checking…' : updatedText() }}</span>
+      </div>
+    }
+  </header>
+
+  <main>
+    @if (lists() === null || (selectedId() && games() === null)) {
+      @for (n of [1, 2, 3, 4]; track n) {
+        <div class="bl-row" aria-hidden="true">
+          <div class="bl-row-main">
+            <div class="bl-shelf-badge bl-skel"></div>
+            <div class="bl-row-text">
+              <div class="bl-skel" style="height: 16px; width: 65%"></div>
+              <div class="bl-skel" style="height: 14px; width: 40%"></div>
+            </div>
+          </div>
+        </div>
+      }
+    } @else if (!lists()?.length) {
+      <div class="bl-empty">
+        <p class="title">Make your first list</p>
+        <p class="body">Lists hold the games you want to play. Share one with friends and everyone can add to it.</p>
+        <button type="button" class="bl-btn" (click)="openForm('create')">Create a list</button>
+      </div>
+    } @else if (!games()?.length) {
+      <div class="bl-empty">
+        <p class="title">No games in {{ selectedList()?.name }} yet</p>
+        <p class="body">Find games in the Library and tap + to add them here.</p>
+        <a class="bl-btn outline" routerLink="/library/home" style="text-decoration: none">Go to the Library</a>
+      </div>
+    } @else {
+      @for (section of sections(); track section.title) {
+        <h2 class="bl-section">{{ section.title }}</h2>
+        @for (row of section.rows; track row.game.id) {
+          <div class="bl-row" style="padding-right: 8px">
+            <button type="button" class="bl-row-main" style="align-items: center" (click)="openGame(row)" [disabled]="!row.item">
+              @if (row.item) {
+                <span class="bl-shelf-badge" [class.out]="section.out" [class.long]="row.longShelf">
+                  <small>Shelf</small><strong>{{ row.shelf }}</strong>
+                </span>
+              } @else {
+                <span class="bl-shelf-badge" [class.bl-skel]="!row.failed"><small>Shelf</small><strong>?</strong></span>
+              }
+              <span class="bl-row-text">
+                <span class="bl-name" [style.color]="section.out ? 'var(--bl-muted)' : null">{{ row.game.name }}</span>
+                <span class="bl-meta">
+                  @if (section.out) {
+                    <span class="bl-pill out">{{ row.status }}</span>
+                  }
+                  @if (row.item) {
+                    <span>{{ row.meta }}</span>
+                  } @else if (row.failed) {
+                    <span>Tap refresh to try again</span>
+                  }
+                </span>
+              </span>
+            </button>
+            <button type="button" class="bl-check" role="checkbox" [attr.aria-checked]="!!row.game.played"
+                    [attr.aria-label]="'Played ' + row.game.name" (click)="togglePlayed(row.game)">
+              <span class="bl-box">
+                @if (row.game.played) { <bl-icon name="check" [size]="16" [stroke]="3" /> }
+              </span>
+              Played
+            </button>
+          </div>
+        }
+      }
+    }
+  </main>
+</div>
+
+@switch (sheet()) {
+  @case ('details') {
+    @if (selectedGame(); as selected) {
+      <app-game-sheet [game]="selected.item" [now]="now()" [listName]="selectedList()?.name" [inList]="true" [busy]="busy()"
+                      (toggle)="removeSelected()" (closed)="sheet.set(null)" />
+    }
+  }
+  @case ('actions') {
+    <app-sheet [label]="selectedList()?.name || 'List options'" (closed)="sheet.set(null)">
+      <h2>{{ selectedList()?.name }}</h2>
+      <div>
+        <button type="button" class="bl-choice" (click)="openForm('share')">
+          <span class="text"><strong>Share</strong><small>Add a friend by the email they signed up with</small></span>
+        </button>
+        <button type="button" class="bl-choice" (click)="openForm('rename')">
+          <span class="text"><strong>Rename</strong></span>
+        </button>
+        <button type="button" class="bl-choice" (click)="openForm('create')">
+          <span class="text"><strong>New list</strong></span>
+        </button>
+        <!-- Non-owners "leave" a shared list so they can't delete it for everyone. -->
+        <button type="button" class="bl-choice danger" (click)="sheet.set('delete')">
+          <span class="text"><strong>{{ isOwner() ? 'Delete list' : 'Leave list' }}</strong></span>
+        </button>
+      </div>
+    </app-sheet>
+  }
+  @case ('delete') {
+    <app-sheet [label]="isOwner() ? 'Delete list' : 'Leave list'" (closed)="sheet.set(null)">
+      <h2>{{ isOwner() ? 'Delete' : 'Leave' }} {{ selectedList()?.name }}?</h2>
+      <!-- An owner's delete removes the list for everyone it was shared with and can't be undone. -->
+      <p class="bl-sheet-note">
+        @if (isOwner()) {
+          It will also be removed for everyone you shared it with. This can't be undone.
+        } @else {
+          It will be removed from your lists. The owner and anyone else it's shared with will still have it.
+        }
+      </p>
+      <button type="button" class="bl-btn danger" [disabled]="busy()" (click)="deleteOrLeave()">{{ isOwner() ? 'Delete list' : 'Leave list' }}</button>
+      <button type="button" class="bl-btn secondary" (click)="sheet.set(null)">Cancel</button>
+    </app-sheet>
+  }
+  @default {
+    @if (sheet()) {
+      <app-sheet [label]="sheet() === 'create' ? 'New list' : sheet() === 'rename' ? 'Rename list' : 'Share list'" (closed)="sheet.set(null)">
+        <h2>{{ sheet() === 'create' ? 'New list' : sheet() === 'rename' ? 'Rename list' : 'Share ' + selectedList()?.name }}</h2>
+        @if (sheet() === 'share') {
+          <p class="bl-sheet-note">They'll see this list under My Lists and can add games to it too.</p>
+        }
+        <form (ngSubmit)="submitForm()" style="display: flex; flex-direction: column; gap: 12px">
+          <label class="visually-hidden" for="list-form-input">{{ sheet() === 'share' ? 'Friend\'s email' : 'List name' }}</label>
+          <input id="list-form-input" class="bl-input" name="value" autocomplete="off" maxlength="80"
+                 [type]="sheet() === 'share' ? 'email' : 'text'"
+                 [placeholder]="sheet() === 'share' ? 'friend@example.com' : 'List name'"
+                 [ngModel]="formValue()" (ngModelChange)="formValue.set($event)">
+          <button type="submit" class="bl-btn" [disabled]="!formValue().trim() || busy()">
+            {{ sheet() === 'create' ? 'Create list' : sheet() === 'rename' ? 'Save' : 'Share' }}
+          </button>
+        </form>
+      </app-sheet>
+    }
+  }
+}

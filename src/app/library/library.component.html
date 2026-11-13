@@ -1,0 +1,168 @@
+<div class="bl-page">
+  <header class="bl-header">
+    <div class="bl-title-row">
+      <img src="icons/icon-72x72.png" alt="" width="30" height="30">
+      <h1>Library</h1>
+      @if (status(); as s) {
+        <span class="bl-status"><span class="bl-dot" [class.open]="s.open"></span>{{ s.text }}</span>
+      }
+    </div>
+
+    <div class="bl-search" role="search">
+      <label class="visually-hidden" for="library-search">Search games</label>
+      <bl-icon name="search" />
+      <!-- type="search" gives phones a Search key; autocorrect/autocapitalize/spellcheck are off because they mangle game names (e.g. "Azul" -> "Azure"). -->
+      <input #searchInput id="library-search" type="search" placeholder="Search games" autocomplete="off" autocorrect="off"
+             autocapitalize="off" spellcheck="false" enterkeyhint="search"
+             [value]="filters().query" (input)="onQuery(searchInput.value)" (keydown.enter)="searchInput.blur()">
+      @if (filters().query) {
+        <button type="button" class="bl-icon-btn" aria-label="Clear search" (click)="clearQuery(searchInput)"><bl-icon name="close" [size]="18" /></button>
+      }
+    </div>
+
+    <div class="bl-chips">
+      <button type="button" class="bl-chip" [class.on]="filters().availableOnly" [attr.aria-pressed]="filters().availableOnly" (click)="toggleAvailable()">
+        @if (filters().availableOnly) { <bl-icon name="check" [size]="16" [stroke]="2.6" /> }
+        Available now
+      </button>
+      <button type="button" class="bl-chip" [class.on]="!!filters().players" (click)="sheet.set('players')">
+        {{ playersChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+      </button>
+      <button type="button" class="bl-chip" [class.on]="!!filters().playTime" (click)="sheet.set('time')">
+        {{ playTimeChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+      </button>
+      <button type="button" class="bl-chip" (click)="toggleSort()" [attr.aria-label]="'Sort: ' + (filters().sort === 'name' ? 'A to Z' : 'Available first') + '. Tap to change.'">
+        <bl-icon name="sort" [size]="16" /> {{ filters().sort === 'name' ? 'A–Z' : 'Available first' }}
+      </button>
+    </div>
+
+    <div class="bl-subrow">
+      @if (signedIn()) {
+        <span>
+          Adding to
+          <button type="button" class="bl-link-btn" (click)="sheet.set('lists')">
+            {{ currentList()?.name || 'Choose a list' }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+          </button>
+        </span>
+      } @else {
+        <span>Sign in to save games to lists</span>
+      }
+      @if (!loading() && !loadError()) {
+        <span>{{ countLabel() }}</span>
+      }
+    </div>
+  </header>
+
+  <main>
+    @if (loading() && items().length === 0) {
+      <!-- Placeholder rows instead of a spinner, so the page doesn't jump when results arrive. -->
+      @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+        <div class="bl-row" aria-hidden="true">
+          <div class="bl-row-main">
+            <div class="bl-thumb bl-skel"></div>
+            <div class="bl-row-text">
+              <div class="bl-skel" style="height: 16px; width: 70%"></div>
+              <div class="bl-skel" style="height: 14px; width: 45%"></div>
+              <div class="bl-skel" style="height: 14px; width: 35%"></div>
+            </div>
+          </div>
+        </div>
+      }
+    } @else if (loadError()) {
+      <!-- Shown when Tabletop.Events can't be reached (e.g. bad convention Wi-Fi) so the user can retry instead of watching a spinner forever. -->
+      <div class="bl-empty">
+        <p class="title">Couldn't reach the game library</p>
+        <p class="body">Check your connection and try again. Searches you've already done still work offline.</p>
+        <button type="button" class="bl-btn outline" (click)="search()">Try again</button>
+      </div>
+    } @else if (items().length === 0) {
+      <div class="bl-empty">
+        <p class="title">No games match</p>
+        <p class="body">
+          Try fewer filters or a different spelling.
+          If it still isn't here, it may be
+          @if (hasHotGames()) { on the Hot Games tables (no checkout needed), }
+          out for repair, or not in the library this year.
+        </p>
+        @if (hasFilters()) {
+          <button type="button" class="bl-btn outline" (click)="clearAll(searchInput)">Clear search and filters</button>
+        }
+      </div>
+    } @else {
+      <!-- Dimmed while a new search loads, so it's clear the results are about to change. -->
+      <div [style.opacity]="loading() ? 0.5 : 1">
+        @for (row of rows(); track row.item.id) {
+          <div class="bl-row">
+            <button type="button" class="bl-row-main" (click)="openDetails(row.item)">
+              <!-- width/height reserve space so rows don't jump as images load; off-screen thumbnails load lazily. -->
+              <img class="bl-thumb" [src]="row.item.bgg_icon_uri" alt="" width="56" height="56" loading="lazy" decoding="async">
+              <span class="bl-row-text">
+                <span class="bl-name">{{ row.item.name }}</span>
+                <span class="bl-status-line">
+                  <span class="bl-pill" [class.out]="row.out">{{ row.status }}</span>
+                  <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ row.shelf }}</span>
+                </span>
+                <span class="bl-meta">
+                  <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ row.players }}</span>
+                  <span><bl-icon name="clock" [size]="15" />{{ row.minutes }} min</span>
+                </span>
+              </span>
+            </button>
+            <button type="button" class="bl-add" [class.on]="row.inList" [disabled]="row.busy" [attr.aria-pressed]="row.inList"
+                    [attr.aria-label]="row.addLabel" (click)="toggleGame(row.item)">
+              <bl-icon [name]="row.inList ? 'check' : 'plus'" [stroke]="2.5" />
+            </button>
+          </div>
+        }
+      </div>
+      @if (hasMore()) {
+        <div class="bl-more">
+          <button type="button" class="bl-btn outline" [disabled]="loadingMore()" (click)="loadMore()">
+            {{ loadingMore() ? 'Loading…' : 'Load more games' }}
+          </button>
+        </div>
+      }
+    }
+  </main>
+</div>
+
+@switch (sheet()) {
+  @case ('details') {
+    @if (selected(); as game) {
+      <app-game-sheet [game]="game" [now]="now()" [listName]="signedIn() ? currentList()?.name : undefined"
+                      [inList]="isInList(game)" [busy]="busyIds().has(game.id)"
+                      (toggle)="toggleGame(game)" (closed)="closeSheet()" />
+    }
+  }
+  @case ('players') {
+    <app-sheet label="Players" (closed)="closeSheet()">
+      <div class="bl-sheet-head">
+        <h2>Players</h2>
+        <button type="button" class="bl-link-btn" (click)="setPlayers(null)">Clear</button>
+      </div>
+      <p class="bl-sheet-note">Shows games that support this many players.</p>
+      <div class="bl-option-grid" style="grid-template-columns: repeat(5, minmax(0, 1fr))">
+        @for (n of playerOptions; track n) {
+          <button type="button" class="bl-option" [attr.aria-pressed]="filters().players === n" (click)="setPlayers(n)">{{ n }}</button>
+        }
+      </div>
+    </app-sheet>
+  }
+  @case ('time') {
+    <app-sheet label="Play time" (closed)="closeSheet()">
+      <div class="bl-sheet-head">
+        <h2>Play time</h2>
+        <button type="button" class="bl-link-btn" (click)="setPlayTime(null)">Clear</button>
+      </div>
+      <div class="bl-option-grid">
+        @for (option of playTimeOptions; track option[0]) {
+          <button type="button" class="bl-option" [attr.aria-pressed]="filters().playTime === option[0]" (click)="setPlayTime(option[0])">{{ option[1] }}</button>
+        }
+      </div>
+    </app-sheet>
+  }
+  @case ('lists') {
+    <app-list-picker-sheet [lists]="lists()" [currentId]="currentList()?.id" [uid]="uid()"
+                           (pick)="pickList($event)" (create)="createList($event)" (closed)="closeSheet()" />
+  }
+}

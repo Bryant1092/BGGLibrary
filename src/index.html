@@ -8,25 +8,37 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <!--
     manifest.webmanifest (JSON can't hold comments):
-    - theme_color #0d6efd is Bootstrap's primary blue used by the nav bar, so
-      the phone's status bar matches it. #1976d2 was Angular's template default.
+    - theme_color is white to match the page header, so the phone's status bar
+      blends into the app. The two theme-color tags below do the same per
+      light/dark mode (#191817 is --bl-surface in dark mode, see styles.css).
     - Icons are "any" only. "maskable any" told Android the logo is safe to crop
       to a circle, but it reaches the icon's edges, so the corners got cut off.
       As "any", Android shows the whole logo on a white background instead.
   -->
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#0d6efd">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#191817" media="(prefers-color-scheme: dark)">
+  <!--
+    The login and 404 pages still use Bootstrap's styles. This tells Bootstrap
+    to follow the phone's dark mode like the rest of the app does, before the
+    page first paints (so there's no white flash).
+  -->
+  <script>
+    (function () {
+      var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+      function apply() { document.documentElement.setAttribute('data-bs-theme', dark && dark.matches ? 'dark' : 'light'); }
+      apply();
+      if (dark && dark.addEventListener) dark.addEventListener('change', apply);
+    })();
+  </script>
   <!--
     No Google Fonts stylesheet: it blocked the first render until it downloaded
     (slow on convention Wi-Fi) and failed offline. styles.css uses the system
     font stack instead; Android's system font is Roboto, so it looks the same there.
   -->
   <!--
-    Bootstrap's JS (modals, dropdowns, navbar collapse) is bundled from the
-    installed npm package via the "scripts" entry in angular.json, instead of
-    a CDN <script> tag here. The CDN tag loaded Bootstrap 5.1.2 JS while the
-    CSS comes from 5.3.3 (version mismatch), blocked page rendering while it
-    downloaded, and needed an extra network request that fails on bad wifi.
+    No Bootstrap JavaScript: the app's sheets and menus are Angular components,
+    so only Bootstrap's CSS is used (for the login and 404 pages).
   -->
 </head>
 <body>

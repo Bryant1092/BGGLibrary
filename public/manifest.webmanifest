@@ -1,7 +1,7 @@
 {
   "name": "BGG Library",
   "short_name": "BGG Library",
-  "theme_color": "#0d6efd",
+  "theme_color": "#ffffff",
   "background_color": "#ffffff",
   "display": "standalone",
   "scope": "./",
