@@ -1,5 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, HostListener, inject, OnInit, QueryList, ViewChildren } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, HostListener, inject, OnInit, QueryList, ViewChildren } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { catchError, map, of, Subject, switchMap } from 'rxjs';
 import { NgbdSortableHeader } from '../directive/ngbd-sortable-header.directive';
 import { BggService } from '../service/bgg.service';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -25,6 +27,9 @@ export class TableComponent implements OnInit, AfterViewInit {
   private userService = inject(UserService);
   private gameService = inject(GameService);
   private activeService = inject(ActiveService);
+  private destroyRef = inject(DestroyRef);
+  /** Each emission starts a library fetch; switchMap cancels any request still in flight. */
+  private fetchRequests = new Subject<void>();
 
   @ViewChildren(NgbdSortableHeader) headers!: QueryList<NgbdSortableHeader>;
 
@@ -62,6 +67,29 @@ export class TableComponent implements OnInit, AfterViewInit {
   constructor() {}
 
   ngOnInit(): void {
+    this.fetchRequests.pipe(
+      switchMap(() => {
+        this.loading = true;
+        this.loadError = false;
+        return this.bggService.getBggLibraryInfo(this._searchTerm, this._pageNumber, this._pageSize, this.sortColumn, this.sortDirection).pipe(
+          map((data: any) => ({ data, error: null })),
+          catchError(error => of({ data: null, error }))
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(({ data, error }) => {
+      this.loading = false;
+      if (error) {
+        console.error('Failed to load library games', error);
+        this.loadError = true;
+        this.items = [];
+        return;
+      }
+      this.bggData = data;
+      this.items = data?.result?.items || [];
+      this.paging = data?.result?.paging || {};
+    });
+
     this.userService.checkAuth().subscribe((user: any) => {
       if (user) {
         this.userSignedIn = true;
@@ -88,22 +116,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   }
 
   getBggInfo() {
-    this.loading = true;
-    this.loadError = false;
-    this.bggService.getBggLibraryInfo(this._searchTerm, this._pageNumber, this._pageSize, this.sortColumn, this.sortDirection).subscribe({
-      next: (data: any) => {
-        this.loading = false;
-        this.bggData = data;
-        this.items = data?.result?.items || [];
-        this.paging = data?.result?.paging || {};
-      },
-      error: (err) => {
-        console.error('Failed to load library games', err);
-        this.loading = false;
-        this.loadError = true;
-        this.items = [];
-      }
-    });
+    this.fetchRequests.next();
   }
 
   onSort({ column, direction }: any) {
@@ -327,12 +340,19 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   set pageSize(pageSize: number) {
     this._pageSize = pageSize;
+    this._pageNumber = 1;
     this.startFetch(200);
   }
 
   set searchTerm(searchTerm: string) {
-    this._searchTerm = searchTerm?.trim();
-    this.startFetch(800);
+    const trimmed = searchTerm?.trim() || '';
+    if (trimmed === this._searchTerm) {
+      return; // e.g. only a trailing space was typed
+    }
+    this._searchTerm = trimmed;
+    // New results start on page 1; staying on page 5 of an old search showed "No Games found".
+    this._pageNumber = 1;
+    this.startFetch(350);
   }
 
   get selectListValue() {
