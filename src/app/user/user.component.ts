@@ -103,6 +103,8 @@ export class UserComponent implements OnInit, AfterViewInit {
 
   getBggInfo() {
     this.bggGameMap.clear();
+    // One request per game can fail many times at once on bad wifi; only show
+    // the alert once per refresh instead of stacking a message per game.
     let errorShown = false;
     this.filteredGameList.flat()?.forEach((game: Game) => {
       this.bggService.getBggGameInfo(game.id!).subscribe({
@@ -217,7 +219,13 @@ export class UserComponent implements OnInit, AfterViewInit {
     this.chunkFilteredList(this.sortGames(this.filteredGameList.flat()));
 	}
 
-  /** Sorts by the current column, handling numeric fields (like is_checked_out) and ties by name. */
+  /**
+   * Sorts by the current column using the TTE details loaded for each game.
+   * The previous version called localeCompare on every value, which throws on
+   * numeric fields like is_checked_out. Numbers are now compared numerically,
+   * and ties (e.g. all available games) fall back to name order so the list
+   * stays predictable.
+   */
   private sortGames(games: Game[]): Game[] {
     const column = this.sortColumn as keyof BggItem;
     if (!column || !this.sortDirection) {

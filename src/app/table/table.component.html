@@ -18,6 +18,7 @@
   <div>
     <div class="d-flex mb-4 align-items-center justify-content-around flex-wrap" style="gap: 6px">
       <div class="form-floating">
+        <!-- type="search" gives phones a Search key; autocorrect/autocapitalize/spellcheck are off because they mangle game names (e.g. "Azul" -> "Azure"). -->
         <input id="table-complete-search" type="search" class="form-control" placeholder="Game Search" name="searchTerm" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" [(ngModel)]="searchTerm"/>
         <label for="table-complete-search">Game Search</label>
       </div>
@@ -38,6 +39,7 @@
             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#renameModal" [disabled]="checkIfUserGameListEmptyOrNull()">Rename List</button>
             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#shareModal" [disabled]="checkIfUserGameListEmptyOrNull()">Share List</button>
             <div class="dropdown-divider"></div>
+            <!-- Opens a confirmation (#deleteModal) instead of deleting immediately. Non-owners "leave" a shared list so they cannot delete it for everyone. -->
             <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteModal" [disabled]="checkIfUserGameListEmptyOrNull()">{{ isCurrentListOwner() ? 'Delete List' : 'Leave List' }}</button>
           </ul>
         </div>
@@ -49,6 +51,7 @@
           <thead>
             <tr id="headerRow">
               <th scope="col" sortable="name" (sort)="onSort($event)">Name</th>
+              <!-- Sorts by is_checked_out so available games group together. It used to sort by last_checkout_date, which mixed available and checked-out games. -->
               <th scope="col" sortable="is_checked_out" (sort)="onSort($event)">Availability</th>
               <th scope="col" class="mobile-hide">Player Count</th>
               <th scope="col" class="mobile-hide">Play Time</th>
@@ -66,6 +69,7 @@
                       </div>
                   </td>
               }
+              <!-- Shown when the library request fails (e.g. bad convention wifi) so the user can retry instead of watching a spinner forever. -->
               @else if (loadError) {
                   <tr>
                       <td [attr.colspan]="getColSpan()">
@@ -235,6 +239,7 @@
   </div>
 </div>
 
+<!-- Delete/Leave confirmation. Wording depends on ownership because an owner delete removes the list for everyone it was shared with and cannot be undone. -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">

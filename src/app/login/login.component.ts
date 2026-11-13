@@ -138,6 +138,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
         firstName: this.loginForm.value.firstName?.trim(),
         lastName: this.loginForm.value.lastName?.trim(),
         provider: (additionalInfo?.providerId || 'firebase'),
+        // Firestore rejects documents with undefined fields, so fall back to ''.
         email: userCredential.user.email?.toLocaleLowerCase() || ''
       });
     }).then(() => {
@@ -151,6 +152,8 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   googleLogin() {
     this.userService.signUserInWithGoogle().then((userCredential: any) => {
       const googleUser = userCredential.user;
+      // The old displayName.split(' ')[1] gave undefined for one-word names
+      // (and crashed on a missing name), which made Firestore reject the profile.
       const { firstName, lastName } = UserService.splitDisplayName(googleUser.displayName, googleUser.email);
       // Runs on every Google sign-in, not just new users, so accounts whose
       // profile failed to save before get repaired.

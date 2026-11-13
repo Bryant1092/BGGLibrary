@@ -70,6 +70,7 @@ export class NavBarComponent implements OnInit, AfterViewInit, OnDestroy {
   getUserData(uid: string) {
     this.userService.fetchUser(uid).subscribe((user: any) => {
       if (!!user) {
+        // Last name can be empty (e.g. one-word Google names); avoid showing "Cher undefined".
         this.displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim().normalize();
         this.email = user.email;
       }

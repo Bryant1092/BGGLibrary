@@ -28,7 +28,12 @@ export class TableComponent implements OnInit, AfterViewInit {
   private gameService = inject(GameService);
   private activeService = inject(ActiveService);
   private destroyRef = inject(DestroyRef);
-  /** Each emission starts a library fetch; switchMap cancels any request still in flight. */
+  /**
+   * Every library fetch goes through this stream instead of calling the API
+   * directly. TTE responses take 1-10s, so if each search subscribed on its
+   * own, an older slow response could arrive last and overwrite the results
+   * for what the user typed most recently. See the pipeline in ngOnInit.
+   */
   private fetchRequests = new Subject<void>();
 
   @ViewChildren(NgbdSortableHeader) headers!: QueryList<NgbdSortableHeader>;
@@ -42,6 +47,7 @@ export class TableComponent implements OnInit, AfterViewInit {
   stopRefresh = false;
 
   loading: boolean = false;
+  /** True when the last library request failed, so the table shows a retry message instead of spinning forever. */
   loadError: boolean = false;
   buttonLoading: Map<number, boolean> = new Map();
   userSignedIn: boolean = false;
@@ -67,6 +73,12 @@ export class TableComponent implements OnInit, AfterViewInit {
   constructor() {}
 
   ngOnInit(): void {
+    // switchMap: when a new request starts, the previous in-flight HTTP call is
+    //   cancelled, so only the latest search can update the table.
+    // catchError is inside switchMap (not on the outer stream) so one failed
+    //   request doesn't end the whole stream; the next search still works.
+    // takeUntilDestroyed: unsubscribes automatically when the page is left,
+    //   preventing leaks and updates to a destroyed component.
     this.fetchRequests.pipe(
       switchMap(() => {
         this.loading = true;
@@ -340,6 +352,8 @@ export class TableComponent implements OnInit, AfterViewInit {
 
   set pageSize(pageSize: number) {
     this._pageSize = pageSize;
+    // Page numbers mean different things at different page sizes (page 8 of 10s
+    // doesn't exist at 100s), so start over at page 1.
     this._pageNumber = 1;
     this.startFetch(200);
   }
@@ -352,6 +366,8 @@ export class TableComponent implements OnInit, AfterViewInit {
     this._searchTerm = trimmed;
     // New results start on page 1; staying on page 5 of an old search showed "No Games found".
     this._pageNumber = 1;
+    // 350ms after the last keystroke feels responsive while still skipping a
+    // request for every letter. Was 800ms, which felt laggy.
     this.startFetch(350);
   }
 
