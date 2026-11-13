@@ -59,4 +59,7 @@ app-root {
   margin-top: 56px;
 }
 
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+/* Bootstrap's system font stack (system-ui, Segoe UI, Roboto, Helvetica Neue...)
+   instead of Roboto from Google Fonts: no download, no render blocking, works
+   offline, and it is Roboto on Android anyway. See the note in index.html. */
+body { margin: 0; font-family: var(--bs-body-font-family); }

@@ -16,6 +16,8 @@ body{
     display: table;
     width: 100%;
     height: 100vh;
+    /* Same mobile toolbar issue as the login page: dvh is the visible height. */
+    height: 100dvh;
     text-align: center;
 }
 

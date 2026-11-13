@@ -28,7 +28,12 @@
                     </ul>
                 </div>
                 <div class="vr mh-100" style="height: 40px; width: 2px;"></div>
-                <a class="nav-link text-light" href="#" (click)="logout(); handleNavClick(1)">Sign Out</a>
+                <!--
+                  A button, not <a href="#">: with <base href="/BGGLibrary/">, "#" resolves
+                  to /BGGLibrary/#, so from any other page the click also did a full page
+                  reload of the app on top of the router navigation in logout().
+                -->
+                <button type="button" class="nav-link text-light border-0 bg-transparent" (click)="logout(); handleNavClick(1)">Sign Out</button>
             }
             @else {
                 <div class="vr mh-100" style="height: 40px; width: 0px;"></div>

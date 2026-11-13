@@ -9,7 +9,6 @@ import { initializeFirestore, provideFirestore } from '@angular/fire/firestore';
 // the Firebase SDK directly (declared in package.json so this import doesn't
 // rely on AngularFire's transitive copy).
 import { persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
-import { provideAnalytics, getAnalytics } from '@angular/fire/analytics';
 import { environment } from '../environments/environment';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { provideServiceWorker } from '@angular/service-worker';
@@ -61,6 +60,6 @@ export const appConfig: ApplicationConfig = {
     provideFirestore(() => initializeFirestore(getApp(), {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
     })),
-    provideAnalytics(() => getAnalytics()),
+    // Analytics is started lazily after the first render; see util/analytics.ts.
   ]
 };

@@ -2,14 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>BGGLibrary</title>
+  <title>BGG Library</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!--
+    manifest.webmanifest (JSON can't hold comments):
+    - theme_color #0d6efd is Bootstrap's primary blue used by the nav bar, so
+      the phone's status bar matches it. #1976d2 was Angular's template default.
+    - Icons are "any" only. "maskable any" told Android the logo is safe to crop
+      to a circle, but it reaches the icon's edges, so the corners got cut off.
+      As "any", Android shows the whole logo on a white background instead.
+  -->
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#1976d2">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#0d6efd">
+  <!--
+    No Google Fonts stylesheet: it blocked the first render until it downloaded
+    (slow on convention Wi-Fi) and failed offline. styles.css uses the system
+    font stack instead; Android's system font is Roboto, so it looks the same there.
+  -->
   <!--
     Bootstrap's JS (modals, dropdowns, navbar collapse) is bundled from the
     installed npm package via the "scripts" entry in angular.json, instead of

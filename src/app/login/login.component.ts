@@ -47,7 +47,10 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
     // takeUntilDestroyed: this subscription was never closed, so every visit to
     // the login page left one behind.
     this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
-      this.redirectUrl = params['redirectUrl'] ? decodeURIComponent(params['redirectUrl']) : '/';
+      const requested = params['redirectUrl'] ? decodeURIComponent(params['redirectUrl']) : '/';
+      // Only accept in-app paths. Anything else (a typo, or a crafted link
+      // like ?redirectUrl=https://...) just goes to the home page.
+      this.redirectUrl = requested.startsWith('/') ? requested : '/';
     });
   }
 
@@ -63,7 +66,10 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   createLoginForm() {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(20)]],
+      // No maximum length when signing in: the form must never reject a
+      // password that Firebase would accept, and checking the password
+      // itself is Firebase's job.
+      password: ['', [Validators.required, Validators.minLength(8)]],
     });
   }
 
@@ -72,7 +78,12 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
       firstName: ['', [Validators.required]],
       lastName: ['', [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(20), Validators.pattern( /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&])[A-Za-z\d_@$!%*?&]{8,20}$/)]],
+      // A 20-character cap blocks long passphrases and password-manager
+      // passwords (NIST SP 800-63B says to allow at least 64), and the old
+      // pattern only accepted the specials _@$!%*?&, rejecting common ones
+      // like # - . or spaces. The upper/lower/number/special rule is kept,
+      // but any non-alphanumeric character now counts as special.
+      password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(128), Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,128}$/)]],
       confirmPassword: ['', [Validators.required, this.confirmPasswordValidator]]
     });
   }
@@ -85,7 +96,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
       } else if (passwordControl?.hasError('minlength')) {
         return 'Password must be at least 8 characters long';
       } else if (passwordControl?.hasError('maxlength')) {
-        return 'Password must be no more than 20 characters long';
+        return 'Password must be no more than 128 characters long';
       } else if (passwordControl?.hasError('pattern')) {
         return 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character';
       } else if (passwordControl?.hasError('PasswordNoMatch')) {
@@ -127,7 +138,10 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onSubmit() {
     this.userService.signUserIn(this.loginForm.value.email, this.loginForm.value.password).then((userCredential: any) => {
-      this.router.navigate([this.redirectUrl]);
+      // navigateByUrl, not navigate([url]): navigate treats the whole string as
+      // one path segment, so a "?" or "#" in the saved URL got encoded and the
+      // redirect landed on the 404 page. Same for the two redirects below.
+      this.router.navigateByUrl(this.redirectUrl);
       }).catch((error: any) => {
         this.cantLogin = true;
       });
@@ -146,7 +160,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
         email: userCredential.user.email?.toLocaleLowerCase() || ''
       });
     }).then(() => {
-      this.router.navigate([this.redirectUrl]);
+      this.router.navigateByUrl(this.redirectUrl);
     }).catch((error: any) => {
       console.error('Error registering:', error);
       this.cantRegister = true;
@@ -169,7 +183,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
         email: googleUser.email?.toLocaleLowerCase() || ''
       });
     }).then(() => {
-      this.router.navigate([this.redirectUrl]);
+      this.router.navigateByUrl(this.redirectUrl);
     }).catch(error => {
       console.error('Error logging in with Google:', error);
     });
