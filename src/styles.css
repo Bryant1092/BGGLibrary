@@ -38,8 +38,13 @@
   --bl-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+/*
+ * Dark mode. index.html sets data-theme="dark" before first paint, either
+ * from the Account tab's Appearance setting or, on "Match phone", from the
+ * phone's own setting, so these colors are defined once for both cases.
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
     --bl-surface: #191817;
     --bl-text: #f2f0ed;
     --bl-muted: #b5afa9;
@@ -61,7 +66,6 @@
     --bl-toast-fg: #191817;
     --bl-toast-action: #c2410c;
     --bl-danger: #f97066;
-  }
 }
 
 /* Bootstrap's system font stack, not Roboto from Google Fonts: no download, no

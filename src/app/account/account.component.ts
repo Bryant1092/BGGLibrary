@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { EMPTY, switchMap } from 'rxjs';
 import { CONVENTIONS, LibraryDay } from '../config/conventions';
+import { ThemeChoice, ThemeService } from '../service/theme.service';
 import { UserService } from '../service/user.service';
 import { currentOrNextConvention } from '../util/library-time';
 
@@ -26,6 +27,9 @@ import { currentOrNextConvention } from '../util/library-time';
     td { text-align: right; color: var(--bl-muted); padding: 8px 0; }
     tr + tr { border-top: 1px solid var(--bl-hair); }
     h2 { margin: 0; font-size: 17px; font-weight: 700; }
+    .segmented { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--bl-surface); border: 1px solid var(--bl-hair); }
+    .segmented button { min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--bl-text); font-size: 15px; font-weight: 600; }
+    .segmented button[aria-checked="true"] { background: var(--bl-accent); color: var(--bl-on-accent); }
   `,
   template: `
     <div class="bl-page">
@@ -50,6 +54,19 @@ import { currentOrNextConvention } from '../util/library-time';
           }
         </div>
 
+        <!-- Appearance lives here, not on the Library screen: it's set once and rarely changed. -->
+        <div class="card">
+          <h2 id="appearance-label">Appearance</h2>
+          <div class="segmented" role="radiogroup" aria-labelledby="appearance-label">
+            @for (option of themeOptions; track option.value) {
+              <button type="button" role="radio" [attr.aria-checked]="theme.choice() === option.value" (click)="theme.set(option.value)">
+                {{ option.label }}
+              </button>
+            }
+          </div>
+          <p class="muted" style="font-size: 14px">Auto follows your phone's light/dark setting.</p>
+        </div>
+
         @if (convention(); as c) {
           <div class="card">
             <h2>{{ c.name }} library hours</h2>
@@ -69,6 +86,14 @@ export class AccountComponent implements OnInit {
   private userService = inject(UserService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+  theme = inject(ThemeService);
+
+  readonly themeOptions: { value: ThemeChoice; label: string }[] = [
+    // "Auto" rather than "Match phone", which wrapped onto two lines at phone width.
+    { value: 'system', label: 'Auto' },
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' },
+  ];
 
   signedIn = signal(false);
   displayName = signal('');

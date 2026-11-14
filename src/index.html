@@ -16,19 +16,37 @@
       As "any", Android shows the whole logo on a white background instead.
   -->
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#191817" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff">
   <!--
-    The login and 404 pages still use Bootstrap's styles. This tells Bootstrap
-    to follow the phone's dark mode like the rest of the app does, before the
-    page first paints (so there's no white flash).
+    Light/dark theme, applied here before the page first paints so there's no
+    white flash when the app opens in dark mode.
+    - The choice ("system", "light" or "dark") is set on the Account tab and
+      saved on this device (localStorage key bgglibrary.theme).
+    - data-theme on <html> is always the resolved "light" or "dark" (for
+      "system", whatever the phone is set to), so styles.css only needs one
+      set of dark colors.
+    - data-bs-theme does the same for the Bootstrap-styled login and 404 pages.
+    - theme-color sets the phone's status bar to the page background
+      (#191817 is --bl-surface in dark mode, see styles.css).
+    ThemeService calls window.blApplyTheme when the setting changes.
   -->
   <script>
     (function () {
-      var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-      function apply() { document.documentElement.setAttribute('data-bs-theme', dark && dark.matches ? 'dark' : 'light'); }
-      apply();
-      if (dark && dark.addEventListener) dark.addEventListener('change', apply);
+      var media = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+      window.blApplyTheme = function (choice) {
+        if (choice !== 'light' && choice !== 'dark') {
+          try { choice = localStorage.getItem('bgglibrary.theme') || 'system'; } catch (e) { choice = 'system'; }
+        }
+        var dark = choice === 'dark' || (choice !== 'light' && !!media && media.matches);
+        var root = document.documentElement;
+        root.setAttribute('data-theme', dark ? 'dark' : 'light');
+        root.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', dark ? '#191817' : '#ffffff');
+      };
+      window.blApplyTheme();
+      // In "system" mode, follow the phone if it switches (e.g. at sunset).
+      if (media && media.addEventListener) media.addEventListener('change', function () { window.blApplyTheme(); });
     })();
   </script>
   <!--
