@@ -4,7 +4,14 @@
   <meta charset="utf-8">
   <title>BGG Library</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--
+    viewport-fit=cover makes iPhone report its "safe area" sizes (the home
+    indicator bar at the bottom, the notch/status bar at the top). Without it
+    they're all 0, so the tab bar's env(safe-area-inset-bottom) padding did
+    nothing and the home indicator overlapped the "My Lists" tab on an
+    installed app. styles.css adds the matching top/bottom padding.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <!--
     manifest.webmanifest (JSON can't hold comments):

@@ -110,6 +110,9 @@ body {
   margin: 0 auto;
   min-height: 100dvh;
   padding-bottom: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom) + 16px);
+  /* Sideways on a notched iPhone, keep content clear of the notch. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   background: var(--bl-surface);
   color: var(--bl-text);
 }
@@ -118,7 +121,9 @@ body {
   top: 0;
   z-index: 10;
   background: var(--bl-surface);
-  padding: 12px 16px 10px;
+  /* The top safe-area inset clears the iPhone status bar/notch (see the viewport
+     note in index.html); it is 0 on phones and browsers without one. */
+  padding: calc(12px + env(safe-area-inset-top)) 16px 10px;
   border-bottom: 1px solid var(--bl-hair);
   display: flex;
   flex-direction: column;
@@ -300,7 +305,7 @@ body {
 
 .bl-tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; height: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom); box-sizing: border-box; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing: border-box; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   border-top: 1px solid var(--bl-hair); background: var(--bl-surface);
 }
 .bl-tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; font-size: 12px; font-weight: 500; color: var(--bl-muted); }
