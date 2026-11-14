@@ -13,6 +13,7 @@ import { GameSheetComponent } from '../shared/game-sheet.component';
 import { IconComponent } from '../shared/icon.component';
 import { ListPickerSheetComponent } from '../shared/list-picker-sheet.component';
 import { SheetComponent } from '../shared/sheet.component';
+import { ThumbComponent } from '../shared/thumb.component';
 import { currentOrNextConvention, libraryStatus } from '../util/library-time';
 import { minutesText, playersText, shelfText, statusText } from '../util/game-format';
 
@@ -62,7 +63,7 @@ export class LibraryPageState {
 @Component({
   selector: 'app-library',
   standalone: true,
-  imports: [IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent],
+  imports: [IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './library.component.html',
 })

@@ -100,8 +100,9 @@
         @for (row of rows(); track row.item.id) {
           <div class="bl-row">
             <button type="button" class="bl-row-main" (click)="openDetails(row.item)">
-              <!-- width/height reserve space so rows don't jump as images load; off-screen thumbnails load lazily. -->
-              <img class="bl-thumb" [src]="row.item.bgg_icon_uri" alt="" width="56" height="56" loading="lazy" decoding="async">
+              <!-- Fixed size so rows don't jump as images load; shows a letter tile when there's no thumbnail. -->
+              <app-thumb [src]="row.item.bgg_icon_uri" [name]="row.item.name" />
+
               <span class="bl-row-text">
                 <span class="bl-name">{{ row.item.name }}</span>
                 <span class="bl-status-line">

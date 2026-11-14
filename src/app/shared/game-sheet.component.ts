@@ -4,6 +4,7 @@ import { dueInfo, formatLibraryDate, formatLibraryTime, shortDuration } from '..
 import { bggUrl, minutesText, playersText, shelfText } from '../util/game-format';
 import { IconComponent } from './icon.component';
 import { SheetComponent } from './sheet.component';
+import { ThumbComponent } from './thumb.component';
 
 /**
  * Game details, opened by tapping a game. Keeps people inside the app; the
@@ -13,11 +14,10 @@ import { SheetComponent } from './sheet.component';
 @Component({
   selector: 'app-game-sheet',
   standalone: true,
-  imports: [IconComponent, SheetComponent],
+  imports: [IconComponent, SheetComponent, ThumbComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .head { display: flex; gap: 14px; align-items: flex-start; }
-    .head img { width: 112px; height: 112px; border-radius: 14px; object-fit: cover; flex: none; background: var(--bl-field); }
     .head .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
     .head h2 { overflow-wrap: anywhere; }
     .head .bl-pill { align-self: flex-start; }
@@ -42,7 +42,7 @@ import { SheetComponent } from './sheet.component';
   template: `
     <app-sheet [label]="game().name" (closed)="closed.emit()">
       <div class="head">
-        <img [src]="game().bgg_icon_uri" alt="" width="112" height="112">
+        <app-thumb [src]="game().bgg_icon_uri" [name]="game().name" [size]="112" [radius]="14" [lazy]="false" />
         <div class="text">
           <h2>{{ game().name }}</h2>
           <span class="bl-pill" [class.out]="game().is_checked_out">{{ game().is_checked_out ? 'Checked out' : 'Available now' }}</span>
