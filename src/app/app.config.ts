@@ -1,5 +1,6 @@
 import { ApplicationConfig, provideZoneChangeDetection, isDevMode } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { REMOVE_STYLES_ON_COMPONENT_DESTROY } from '@angular/platform-browser';
 
 import { routes } from './app.routes';
 import { provideHttpClient } from '@angular/common/http';
@@ -41,6 +42,10 @@ export const appConfig: ApplicationConfig = {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000'
     }),
+    // Keep component styles on the page after a component closes. A closing
+    // sheet leaves a copy of itself sliding away (SheetComponent), and without
+    // this the copy lost its styles mid-animation. The styles are small.
+    { provide: REMOVE_STYLES_ON_COMPONENT_DESTROY, useValue: false },
     provideHttpClient(),
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideAuth(() => getAuth()),

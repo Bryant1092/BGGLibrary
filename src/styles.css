@@ -259,10 +259,9 @@ body {
   border-radius: 20px 20px 0 0; padding: 8px 20px calc(24px + env(safe-area-inset-bottom));
   background: var(--bl-surface); color: var(--bl-text); display: flex; flex-direction: column; gap: 16px;
   max-height: 90dvh; overflow-y: auto; box-shadow: 0 -8px 30px rgba(0, 0, 0, .2);
-  animation: bl-slide-up .2s ease-out;
+  /* Open/close motion is in SheetComponent. */
 }
-@keyframes bl-slide-up { from { transform: translateY(24px); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .bl-sheet, .bl-skel { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bl-skel { animation: none; } }
 .bl-grab { width: 40px; height: 5px; border-radius: 3px; align-self: center; background: var(--bl-hair); flex: none; }
 .bl-sheet h2 { margin: 0; font-size: 20px; font-weight: 700; line-height: 25px; }
 .bl-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
