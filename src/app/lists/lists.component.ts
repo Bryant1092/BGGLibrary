@@ -11,6 +11,7 @@ import { GameService } from '../service/game.service';
 import { ToastService } from '../service/toast.service';
 import { UserService } from '../service/user.service';
 import { WatchService } from '../service/watch.service';
+import { RecentService } from '../service/recent.service';
 import { GameSheetComponent } from '../shared/game-sheet.component';
 import { IconComponent } from '../shared/icon.component';
 import { SheetComponent } from '../shared/sheet.component';
@@ -80,6 +81,7 @@ export class ListsComponent implements OnInit, OnDestroy {
   private destroyRef = inject(DestroyRef);
   watch = inject(WatchService);
   private cache = inject(ListDetailsCache);
+  private recent = inject(RecentService);
 
   now = signal(Date.now());
   private clock = setInterval(() => this.now.set(Date.now()), 60_000);
@@ -285,6 +287,8 @@ export class ListsComponent implements OnInit, OnDestroy {
 
   openGame(row: ListRow): void {
     if (row.item) {
+      // Counts toward the Library's "Recently viewed" too.
+      this.recent.add(row.item);
       this.selectedGame.set({ game: row.game, item: row.item });
       this.sheet.set('details');
     }

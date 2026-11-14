@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { ToastService } from '../service/toast.service';
 import { BggItem } from '../model/bgg.model';
 import { dueInfo, formatLibraryDate, formatLibraryTime, shortDuration } from '../util/library-time';
 import { bggUrl, howToPlayUrl, minutesText, playersText, shelfText } from '../util/game-format';
@@ -22,7 +23,13 @@ import { ThumbComponent } from './thumb.component';
     .head .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
     .head h2 { overflow-wrap: anywhere; }
     .head .bl-pill { align-self: flex-start; }
-    .head .bl-icon-btn { margin: -6px -10px 0 0; }
+    .head-actions { display: flex; flex-direction: column; gap: 4px; margin: -6px -10px 0 0; }
+    .head-actions .share { color: var(--bl-accent-text); background: var(--bl-accent-soft); }
+    .note-box { display: flex; gap: 12px; align-items: center; border-radius: 12px; padding: 12px 14px; border: 1.5px solid var(--bl-control-border); }
+    .note-box bl-icon { color: var(--bl-muted); }
+    .note-box div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .note-box small { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-muted); }
+    .note-box span { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
     .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
     /* Label and value both centered: three equal tiles read as a row of stats, and
        keeping label and value on one alignment keeps each tile easy to scan. */
@@ -52,7 +59,11 @@ import { ThumbComponent } from './thumb.component';
           <h2>{{ game().name }}</h2>
           <span class="bl-pill" [class.out]="game().is_checked_out">{{ game().is_checked_out ? 'Checked out' : 'Available now' }}</span>
         </div>
-        <button type="button" class="bl-icon-btn" aria-label="Close" (click)="closed.emit()"><bl-icon name="close" /></button>
+        <div class="head-actions">
+          <button type="button" class="bl-icon-btn" aria-label="Close" (click)="closed.emit()"><bl-icon name="close" /></button>
+          <!-- Sends "<game> is available on shelf A" with a link, via the phone's share menu. -->
+          <button type="button" class="bl-icon-btn share" aria-label="Share this game" (click)="share()"><bl-icon name="share" /></button>
+        </div>
       </div>
 
       <div class="tiles">
@@ -60,6 +71,20 @@ import { ThumbComponent } from './thumb.component';
         <div class="tile"><small>Players</small><strong>{{ players() }}</strong></div>
         <div class="tile"><small>Play time</small><strong>{{ minutes() }}m</strong></div>
       </div>
+
+      <!--
+        The library's own note on the box, e.g. "Includes Marine Worlds" (about 1
+        in 5 games have one). Free text typed by library staff, so it's shown as-is.
+      -->
+      @if (note(); as text) {
+        <div class="note-box">
+          <bl-icon name="box" [size]="22" />
+          <div>
+            <small>{{ noteIsIncludes() ? 'In the box' : 'Library note' }}</small>
+            <span>{{ text }}</span>
+          </div>
+        </div>
+      }
 
       @if (hot()) {
         <p class="hot"><bl-icon name="flame" [size]="20" /><span>Also on the <strong>Hot Games tables</strong>: no checkout needed if a table is free.</span></p>
@@ -116,6 +141,7 @@ import { ThumbComponent } from './thumb.component';
   `,
 })
 export class GameSheetComponent {
+  private toast = inject(ToastService);
   game = input.required<BggItem>();
   /** Name of the list the button adds to; empty when signed out or there are no lists yet. */
   listName = input<string | undefined>();
@@ -147,6 +173,41 @@ export class GameSheetComponent {
     if (!d) return '';
     return `Checked out ${this.time(d.checkedOutAt)} (${shortDuration(this.now() - d.checkedOutAt)} ago).`;
   });
+
+  note = computed(() => (this.game().description || '').trim());
+  noteIsIncludes = computed(() => /^includes\b/i.test(this.note()));
+
+  /**
+   * Shares a short status message plus a link that opens this game in the app
+   * (?game=<id>, handled by the Library page). Uses the phone's share menu;
+   * where that's missing (most laptops) it copies the text instead. The time
+   * is included because the status can change after it's sent.
+   */
+  async share(): Promise<void> {
+    const game = this.game();
+    const now = this.now();
+    const due = this.due();
+    const status = !game.is_checked_out
+      ? `is available on shelf ${this.shelf()} (as of ${formatLibraryTime(now, now)})`
+      : due && !due.stale && !due.isLate
+        ? `is checked out, due back by ${formatLibraryTime(due.dueAt, now)} (shelf ${this.shelf()})`
+        : `is checked out right now (shelf ${this.shelf()})`;
+    const text = `${game.name} ${status}`;
+    const url = new URL(`?game=${encodeURIComponent(game.id)}`, document.baseURI).href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: game.name, text, url });
+      } else {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        this.toast.show({ text: 'Copied. Paste it into your group chat.' });
+      }
+    } catch (err: any) {
+      // AbortError = the user closed the share menu; nothing to report.
+      if (err?.name !== 'AbortError') {
+        this.toast.error("Couldn't share. Try again.");
+      }
+    }
+  }
 
   time(ms: number): string {
     return formatLibraryTime(ms, this.now());

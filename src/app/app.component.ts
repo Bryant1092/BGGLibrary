@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterOutlet } from '@angular/router';
 import { HideNavService } from './service/hide-nav.service';
 import { WatchService } from './service/watch.service';
+import { InstallService } from './service/install.service';
 import { IconComponent } from './shared/icon.component';
 import { SheetComponent } from './shared/sheet.component';
 import { TabBarComponent } from './shared/tab-bar.component';
@@ -19,6 +20,9 @@ export class AppComponent implements OnInit {
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
   watch = inject(WatchService);
+  // Created at startup because Android announces "installable" only once, early
+  // (beforeinstallprompt); the Account tab uses it for its Install button.
+  private install = inject(InstallService);
 
   isHideNav = false;
 

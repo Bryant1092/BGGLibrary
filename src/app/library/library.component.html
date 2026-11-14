@@ -74,6 +74,32 @@
     @if (hotMatches().length && items().length) {
       <h2 class="bl-section">Also in the checkout library</h2>
     }
+
+    <!-- Recently viewed: only while the search box is empty, so it never gets in the way of a search. -->
+    @if (recentRows().length) {
+      <div class="bl-section-head">
+        <h2 class="bl-section">Recently viewed</h2>
+        <button type="button" class="bl-link-btn" (click)="recent.clear()">Clear</button>
+      </div>
+      @for (r of recentRows(); track r.item.id) {
+        <button type="button" class="bl-row bl-row-compact" (click)="openDetails(r.item)">
+          <app-thumb [src]="r.item.bgg_icon_uri" [name]="r.item.name" [size]="44" [radius]="9" />
+          <span class="bl-row-text">
+            <span class="bl-name" style="-webkit-line-clamp: 1">{{ r.item.name }}</span>
+            <span class="bl-status-line">
+              @if (r.checking) {
+                <span class="bl-pill checking">Checking…</span>
+              } @else {
+                <span class="bl-pill" [class.out]="r.out">{{ r.status }}</span>
+              }
+              <span class="bl-shelf">Shelf {{ r.shelf }}</span>
+            </span>
+          </span>
+          <span class="bl-when">{{ r.when }}</span>
+        </button>
+      }
+      <h2 class="bl-section">All games · {{ sortChip() }}</h2>
+    }
     @if (loading() && items().length === 0) {
       <!-- Placeholder rows instead of a spinner, so the page doesn't jump when results arrive. -->
       @for (n of [1, 2, 3, 4, 5, 6]; track n) {

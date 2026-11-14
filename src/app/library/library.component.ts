@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, Injectable, OnDestroy, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
-import { BehaviorSubject, catchError, EMPTY, ignoreElements, map, merge, of, Subject, switchMap } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
+import { BehaviorSubject, catchError, EMPTY, from, ignoreElements, map, merge, mergeMap, of, Subject, switchMap } from 'rxjs';
 import { BggItem } from '../model/bgg.model';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
 import { BggService, LibrarySearch, LibrarySort, PlayTimeFilter } from '../service/bgg.service';
@@ -9,12 +9,13 @@ import { GameService } from '../service/game.service';
 import { ToastService } from '../service/toast.service';
 import { UserService } from '../service/user.service';
 import { WatchService } from '../service/watch.service';
+import { RecentService } from '../service/recent.service';
 import { GameSheetComponent } from '../shared/game-sheet.component';
 import { IconComponent } from '../shared/icon.component';
 import { ListPickerSheetComponent } from '../shared/list-picker-sheet.component';
 import { SheetComponent } from '../shared/sheet.component';
 import { ThumbComponent } from '../shared/thumb.component';
-import { currentOrNextConvention, libraryStatus } from '../util/library-time';
+import { currentOrNextConvention, libraryStatus, shortDuration } from '../util/library-time';
 import { isNewArrival, minutesText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
 import { matchHotGames } from '../util/hot-games';
 
@@ -82,7 +83,12 @@ export class LibraryComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   private saved = inject(LibraryPageState);
+  private route = inject(ActivatedRoute);
   watch = inject(WatchService);
+  recent = inject(RecentService);
+  /** Recent games whose status was re-checked since the page opened; the rest show "Checking…". */
+  private recentChecked = signal<Set<string>>(new Set());
+  private recentCheckedAt = 0;
 
   readonly playerOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   readonly playTimeOptions = Object.entries(PLAY_TIME_LABELS) as [PlayTimeFilter, string][];
@@ -177,6 +183,28 @@ export class LibraryComponent implements OnInit, OnDestroy {
     ].filter(group => group.rows.length);
   });
 
+  /**
+   * Recently viewed games, shown above the results while the search box is
+   * empty. Uses the last known details instantly and marks each "Checking…"
+   * until its fresh status arrives (see checkRecent).
+   */
+  recentRows = computed(() => {
+    if (this.filters().query) return [];
+    const now = this.now();
+    const checked = this.recentChecked();
+    return this.recent.games().map(({ item, viewedAt }) => {
+      const ago = now - viewedAt;
+      return {
+        item,
+        checking: !checked.has(item.id),
+        status: statusText(item, now),
+        out: !!item.is_checked_out,
+        shelf: shelfText(item),
+        when: ago < 60_000 ? 'just now' : `${shortDuration(ago)} ago`,
+      };
+    });
+  });
+
   /** BGG.CON Hot Games matching the search; shown as cards above the results. */
   hotMatches = computed(() => matchHotGames(this.filters().query, this.now()));
 
@@ -252,6 +280,43 @@ export class LibraryComponent implements OnInit, OnDestroy {
       // Coming back from another tab: show the saved results where they were.
       setTimeout(() => window.scrollTo(0, this.saved.scrollY));
     }
+    this.checkRecent();
+    this.openSharedGame();
+  }
+
+  /**
+   * Re-checks the status of recently viewed games (one small request each,
+   * at most 8). Skipped if done in the last minute, so switching tabs back and
+   * forth doesn't repeat it.
+   */
+  private checkRecent(): void {
+    const games = this.recent.games();
+    if (!games.length || Date.now() - this.recentCheckedAt < 60_000) return;
+    this.recentCheckedAt = Date.now();
+    from(games.map(g => g.item.id)).pipe(
+      mergeMap(id => this.bggService.getBggGameInfo(id).pipe(catchError(() => of(null))), 4),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((response: any) => {
+      const item = response?.result as BggItem | undefined;
+      if (item?.id) {
+        this.recent.refresh(item);
+        this.recentChecked.update(ids => new Set(ids).add(item.id));
+      }
+    });
+  }
+
+  /**
+   * A link shared from a game's details ends in ?game=<id>; open that game's
+   * details, then drop the parameter so a reload doesn't reopen it.
+   */
+  private openSharedGame(): void {
+    const id = this.route.snapshot.queryParamMap.get('game');
+    if (!id) return;
+    this.router.navigate([], { queryParams: { game: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    this.bggService.getBggGameInfo(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response: any) => { if (response?.result?.id) this.openDetails(response.result); },
+      error: () => this.toast.error("Couldn't open the shared game. Check your connection."),
+    });
   }
 
   ngOnDestroy(): void {
@@ -298,6 +363,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
     input.value = '';
     this.filters.update(f => ({ ...f, query: '' }));
     this.search();
+    this.checkRecent();
     input.focus();
   }
 
@@ -337,6 +403,9 @@ export class LibraryComponent implements OnInit, OnDestroy {
   openDetails(item: BggItem): void {
     this.selected.set(item);
     this.sheet.set('details');
+    this.recent.add(item);
+    // Just opened, so its details are current: no "Checking…" for it.
+    this.recentChecked.update(ids => new Set(ids).add(item.id));
   }
 
   isInList(item: BggItem): boolean {

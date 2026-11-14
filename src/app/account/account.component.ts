@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { EMPTY, switchMap } from 'rxjs';
 import { CONVENTIONS, LibraryDay } from '../config/conventions';
 import { ThemeChoice, ThemeService } from '../service/theme.service';
+import { InstallService } from '../service/install.service';
 import { UserService } from '../service/user.service';
 import { currentOrNextConvention } from '../util/library-time';
 
@@ -27,6 +28,13 @@ import { currentOrNextConvention } from '../util/library-time';
     td { text-align: right; color: var(--bl-muted); padding: 8px 0; }
     tr + tr { border-top: 1px solid var(--bl-hair); }
     h2 { margin: 0; font-size: 17px; font-weight: 700; }
+    .install { background: var(--bl-accent-soft); border: 1.5px solid var(--bl-accent-text); }
+    .install img { border-radius: 10px; box-shadow: 0 1px 4px rgba(0, 0, 0, .15); flex: none; }
+    .install-head { display: flex; gap: 12px; align-items: center; }
+    .install ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
+    .install li { display: flex; gap: 10px; align-items: center; }
+    .step { width: 26px; height: 26px; border-radius: 13px; background: var(--bl-accent); color: var(--bl-on-accent); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: none; }
+    .why { font-size: 13px; line-height: 18px; }
     .segmented { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--bl-surface); border: 1.5px solid var(--bl-control-border); }
     .segmented button { min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--bl-text); font-size: 15px; font-weight: 600; }
     .segmented button[aria-checked="true"] { background: var(--bl-accent); color: var(--bl-on-accent); }
@@ -41,6 +49,39 @@ import { currentOrNextConvention } from '../util/library-time';
       </header>
 
       <main>
+        <!-- Install help: hidden once installed, after "Not now", or where no install is possible. -->
+        @if (!install.dismissed()) {
+          @switch (install.help()) {
+            @case ('ios') {
+              <div class="card install">
+                <div class="install-head">
+                  <img src="icons/icon-72x72.png" alt="" width="44" height="44">
+                  <div><p class="name">Add BGG Library to your Home Screen</p><p class="muted">iPhone · takes 10 seconds</p></div>
+                </div>
+                <ol>
+                  <li><span class="step">1</span><span>Tap <strong>Share</strong> in Safari's toolbar</span></li>
+                  <li><span class="step">2</span><span>Scroll down, tap <strong>Add to Home Screen</strong></span></li>
+                  <li><span class="step">3</span><span>Tap <strong>Add</strong>, then open it from your Home Screen</span></li>
+                </ol>
+                <p class="muted why">Why: notifications when games come back, full-screen app, and iPhone won't clear your saved bells and recent games after a week away.</p>
+                <button type="button" class="bl-link-btn" style="align-self: flex-start" (click)="install.dismiss()">Not now</button>
+              </div>
+            }
+            @case ('android-button') {
+              <div class="card install" style="flex-direction: row; align-items: center">
+                <img src="icons/icon-72x72.png" alt="" width="40" height="40">
+                <div style="flex: 1"><p class="name" style="font-size: 16px">Install BGG Library</p><p class="muted">Works offline, alerts when games return</p></div>
+                <button type="button" class="bl-btn" style="min-height: 44px; border-radius: 22px" (click)="install.install()">Install</button>
+              </div>
+            }
+            @case ('in-app-browser') {
+              <div class="card install">
+                <p class="name" style="font-size: 16px">Open in Safari or Chrome to install</p>
+                <p class="muted">This page is open inside another app, which can't add it to your home screen. Use that app's menu to open the link in your browser.</p>
+              </div>
+            }
+          }
+        }
         <div class="card">
           @if (signedIn()) {
             <div>
@@ -87,6 +128,7 @@ export class AccountComponent implements OnInit {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   theme = inject(ThemeService);
+  install = inject(InstallService);
 
   readonly themeOptions: { value: ThemeChoice; label: string }[] = [
     // "Auto" rather than "Match phone", which wrapped onto two lines at phone width.
