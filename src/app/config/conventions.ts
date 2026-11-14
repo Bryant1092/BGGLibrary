@@ -60,10 +60,11 @@ export const CONVENTIONS: Convention[] = [
 
 /**
  * Library rules shared by both conventions: new games (blue barcode, shelved
- * under "NEW") are due in 4 hours, everything else (white and yellow barcodes)
- * in 8, and midnight to 8 AM doesn't count toward the due time.
+ * under "NEW" or "CARD RACK NEW") are due in 4 hours, everything else (white
+ * and yellow barcodes) in 8, and midnight to 8 AM doesn't count toward the due time.
  */
 export const LIBRARY_RULES = {
+  /** A shelf code containing this word means a new game (blue barcode). */
   newGameShelf: 'NEW',
   newGameHours: 4,
   otherGameHours: 8,

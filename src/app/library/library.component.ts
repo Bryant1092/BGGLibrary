@@ -15,6 +15,7 @@ import { IconComponent } from '../shared/icon.component';
 import { ListPickerSheetComponent } from '../shared/list-picker-sheet.component';
 import { SheetComponent } from '../shared/sheet.component';
 import { ThumbComponent } from '../shared/thumb.component';
+import { OfflineBarComponent } from '../shared/offline-bar.component';
 import { currentOrNextConvention, libraryStatus, shortDuration } from '../util/library-time';
 import { isNewArrival, minutesText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
 import { matchHotGames } from '../util/hot-games';
@@ -71,7 +72,7 @@ export class LibraryPageState {
 @Component({
   selector: 'app-library',
   standalone: true,
-  imports: [IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent],
+  imports: [IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './library.component.html',
 })

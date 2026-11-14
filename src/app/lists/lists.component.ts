@@ -15,6 +15,7 @@ import { RecentService } from '../service/recent.service';
 import { GameSheetComponent } from '../shared/game-sheet.component';
 import { IconComponent } from '../shared/icon.component';
 import { SheetComponent } from '../shared/sheet.component';
+import { OfflineBarComponent } from '../shared/offline-bar.component';
 import { dueInfo, shortDuration } from '../util/library-time';
 import { minutesText, playersText, shelfText, statusText } from '../util/game-format';
 
@@ -69,7 +70,7 @@ interface ListRow {
 @Component({
   selector: 'app-lists',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent],
+  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './lists.component.html',
 })

@@ -250,10 +250,15 @@ export function dueInfo(game: DueInput, now: number = Date.now()): DueInfo | nul
   if (!checkedOut) return null;
   const checkedOutAt = checkedOut.getTime();
   const location = game.custom_fields?.Location || '';
-  const isNew = location.toUpperCase() === LIBRARY_RULES.newGameShelf;
+  const shelf = location.toUpperCase();
+  // Any shelf code with the word NEW is a new game (blue barcode, 4 hours):
+  // "NEW" and "CARD RACK NEW" (new card games), confirmed with the user.
+  const isNew = new RegExp(`\\b${LIBRARY_RULES.newGameShelf}\\b`).test(shelf);
+  const isCard = shelf.includes('CARD RACK');
   const hours = isNew ? LIBRARY_RULES.newGameHours : LIBRARY_RULES.otherGameHours;
-  const rule = isNew ? 'New games (blue barcode) are due in 4 hours.'
-    : location.toUpperCase() === 'CARD RACK' ? 'Card and small box games (yellow barcode) are due in 8 hours.'
+  const rule = isNew && isCard ? 'New card games (blue barcode) are due in 4 hours.'
+    : isNew ? 'New games (blue barcode) are due in 4 hours.'
+    : isCard ? 'Card and small box games (yellow barcode) are due in 8 hours.'
     : 'Older games (white barcode) are due in 8 hours.';
 
   let dueAt = addCountedTime(checkedOutAt, hours * HOUR);
