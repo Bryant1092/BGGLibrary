@@ -146,7 +146,10 @@ body {
 
 /* ---------- Controls ---------- */
 
-.bl-page button, .bl-sheet button, .bl-tabbar a, .bl-toast button { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* Buttons use the app font instead of the browser default. Wrapped in :where() so it
+   has zero priority: it was overriding .bl-btn and similar classes, which made
+   buttons like "Add to a list" lose their bold weight. */
+:where(.bl-page, .bl-sheet, .bl-tabbar, .bl-toast) :where(button, a) { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .bl-page :focus-visible, .bl-sheet :focus-visible, .bl-tabbar :focus-visible, .bl-toast :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 .bl-icon-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--bl-muted); display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 0; border-radius: 22px; }
 .bl-icon-btn.accent { color: var(--bl-accent-text); }
@@ -194,7 +197,10 @@ body {
 
 /* ---------- Game rows ---------- */
 
-.bl-row { display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--bl-hair); }
+.bl-row { display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--bl-hair);
+  /* Lets the browser skip drawing rows that are off screen, which keeps scrolling
+     smooth after "Load more" has added many games. 81px is a typical row height. */
+  content-visibility: auto; contain-intrinsic-size: auto 81px; }
 .bl-row-main { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 12px; border: 0; background: transparent; padding: 0; text-align: left; color: inherit; }
 .bl-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex: none; background: var(--bl-field); }
 .bl-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }

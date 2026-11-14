@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, Injectable, OnDestroy, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -18,11 +18,39 @@ import { dueInfo, shortDuration } from '../util/library-time';
 import { minutesText, playersText, shelfText, statusText } from '../util/game-format';
 
 /**
- * How many game-detail requests to send to Tabletop.Events at once. Requesting
- * every game in a long list simultaneously is slow on convention Wi-Fi and
- * unkind to TTE's server.
+ * How many game-detail requests to send to Tabletop.Events at once.
+ * Tabletop.Events can't return several games by id in one request (tested), so
+ * each game is its own ~0.3 s request. 6 at a time loads a 30-game list in
+ * about 1.5 s without flooding their server.
  */
-const DETAIL_REQUEST_CONCURRENCY = 4;
+const DETAIL_REQUEST_CONCURRENCY = 6;
+
+/** Details younger than this are reused when coming back to My Lists. */
+const DETAILS_FRESH_MS = 2 * 60_000;
+
+/**
+ * Game details kept while the app is open. The page used to re-download every
+ * game in the list each time you switched to the My Lists tab; now details
+ * from the last 2 minutes are reused, and older ones are shown immediately
+ * while fresh ones load.
+ */
+@Injectable({ providedIn: 'root' })
+export class ListDetailsCache {
+  private entries = new Map<string, { item: BggItem; at: number }>();
+
+  items(): Map<string, BggItem> {
+    return new Map([...this.entries].map(([id, entry]) => [id, entry.item]));
+  }
+
+  isFresh(id: string): boolean {
+    const entry = this.entries.get(id);
+    return !!entry && Date.now() - entry.at < DETAILS_FRESH_MS;
+  }
+
+  set(id: string, item: BggItem): void {
+    this.entries.set(id, { item, at: Date.now() });
+  }
+}
 
 type ListSheet = 'details' | 'actions' | 'create' | 'rename' | 'share' | 'delete' | null;
 
@@ -51,6 +79,7 @@ export class ListsComponent implements OnInit, OnDestroy {
   private toast = inject(ToastService);
   private destroyRef = inject(DestroyRef);
   watch = inject(WatchService);
+  private cache = inject(ListDetailsCache);
 
   now = signal(Date.now());
   private clock = setInterval(() => this.now.set(Date.now()), 60_000);
@@ -77,7 +106,7 @@ export class ListsComponent implements OnInit, OnDestroy {
    * Kept while the page is open, so switching lists or ticking Played doesn't
    * re-download them; the refresh button gets fresh availability.
    */
-  details = signal<Map<string, BggItem>>(new Map());
+  details = signal<Map<string, BggItem>>(this.cache.items());
   private failedIds = signal<Set<string>>(new Set());
   private pendingIds = new Set<string>();
   private detailRequests = new Subject<string[]>();
@@ -164,6 +193,7 @@ export class ListsComponent implements OnInit, OnDestroy {
         this.failedIds.update(s => new Set(s).add(id));
         return;
       }
+      this.cache.set(id, item);
       this.details.update(m => new Map(m).set(id, item));
       this.failedIds.update(s => {
         const next = new Set(s);
@@ -238,7 +268,7 @@ export class ListsComponent implements OnInit, OnDestroy {
     }
     const ids = (this.games() || [])
       .map(g => g.id!)
-      .filter(id => !!id && !this.pendingIds.has(id) && (force || !this.details().has(id)));
+      .filter(id => !!id && !this.pendingIds.has(id) && (force || !this.cache.isFresh(id)));
     if (!ids.length) {
       return;
     }

@@ -24,7 +24,9 @@ import { ThumbComponent } from './thumb.component';
     .head .bl-pill { align-self: flex-start; }
     .head .bl-icon-btn { margin: -6px -10px 0 0; }
     .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-    .tile { border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 4px; background: var(--bl-field); min-width: 0; }
+    /* Label and value both centered: three equal tiles read as a row of stats, and
+       keeping label and value on one alignment keeps each tile easy to scan. */
+    .tile { border-radius: 12px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; background: var(--bl-field); min-width: 0; }
     .tile.accent { background: var(--bl-accent-soft); }
     .tile small { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--bl-muted); }
     .tile.accent small { color: var(--bl-accent-text); }

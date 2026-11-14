@@ -18,8 +18,13 @@ import { currentOrNextConvention, libraryStatus } from '../util/library-time';
 import { isNewArrival, minutesText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
 import { matchHotGames } from '../util/hot-games';
 
-/** 25 per page: enough to scroll through, small enough to load quickly on convention Wi-Fi. */
-const PAGE_SIZE = 25;
+/**
+ * 12 per page. Tabletop.Events' response time grows with page size (measured
+ * Nov 2026: 10 games ~1.3 s, 15 ~1.7 s, 25 ~2.6 s), and most people search for
+ * a specific game, so a small first page shows results about twice as fast.
+ * "Load more" covers browsing.
+ */
+const PAGE_SIZE = 12;
 const SEARCH_DEBOUNCE_MS = 350;
 
 const PLAY_TIME_LABELS: Record<PlayTimeFilter, string> = {

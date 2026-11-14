@@ -16,6 +16,14 @@
       As "any", Android shows the whole logo on a white background instead.
   -->
   <link rel="manifest" href="manifest.webmanifest">
+  <!--
+    Open connections to the game library API and the thumbnail server while the
+    app is still loading, so the first search doesn't also wait for DNS + TLS
+    setup (a few hundred ms, more on convention Wi-Fi). The API is fetched with
+    CORS, hence crossorigin; thumbnails are plain images, so no crossorigin.
+  -->
+  <link rel="preconnect" href="https://tabletop.events" crossorigin>
+  <link rel="preconnect" href="https://cf.geekdo-images.com">
   <meta name="theme-color" content="#ffffff">
   <!--
     Light/dark theme, applied here before the page first paints so there's no
