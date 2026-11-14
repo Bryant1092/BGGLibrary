@@ -8,6 +8,7 @@ import { BggService, LibrarySearch, LibrarySort, PlayTimeFilter } from '../servi
 import { GameService } from '../service/game.service';
 import { ToastService } from '../service/toast.service';
 import { UserService } from '../service/user.service';
+import { WatchService } from '../service/watch.service';
 import { GameSheetComponent } from '../shared/game-sheet.component';
 import { IconComponent } from '../shared/icon.component';
 import { ListPickerSheetComponent } from '../shared/list-picker-sheet.component';
@@ -73,6 +74,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   private saved = inject(LibraryPageState);
+  watch = inject(WatchService);
 
   readonly playerOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   readonly playTimeOptions = Object.entries(PLAY_TIME_LABELS) as [PlayTimeFilter, string][];
@@ -400,6 +402,10 @@ export class LibraryComponent implements OnInit, OnDestroy {
         console.error('Failed to create list', err);
         this.toast.error("Couldn't create the list. Try again.");
       });
+  }
+
+  toggleWatch(item: BggItem): void {
+    this.watch.toggle({ id: item.id, name: item.name, shelf: shelfText(item) });
   }
 
   closeSheet(): void {

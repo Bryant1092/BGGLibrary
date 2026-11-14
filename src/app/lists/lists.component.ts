@@ -10,6 +10,7 @@ import { BggService } from '../service/bgg.service';
 import { GameService } from '../service/game.service';
 import { ToastService } from '../service/toast.service';
 import { UserService } from '../service/user.service';
+import { WatchService } from '../service/watch.service';
 import { GameSheetComponent } from '../shared/game-sheet.component';
 import { IconComponent } from '../shared/icon.component';
 import { SheetComponent } from '../shared/sheet.component';
@@ -49,9 +50,20 @@ export class ListsComponent implements OnInit, OnDestroy {
   private gameService = inject(GameService);
   private toast = inject(ToastService);
   private destroyRef = inject(DestroyRef);
+  watch = inject(WatchService);
 
   now = signal(Date.now());
   private clock = setInterval(() => this.now.set(Date.now()), 60_000);
+  /**
+   * Re-checks checked-out games every 2 minutes while this page is open, so a
+   * game that comes back moves to "Available now" without tapping refresh.
+   * Only checked-out games are re-requested, to keep traffic small.
+   */
+  private outRefresh = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      this.refreshCheckedOut();
+    }
+  }, 2 * 60_000);
 
   uid = signal<string | undefined>(undefined);
   lists = signal<UserGameListRef[] | null>(null);
@@ -198,6 +210,17 @@ export class ListsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     clearInterval(this.clock);
+    clearInterval(this.outRefresh);
+  }
+
+  private refreshCheckedOut(): void {
+    const ids = [...this.details().values()]
+      .filter(item => item.is_checked_out && !this.pendingIds.has(item.id))
+      .map(item => item.id);
+    if (ids.length) {
+      ids.forEach(id => this.pendingIds.add(id));
+      this.detailRequests.next(ids);
+    }
   }
 
   select(id: string | undefined): void {
@@ -235,6 +258,16 @@ export class ListsComponent implements OnInit, OnDestroy {
       this.selectedGame.set({ game: row.game, item: row.item });
       this.sheet.set('details');
     }
+  }
+
+  toggleWatch(row: ListRow): void {
+    if (row.item) {
+      this.toggleWatchItem(row.item);
+    }
+  }
+
+  toggleWatchItem(item: BggItem): void {
+    this.watch.toggle({ id: item.id, name: item.name, shelf: shelfText(item) });
   }
 
   togglePlayed(game: Game): void {

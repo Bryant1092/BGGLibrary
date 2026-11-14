@@ -82,6 +82,13 @@
                 </span>
               </span>
             </button>
+            @if (section.out) {
+              <!-- Only checked-out games get a bell; an available game has nothing to wait for. -->
+              <button type="button" class="bl-bell" [attr.aria-pressed]="watch.isWatched(row.game.id!)"
+                      [attr.aria-label]="'Notify me when ' + row.game.name + ' is back'" (click)="toggleWatch(row)">
+                <bl-icon [name]="watch.isWatched(row.game.id!) ? 'bell' : 'bellOff'" [size]="22" />
+              </button>
+            }
             <button type="button" class="bl-check" role="checkbox" [attr.aria-checked]="!!row.game.played"
                     [attr.aria-label]="'Played ' + row.game.name" (click)="togglePlayed(row.game)">
               <span class="bl-box">
@@ -100,6 +107,7 @@
   @case ('details') {
     @if (selectedGame(); as selected) {
       <app-game-sheet [game]="selected.item" [now]="now()" [listName]="selectedList()?.name" [inList]="true" [busy]="busy()"
+                      [watched]="watch.isWatched(selected.item.id)" (watchToggle)="toggleWatchItem(selected.item)"
                       (toggle)="removeSelected()" (closed)="sheet.set(null)" />
     }
   }

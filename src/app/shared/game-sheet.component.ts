@@ -85,6 +85,13 @@ import { SheetComponent } from './sheet.component';
         </div>
       }
 
+      @if (game().is_checked_out) {
+        <button type="button" class="bl-btn secondary" [attr.aria-pressed]="watched()" (click)="watchToggle.emit()"
+                [style.color]="watched() ? 'var(--bl-accent-text)' : null" [style.border-color]="watched() ? 'var(--bl-accent-text)' : null">
+          <bl-icon [name]="watched() ? 'bell' : 'bellOff'" [size]="20" />
+          {{ watched() ? "We'll tell you when it's back" : "Notify me when it's back" }}
+        </button>
+      }
       <button type="button" class="bl-btn" [class.secondary]="inList()" [disabled]="busy()" (click)="toggle.emit()">{{ actionLabel() }}</button>
       <a class="bgg" [href]="bgg()" target="_blank" rel="noopener">
         View on BoardGameGeek <bl-icon name="external" [size]="16" />
@@ -103,6 +110,9 @@ export class GameSheetComponent {
   closed = output<void>();
   /** The page decides what this means: add, remove, sign in, or pick a list first. */
   toggle = output<void>();
+  /** Whether the "notify me when it's back" bell is on for this game (see WatchService). */
+  watched = input(false);
+  watchToggle = output<void>();
 
   shelf = computed(() => shelfText(this.game()));
   players = computed(() => playersText(this.game()));

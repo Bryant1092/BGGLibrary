@@ -4,3 +4,23 @@
   <app-toast />
   <app-tab-bar />
 }
+
+<!--
+  Shown the first time a bell is turned on, before the browser's own permission
+  prompt, so people know why they're being asked (web.dev permission UX guidance).
+  The bell stays on either way; "Not now" just means in-app alerts only.
+-->
+@if (watch.askPermissionFor(); as game) {
+  <app-sheet label="Turn on notifications" (closed)="watch.declinePermission()">
+    <div style="display: flex; gap: 12px; align-items: center">
+      <span class="bl-bell" aria-pressed="true" style="width: 48px; height: 48px; border-radius: 24px"><bl-icon name="bell" [size]="26" /></span>
+      <h2>Get a notification when it's back?</h2>
+    </div>
+    <p class="bl-sheet-note" style="font-size: 15px; line-height: 21px">
+      We'll let you know when <strong>{{ game.name }}</strong> is checked back in. Your phone will ask for permission next.
+      Alerts work while the app is open, including in the background.
+    </p>
+    <button type="button" class="bl-btn" (click)="watch.requestPermission()">Turn on notifications</button>
+    <button type="button" class="bl-btn secondary" (click)="watch.declinePermission()">Not now</button>
+  </app-sheet>
+}

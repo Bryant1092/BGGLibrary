@@ -137,6 +137,7 @@
     @if (selected(); as game) {
       <app-game-sheet [game]="game" [now]="now()" [listName]="signedIn() ? currentList()?.name : undefined"
                       [inList]="isInList(game)" [busy]="busyIds().has(game.id)"
+                      [watched]="watch.isWatched(game.id)" (watchToggle)="toggleWatch(game)"
                       (toggle)="toggleGame(game)" (closed)="closeSheet()" />
     }
   }
