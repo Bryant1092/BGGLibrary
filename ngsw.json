@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1794619129477,
+  "timestamp": 1794620157184,
   "index": "/BGGLibrary/index.html",
   "assetGroups": [
     {
@@ -11,16 +11,27 @@
         "ignoreVary": true
       },
       "urls": [
-        "/BGGLibrary/chunk-FGUBLHEE.js",
-        "/BGGLibrary/chunk-PEPTFCOW.js",
-        "/BGGLibrary/chunk-U7BKVG3L.js",
-        "/BGGLibrary/chunk-Z63MEZGA.js",
+        "/BGGLibrary/chunk-367OSH2G.js",
+        "/BGGLibrary/chunk-4O56QZI3.js",
+        "/BGGLibrary/chunk-65ERAQF2.js",
+        "/BGGLibrary/chunk-6FLDFH54.js",
+        "/BGGLibrary/chunk-DWKOZORK.js",
+        "/BGGLibrary/chunk-ECBXVGWK.js",
+        "/BGGLibrary/chunk-HLUO3PGR.js",
+        "/BGGLibrary/chunk-O73MRVEJ.js",
+        "/BGGLibrary/chunk-OEPWD2OL.js",
+        "/BGGLibrary/chunk-P2LHPFWW.js",
+        "/BGGLibrary/chunk-PYJUTN4I.js",
+        "/BGGLibrary/chunk-S2V2HIVH.js",
+        "/BGGLibrary/chunk-SHUIBMGT.js",
+        "/BGGLibrary/chunk-U4AJ3X7O.js",
+        "/BGGLibrary/chunk-XXZ5YO4K.js",
         "/BGGLibrary/favicon.ico",
         "/BGGLibrary/index.html",
-        "/BGGLibrary/main-ATJG56AR.js",
+        "/BGGLibrary/main-MR3EQZ4T.js",
         "/BGGLibrary/manifest.webmanifest",
         "/BGGLibrary/polyfills-RP2QB4T4.js",
-        "/BGGLibrary/styles-M6ZATPLE.css"
+        "/BGGLibrary/styles-SUDZDD2H.css"
       ],
       "patterns": []
     },
@@ -63,10 +74,21 @@
     }
   ],
   "hashTable": {
-    "/BGGLibrary/chunk-FGUBLHEE.js": "5395fc7b509cea3c9fe5e9a0081a429d38d7bd80",
-    "/BGGLibrary/chunk-PEPTFCOW.js": "f13f89da6156dcd9350eb24a587eaddbfba4b0ee",
-    "/BGGLibrary/chunk-U7BKVG3L.js": "22101ba5b8de0e6afd0cdb504b205f5aaaccc4f2",
-    "/BGGLibrary/chunk-Z63MEZGA.js": "7b036e9c97bd6429df4e9cd89d5f1223f633e913",
+    "/BGGLibrary/chunk-367OSH2G.js": "2e0009d82e1d04ae5ebeda70b94327e4edf92365",
+    "/BGGLibrary/chunk-4O56QZI3.js": "46a05fa6ff1c3a279f112da20b00c15131e76e39",
+    "/BGGLibrary/chunk-65ERAQF2.js": "3328c79854572373b2cf85c44c49018f03257db0",
+    "/BGGLibrary/chunk-6FLDFH54.js": "9e6ecd31693c95cade557d35e484ffae2ea9f875",
+    "/BGGLibrary/chunk-DWKOZORK.js": "2285ded0cf6ae429f01f3e6d414e6f00874c6500",
+    "/BGGLibrary/chunk-ECBXVGWK.js": "78a56631e220223bfe39f7486803bb3e8ec3847f",
+    "/BGGLibrary/chunk-HLUO3PGR.js": "09ac82c3ffd5de2086df6acf2fe4d8bd0f139ba7",
+    "/BGGLibrary/chunk-O73MRVEJ.js": "257c9942780749d1e3862d46ac601844e9070fc8",
+    "/BGGLibrary/chunk-OEPWD2OL.js": "31282801445d9eb0a55dd7ce2365480968000fbb",
+    "/BGGLibrary/chunk-P2LHPFWW.js": "7b52cc0dd597fbef7607aea60a012a20d3333b60",
+    "/BGGLibrary/chunk-PYJUTN4I.js": "445cee4f2bb14c85baa1a86f188c814479e9a6ec",
+    "/BGGLibrary/chunk-S2V2HIVH.js": "03e51094511842ba26351728da427be2a7c1b0b1",
+    "/BGGLibrary/chunk-SHUIBMGT.js": "42803de05b5085ea6a27a35b366623630437fee7",
+    "/BGGLibrary/chunk-U4AJ3X7O.js": "e70ecfc858b58df3420c98ab96bdd3945ebe0064",
+    "/BGGLibrary/chunk-XXZ5YO4K.js": "6ccc94072a4200eba8e425b79c36e7cb3f1a0e0c",
     "/BGGLibrary/favicon.ico": "6603ccb19430f0aa1aaa57fcac7b6fbd21441556",
     "/BGGLibrary/icons/icon-128x128.png": "55d65cf0cced2791ab981e41bbf75b4acec7c707",
     "/BGGLibrary/icons/icon-144x144.png": "f92e7fddd8f68c1143a04dc0da6d01277fa18164",
@@ -76,13 +98,13 @@
     "/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
     "/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
     "/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
-    "/BGGLibrary/index.html": "862453546e148a801ef89dd407b67759103febd7",
-    "/BGGLibrary/main-ATJG56AR.js": "6f965906e6bba254ed5f264bc55e0d922d64fbd2",
+    "/BGGLibrary/index.html": "38f0ccd7c8c7d9252b4d076f7ce038f611335f24",
+    "/BGGLibrary/main-MR3EQZ4T.js": "25d6576dc3e7e60cb3fb4e5db450b8489bf493ce",
     "/BGGLibrary/manifest.webmanifest": "02fd681aa859fb7e11b7fcdf99d3a14607b751db",
     "/BGGLibrary/media/bootstrap-icons-OCU552PF.woff": "d5831fd39baf13aff7626e483b9a089730f18604",
     "/BGGLibrary/media/bootstrap-icons-X6UQXWUS.woff2": "020c3c6f9280a315e8425d7f92e15bcd0cdda1b2",
     "/BGGLibrary/polyfills-RP2QB4T4.js": "564af71887c6213936c122321804cb5b5ebf6324",
-    "/BGGLibrary/styles-M6ZATPLE.css": "a8fc30734fbb3e5b0e67c3a4bba589c93ef2ccf8"
+    "/BGGLibrary/styles-SUDZDD2H.css": "6e6468c1d000eb81a420387271e6b417f71176fe"
   },
   "navigationUrls": [
     {
