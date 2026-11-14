@@ -14,14 +14,25 @@
   --bl-surface: #ffffff;
   --bl-text: #1c1b1a;
   --bl-muted: #5e5955;
+  /* Divider lines only (decorative). */
   --bl-hair: #e7e4e0;
+  /* Outlines of tappable controls (chips, inputs, outlined buttons): 3.7:1 against
+     the page, meeting WCAG 1.4.11 (3:1). --bl-hair was 1.27:1, too faint to find. */
+  --bl-control-border: #8a837d;
   --bl-field: #f1efec;
   --bl-accent: #c2410c;
   --bl-accent-text: #c2410c;
-  --bl-accent-soft: #f8e8e2;
+  /* Lightened from #f8e8e2 so the orange "LOCATION" label on it passes 4.5:1 (was 4.35:1). */
+  --bl-accent-soft: #fdf3ee;
   --bl-on-accent: #ffffff;
-  --bl-avail-bg: #ddf3e5;
-  --bl-avail-fg: #14632f;
+  /*
+   * Solid green "Available" badge (was pale green). Pale green and the pale
+   * grey "Out" badge looked identical with red-green color blindness (1.02:1);
+   * solid green differs from grey in lightness (3.9-4.4:1 simulated), so the
+   * two can be told apart at a glance by everyone.
+   */
+  --bl-avail-bg: #15803d;
+  --bl-avail-fg: #ffffff;
   --bl-out-bg: #eceae7;
   --bl-out-fg: #4f4a45;
   --bl-due-bg: #eaf1ff;
@@ -34,6 +45,8 @@
   --bl-toast-fg: #ffffff;
   --bl-toast-action: #f0a07e;
   --bl-danger: #b42318;
+  /* Red fills with white text (error toast, Delete button); the same in both modes. */
+  --bl-danger-fill: #b42318;
   --bl-tabbar-h: 64px;
   --bl-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
@@ -49,11 +62,12 @@
     --bl-text: #f2f0ed;
     --bl-muted: #b5afa9;
     --bl-hair: #2f2d2a;
+    --bl-control-border: #77716b;
     --bl-field: #272523;
     --bl-accent-text: #dd9779;
     --bl-accent-soft: #482414;
-    --bl-avail-bg: #173a25;
-    --bl-avail-fg: #8ee6ae;
+    --bl-avail-bg: #4ade80;
+    --bl-avail-fg: #0b2414;
     --bl-out-bg: #33302c;
     --bl-out-fg: #d4cec7;
     --bl-due-bg: #16203a;
@@ -64,7 +78,10 @@
     --bl-late-fg: #fcc97a;
     --bl-toast-bg: #f2f0ed;
     --bl-toast-fg: #191817;
-    --bl-toast-action: #c2410c;
+    /* Darker than the accent so Undo on the light toast is a clear 5.7:1, not a borderline 4.55:1. */
+    --bl-toast-action: #a8380a;
+    /* Lighter red reads well as text on the dark page; fills use --bl-danger-fill, since
+       white on this lighter red was only 2.8:1. */
     --bl-danger: #f97066;
 }
 
@@ -139,6 +156,8 @@ body {
 .bl-search input {
   width: 100%; height: 48px; box-sizing: border-box; border: 0; border-radius: 12px;
   padding: 0 48px 0 44px; font-size: 16px; background: var(--bl-field); color: var(--bl-text);
+  /* Outline so the box edge is findable (WCAG 1.4.11); the grey fill alone was 1.15:1 against the page. */
+  border: 1.5px solid var(--bl-control-border);
   -webkit-appearance: none; appearance: none;
 }
 .bl-search input::placeholder { color: var(--bl-muted); }
@@ -151,7 +170,7 @@ body {
 .bl-chips::-webkit-scrollbar { display: none; }
 .bl-chip {
   flex: none; height: 44px; padding: 0 16px; border-radius: 22px; display: inline-flex; align-items: center; gap: 6px;
-  font-size: 15px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--bl-hair); background: var(--bl-surface); color: var(--bl-text);
+  font-size: 15px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--bl-control-border); background: var(--bl-surface); color: var(--bl-text);
 }
 .bl-chip.on { background: var(--bl-accent); border-color: var(--bl-accent); color: var(--bl-on-accent); }
 .bl-chip.dashed { border-style: dashed; border-color: var(--bl-muted); color: var(--bl-muted); width: 44px; padding: 0; justify-content: center; }
@@ -162,13 +181,13 @@ body {
   min-height: 52px; border-radius: 14px; font-size: 16px; font-weight: 700; padding: 0 20px;
   border: 0; background: var(--bl-accent); color: var(--bl-on-accent); display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
-.bl-btn.secondary { background: transparent; border: 1.5px solid var(--bl-hair); color: var(--bl-text); }
+.bl-btn.secondary { background: transparent; border: 1.5px solid var(--bl-control-border); color: var(--bl-text); }
 .bl-btn.outline { background: transparent; border: 1.5px solid var(--bl-accent-text); color: var(--bl-accent-text); min-height: 44px; border-radius: 22px; font-size: 15px; }
-.bl-btn.danger { background: var(--bl-danger); color: #fff; }
+.bl-btn.danger { background: var(--bl-danger-fill); color: #fff; }
 .bl-btn:disabled { opacity: .5; cursor: default; }
 
 .bl-input {
-  width: 100%; height: 48px; box-sizing: border-box; border-radius: 12px; border: 1.5px solid var(--bl-hair);
+  width: 100%; height: 48px; box-sizing: border-box; border-radius: 12px; border: 1.5px solid var(--bl-control-border);
   background: var(--bl-surface); color: var(--bl-text); padding: 0 14px; font-size: 16px;
 }
 .bl-input:focus { border-color: var(--bl-accent-text); outline: none; }
@@ -234,7 +253,7 @@ body {
 .bl-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .bl-sheet-note { margin: 0; font-size: 14px; color: var(--bl-muted); }
 .bl-option-grid { display: grid; gap: 8px; }
-.bl-option { min-height: 48px; border-radius: 12px; font-size: 16px; font-weight: 600; border: 1.5px solid var(--bl-hair); background: var(--bl-surface); color: var(--bl-text); }
+.bl-option { min-height: 48px; border-radius: 12px; font-size: 16px; font-weight: 600; border: 1.5px solid var(--bl-control-border); background: var(--bl-surface); color: var(--bl-text); }
 .bl-option[aria-pressed="true"] { background: var(--bl-accent); border-color: var(--bl-accent); color: var(--bl-on-accent); }
 .bl-choice { width: 100%; min-height: 56px; display: flex; align-items: center; gap: 12px; border: 0; border-bottom: 1px solid var(--bl-hair); background: transparent; padding: 0; text-align: left; color: inherit; }
 .bl-choice span.text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
@@ -252,7 +271,7 @@ body {
   border-radius: 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, .22); font-size: 15px; background: var(--bl-toast-bg); color: var(--bl-toast-fg);
 }
 .bl-sheet-open .bl-toast { bottom: auto; top: calc(12px + env(safe-area-inset-top)); }
-.bl-toast.error { background: var(--bl-danger); color: #fff; }
+.bl-toast.error { background: var(--bl-danger-fill); color: #fff; }
 .bl-toast span { flex: 1; padding: 8px 0; }
 .bl-toast button { min-height: 44px; padding: 0 14px; border: 0; background: transparent; font-weight: 700; color: var(--bl-toast-action); }
 .bl-toast.error button { color: #fff; text-decoration: underline; }

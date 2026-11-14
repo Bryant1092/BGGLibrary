@@ -27,7 +27,7 @@ import { currentOrNextConvention } from '../util/library-time';
     td { text-align: right; color: var(--bl-muted); padding: 8px 0; }
     tr + tr { border-top: 1px solid var(--bl-hair); }
     h2 { margin: 0; font-size: 17px; font-weight: 700; }
-    .segmented { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--bl-surface); border: 1px solid var(--bl-hair); }
+    .segmented { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--bl-surface); border: 1.5px solid var(--bl-control-border); }
     .segmented button { min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--bl-text); font-size: 15px; font-weight: 600; }
     .segmented button[aria-checked="true"] { background: var(--bl-accent); color: var(--bl-on-accent); }
   `,
