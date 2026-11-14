@@ -118,37 +118,76 @@ function conventionOn(ms: number): Convention | undefined {
   return CONVENTIONS.find(c => c.days.some(d => d.date === key));
 }
 
+/**
+ * open: green. closingSoon: amber, last hour before closing. closed: grey
+ * (closing overnight is normal, so not red, which reads as an error).
+ * upcoming: blue, before the convention starts.
+ */
+export type LibraryTone = 'open' | 'closingSoon' | 'closed' | 'upcoming';
+
 export interface LibraryStatus {
+  tone: LibraryTone;
   /** e.g. "Open until midnight", "Closed · opens 8 AM", "BGG.CON 2026 · Nov 18–22". */
-  text: string;
-  open: boolean;
+  title: string;
+  /** e.g. "3h 50m left", "Opens in 25 min", "Starts in 5 days". */
+  detail: string;
 }
 
-/** One-line library status for the header, or null when no convention is near. */
+/**
+ * Time remaining for the status badge: "45 min" under an hour, otherwise
+ * "3h 50m". Hours alone would mislead (3h 59m shown as "3 hrs"). Rounded up
+ * to the minute so it never says "0 min" while the countdown is still running.
+ */
+export function countdownText(ms: number): string {
+  const minutes = Math.max(1, Math.ceil(ms / MINUTE));
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+/** Whole days between two Dallas calendar dates (YYYY-MM-DD). */
+function daysBetween(fromKey: string, toKey: string): number {
+  return Math.round((Date.parse(toKey) - Date.parse(fromKey)) / (24 * HOUR));
+}
+
+/** Library status badge for the header, or null when no convention is within 30 days. */
 export function libraryStatus(now: number = Date.now()): LibraryStatus | null {
   // A convention day wins even after its final close, so the last afternoon
   // says "Closed for BGG.CON 2026" instead of jumping to the next convention.
   const convention = conventionOn(now) || currentOrNextConvention(now);
   if (!convention) return null;
-  const today = convention.days.find(d => d.date === dallasDateKey(now));
+  const todayKey = dallasDateKey(now);
+  const today = convention.days.find(d => d.date === todayKey);
+
   if (!today) {
     const first = convention.days[0];
-    const start = dayInstant(first, first.open);
+    const days = daysBetween(todayKey, first.date);
     // Far-off conventions aren't useful in the header.
-    if (start - now > 30 * 24 * HOUR) return null;
+    if (days > 30) return null;
     const last = convention.days[convention.days.length - 1];
     const lastDay = monthDayFormatter.format(new Date(dayInstant(last, '12:00'))).split(' ')[1];
     const range = `${monthDayFormatter.format(new Date(dayInstant(first, '12:00')))}–${lastDay}`;
-    return { text: `${convention.name} · ${range}`, open: false };
+    return { tone: 'upcoming', title: `${convention.name} · ${range}`, detail: days === 1 ? 'Starts tomorrow' : `Starts in ${days} days` };
   }
+
   const opens = dayInstant(today, today.open);
   const closes = dayInstant(today, today.close);
-  const closeText = today.close === '24:00' ? 'midnight' : formatLibraryTime(closes, now);
-  if (now < opens) return { text: `Closed · opens ${formatLibraryTime(opens, now)}`, open: false };
-  if (now < closes) return { text: `Open until ${closeText}`, open: true };
+  if (now < opens) {
+    return { tone: 'closed', title: `Closed · opens ${formatLibraryTime(opens, now)}`, detail: `Opens in ${countdownText(opens - now)}` };
+  }
+  if (now < closes) {
+    const closeText = today.close === '24:00' ? 'midnight' : formatLibraryTime(closes, now);
+    const left = closes - now;
+    return { tone: left <= HOUR ? 'closingSoon' : 'open', title: `Open until ${closeText}`, detail: `${countdownText(left)} left` };
+  }
   const next = convention.days[convention.days.indexOf(today) + 1];
-  if (!next) return { text: `Closed for ${convention.name}`, open: false };
-  return { text: `Closed · opens ${formatLibraryTime(dayInstant(next, next.open), now)}`, open: false };
+  if (next) {
+    // Only reachable if a day closes before midnight but isn't the last day.
+    const nextOpen = dayInstant(next, next.open);
+    return { tone: 'closed', title: `Closed · opens ${formatLibraryTime(nextOpen, now)}`, detail: `Opens in ${countdownText(nextOpen - now)}` };
+  }
+  const following = CONVENTIONS[CONVENTIONS.indexOf(convention) + 1];
+  return { tone: 'closed', title: `Closed for ${convention.name}`, detail: following ? `Next: ${following.name}` : 'See you next time' };
 }
 
 /**

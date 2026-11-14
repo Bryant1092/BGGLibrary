@@ -4,7 +4,11 @@
       <img src="icons/icon-72x72.png" alt="" width="30" height="30">
       <h1>Library</h1>
       @if (status(); as s) {
-        <span class="bl-status"><span class="bl-dot" [class.open]="s.open"></span>{{ s.text }}</span>
+        <!-- Color backs up the words and the dot shape (filled = open, ring = closed), so it never carries the meaning alone. -->
+        <span class="bl-status" [class]="s.tone">
+          <span class="bl-dot" aria-hidden="true"></span>
+          <span class="lines"><strong>{{ s.title }}</strong><span>{{ s.detail }}</span></span>
+        </span>
       }
     </div>
 

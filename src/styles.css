@@ -33,7 +33,6 @@
   --bl-toast-bg: #1c1b1a;
   --bl-toast-fg: #ffffff;
   --bl-toast-action: #f0a07e;
-  --bl-open: #16a34a;
   --bl-danger: #b42318;
   --bl-tabbar-h: 64px;
   --bl-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -61,7 +60,6 @@
     --bl-toast-bg: #f2f0ed;
     --bl-toast-fg: #191817;
     --bl-toast-action: #c2410c;
-    --bl-open: #4ade80;
     --bl-danger: #f97066;
   }
 }
@@ -108,9 +106,20 @@ body {
 .bl-title-row { display: flex; align-items: center; gap: 10px; min-height: 36px; }
 .bl-title-row img { width: 30px; height: 30px; border-radius: 8px; }
 .bl-title-row h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; flex: 1; }
-.bl-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--bl-muted); text-align: right; }
-.bl-dot { width: 8px; height: 8px; border-radius: 4px; background: var(--bl-muted); flex: none; }
-.bl-dot.open { background: var(--bl-open); }
+/* Library status badge in the header: tinted pill, two short lines, colored by state. */
+.bl-status {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border-radius: 14px;
+  background: var(--bl-out-bg); color: var(--bl-out-fg); max-width: 60%; flex: none;
+}
+.bl-status .lines { display: flex; flex-direction: column; min-width: 0; line-height: 16px; }
+.bl-status strong { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bl-status .lines span { font-size: 12px; font-weight: 600; opacity: .9; white-space: nowrap; }
+.bl-status.open { background: var(--bl-avail-bg); color: var(--bl-avail-fg); }
+.bl-status.closingSoon { background: var(--bl-late-bg); color: var(--bl-late-fg); }
+.bl-status.upcoming { background: var(--bl-due-bg); color: var(--bl-due-fg); }
+/* Filled dot = open; hollow ring = closed or not started, so the shape differs too, not just the color. */
+.bl-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; box-sizing: border-box; border: 2px solid currentColor; }
+.bl-status.open .bl-dot, .bl-status.closingSoon .bl-dot { background: currentColor; }
 .bl-subrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; font-size: 14px; color: var(--bl-muted); }
 .bl-section { margin: 0; padding: 16px 16px 6px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-muted); }
 
