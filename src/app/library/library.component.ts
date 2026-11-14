@@ -15,7 +15,8 @@ import { ListPickerSheetComponent } from '../shared/list-picker-sheet.component'
 import { SheetComponent } from '../shared/sheet.component';
 import { ThumbComponent } from '../shared/thumb.component';
 import { currentOrNextConvention, libraryStatus } from '../util/library-time';
-import { minutesText, playersText, shelfText, statusText } from '../util/game-format';
+import { isNewArrival, minutesText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
+import { matchHotGames } from '../util/hot-games';
 
 /** 25 per page: enough to scroll through, small enough to load quickly on convention Wi-Fi. */
 const PAGE_SIZE = 25;
@@ -34,6 +35,7 @@ const SORT_OPTIONS: { value: LibrarySort; label: string; chip: string; note: str
   { value: 'availability', label: 'Available first', chip: 'Available first', note: 'Checked-out games go to the end' },
   { value: 'popular', label: 'Most played', chip: 'Most played', note: 'Checked out most often at past conventions' },
   { value: 'newest', label: 'Newest to the library', chip: 'Newest', note: 'Games added most recently come first' },
+  { value: 'returned', label: 'Just returned', chip: 'Just returned', note: 'New arrivals first, then games just checked back in' },
 ];
 
 interface Filters {
@@ -138,9 +140,11 @@ export class LibraryComponent implements OnInit, OnDestroy {
     const ids = this.listGameIds();
     const busy = this.busyIds();
     const list = this.currentList()?.name;
+    const returnedMode = this.filters().sort === 'returned';
     return this.items().map(item => ({
       item,
-      status: statusText(item, now),
+      isNew: returnedMode && isNewArrival(item),
+      status: !returnedMode ? statusText(item, now) : isNewArrival(item) ? 'New arrival' : returnedText(item, now),
       out: !!item.is_checked_out,
       shelf: shelfText(item),
       players: playersText(item),
@@ -150,6 +154,26 @@ export class LibraryComponent implements OnInit, OnDestroy {
       addLabel: ids.has(item.id) ? `Remove ${item.name} from ${list}` : `Add ${item.name} to ${list || 'a list'}`,
     }));
   });
+
+  /**
+   * Rows split into headed groups for the Just returned sort: new arrivals
+   * first (the new games people are after), then real returns. Other sorts
+   * are a single unheaded group. Only loaded results can be split, since
+   * Tabletop.Events sorts by one field.
+   */
+  rowGroups = computed(() => {
+    const rows = this.rows();
+    if (this.filters().sort !== 'returned') {
+      return [{ title: '', note: '', rows }];
+    }
+    return [
+      { title: 'New to the library', note: 'Just added by library staff, not returned by a player.', rows: rows.filter(r => r.isNew) },
+      { title: 'Checked back in · newest first', note: '', rows: rows.filter(r => !r.isNew) },
+    ].filter(group => group.rows.length);
+  });
+
+  /** BGG.CON Hot Games matching the search; shown as cards above the results. */
+  hotMatches = computed(() => matchHotGames(this.filters().query, this.now()));
 
   ngOnInit(): void {
     this.requests.pipe(

@@ -205,6 +205,15 @@ body {
 .bl-meta > span { display: inline-flex; align-items: center; gap: 4px; }
 .bl-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 11px; font-size: 13px; font-weight: 600; background: var(--bl-avail-bg); color: var(--bl-avail-fg); white-space: nowrap; }
 .bl-pill.out { background: var(--bl-out-bg); color: var(--bl-out-fg); }
+/* "New arrival" in the Just returned sort: blue, like other informational states. */
+.bl-pill.new { background: var(--bl-due-bg); color: var(--bl-due-fg); box-shadow: inset 0 0 0 1px var(--bl-due-border); }
+/* Hot Games result card at the top of a matching search. */
+.bl-hot-card { margin: 14px 16px 6px; border-radius: 16px; padding: 14px 16px; background: var(--bl-accent-soft); border: 1.5px solid var(--bl-accent-text); display: flex; gap: 12px; color: var(--bl-text); }
+.bl-hot-card > bl-icon { color: var(--bl-accent-text); margin-top: 2px; }
+.bl-hot-card div { display: flex; flex-direction: column; gap: 4px; }
+.bl-hot-card .kicker { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-accent-text); }
+.bl-hot-card strong { font-size: 18px; line-height: 23px; }
+.bl-hot-card .body { font-size: 14px; line-height: 19px; color: var(--bl-muted); }
 .bl-add {
   flex: none; width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; padding: 0;
   border: 1.5px solid var(--bl-accent-text); background: transparent; color: var(--bl-accent-text);

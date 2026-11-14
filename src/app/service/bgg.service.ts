@@ -15,7 +15,7 @@ export interface SearchResult {
  * checked against the live API. Play time sorts were left out: the data has
  * placeholder values (1 minute, 1200 minutes) that would fill the top of the list.
  */
-export type LibrarySort = 'name' | 'nameDesc' | 'availability' | 'popular' | 'newest';
+export type LibrarySort = 'name' | 'nameDesc' | 'availability' | 'popular' | 'newest' | 'returned';
 
 const SORT_PARAMS: Record<LibrarySort, { orderBy: string; order: 'asc' | 'desc' }> = {
   name: { orderBy: 'name', order: 'asc' },
@@ -25,6 +25,9 @@ const SORT_PARAMS: Record<LibrarySort, { orderBy: string; order: 'asc' | 'desc' 
   popular: { orderBy: 'checkout_count', order: 'desc' },
   // When the game was added to the library, so new arrivals come first.
   newest: { orderBy: 'date_created', order: 'desc' },
+  // Most recently checked in first. Games just added to the library count as
+  // "checked in" when added; the Library page labels those as new arrivals.
+  returned: { orderBy: 'last_checkin_date', order: 'desc' },
 };
 
 /** Play-time filter choices; each maps to a Tabletop.Events `max_play_time` condition. */
@@ -79,7 +82,9 @@ export class BggService {
         .append('_sort_order', sort.order)
         .append('is_in_circulation', '1')
         .append('query', search.query || '');
-    if (search.availableOnly) {
+    // "Just returned" is about what's on the shelf now, so games checked out
+    // again since their return are left out even without "Available now".
+    if (search.availableOnly || search.sort === 'returned') {
       params = params.append('availability', 'available');
     }
     if (search.players) {

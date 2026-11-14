@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { BggItem } from '../model/bgg.model';
 import { dueInfo, formatLibraryDate, formatLibraryTime, shortDuration } from '../util/library-time';
-import { bggUrl, minutesText, playersText, shelfText } from '../util/game-format';
+import { bggUrl, howToPlayUrl, minutesText, playersText, shelfText } from '../util/game-format';
+import { isHotGame } from '../util/hot-games';
 import { IconComponent } from './icon.component';
 import { SheetComponent } from './sheet.component';
 import { ThumbComponent } from './thumb.component';
@@ -37,6 +38,8 @@ import { ThumbComponent } from './thumb.component';
     .sooner { font-size: 15px; font-weight: 700; line-height: 20px; color: var(--fg); }
     .detail { font-size: 14px; line-height: 19px; color: var(--bl-muted); }
     .note { font-size: 13px; line-height: 18px; color: var(--bl-muted); }
+    .hot { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--bl-accent-soft); font-size: 14px; line-height: 19px; display: flex; gap: 10px; align-items: flex-start; }
+    .hot bl-icon { color: var(--bl-accent-text); }
     .bgg { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; font-weight: 600; text-decoration: none; color: var(--bl-accent-text); }
   `,
   template: `
@@ -55,6 +58,10 @@ import { ThumbComponent } from './thumb.component';
         <div class="tile"><small>Players</small><strong>{{ players() }}</strong></div>
         <div class="tile"><small>Play time</small><strong>{{ minutes() }}m</strong></div>
       </div>
+
+      @if (hot()) {
+        <p class="hot"><bl-icon name="flame" [size]="20" /><span>Also on the <strong>Hot Games tables</strong>: no checkout needed if a table is free.</span></p>
+      }
 
       @if (due(); as d) {
         <div class="due" [class.late]="d.isLate && !d.stale">
@@ -93,6 +100,13 @@ import { ThumbComponent } from './thumb.component';
         </button>
       }
       <button type="button" class="bl-btn" [class.secondary]="inList()" [disabled]="busy()" (click)="toggle.emit()">{{ actionLabel() }}</button>
+      <!-- Learning the rules before checking a game out saves table time. -->
+      <a class="bl-btn secondary" style="text-decoration: none" [href]="howToPlay()" target="_blank" rel="noopener"
+         [attr.aria-label]="'Watch how to play ' + game().name + ' (opens a YouTube search)'">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="4" fill="var(--bl-accent)"/><path d="M10 9.5v5l4.5-2.5z" fill="#fff"/></svg>
+        Watch how to play
+      </a>
+      <span class="note" style="text-align: center; margin-top: -8px">Opens a YouTube search</span>
       <a class="bgg" [href]="bgg()" target="_blank" rel="noopener">
         View on BoardGameGeek <bl-icon name="external" [size]="16" />
       </a>
@@ -119,6 +133,8 @@ export class GameSheetComponent {
   minutes = computed(() => minutesText(this.game()));
   due = computed(() => dueInfo(this.game(), this.now()));
   bgg = computed(() => bggUrl(this.game()));
+  howToPlay = computed(() => howToPlayUrl(this.game()));
+  hot = computed(() => isHotGame(this.game().name, this.now()));
   actionLabel = computed(() => {
     const list = this.listName();
     if (!list) return 'Add to a list';

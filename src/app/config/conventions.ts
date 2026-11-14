@@ -22,12 +22,21 @@ export interface Convention {
   days: LibraryDay[];
   /** BGG.CON has a Hot Games area (not in the checkout library); BGG.Spring doesn't. */
   hasHotGames: boolean;
+  /**
+   * Titles on the Hot Games tables, copied from the convention page once
+   * posted (normally the Saturday before BGG.CON). Searching one shows "On the
+   * Hot Games tables". Plain titles are enough; matching ignores case,
+   * punctuation and "(English edition)"-style text in brackets.
+   */
+  hotGames?: string[];
 }
 
 export const CONVENTIONS: Convention[] = [
   {
     name: 'BGG.CON 2026',
     hasHotGames: true,
+    // Not posted yet as of Nov 13; add titles here when the list is out.
+    hotGames: [],
     days: [
       { date: '2026-11-18', open: '09:00', close: '24:00' },
       { date: '2026-11-19', open: '08:00', close: '24:00' },

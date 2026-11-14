@@ -24,6 +24,7 @@ const ICONS: Record<string, string> = {
   more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
   refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
   share: '<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>',
+  flame: '<path d="M12 22c4 0 7-2.8 7-7 0-3.5-2.5-6-4-8-.5 2-1.5 3-3 3 1-3 0-6-3-8 0 4-4 6-4 11 0 4.2 3 9 7 9z"/>',
   // Filled bell = alert on; outlined bell with a slash = off. The shapes differ,
   // not just the color, so the state is clear to color-blind users too.
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" fill="currentColor"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',

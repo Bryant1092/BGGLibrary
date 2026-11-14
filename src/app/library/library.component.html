@@ -60,6 +60,20 @@
   </header>
 
   <main>
+    <!-- BGG.CON Hot Games matching the search (list in config/conventions.ts). -->
+    @for (title of hotMatches(); track title) {
+      <div class="bl-hot-card">
+        <bl-icon name="flame" [size]="26" />
+        <div>
+          <span class="kicker">On the Hot Games tables</span>
+          <strong>{{ title }}</strong>
+          <span class="body">No checkout needed: find a free table in the Hot Games area and play. Tables are first-come, first-served.</span>
+        </div>
+      </div>
+    }
+    @if (hotMatches().length && items().length) {
+      <h2 class="bl-section">Also in the checkout library</h2>
+    }
     @if (loading() && items().length === 0) {
       <!-- Placeholder rows instead of a spinner, so the page doesn't jump when results arrive. -->
       @for (n of [1, 2, 3, 4, 5, 6]; track n) {
@@ -81,6 +95,12 @@
         <p class="body">Check your connection and try again. Searches you've already done still work offline.</p>
         <button type="button" class="bl-btn outline" (click)="search()">Try again</button>
       </div>
+    } @else if (items().length === 0 && hotMatches().length) {
+      <!-- A Hot Game with no checkout copy: say where it is instead of "No games match". -->
+      <div class="bl-empty">
+        <p class="title">Not in the checkout library</p>
+        <p class="body">It's on the Hot Games tables instead (above): find a free table and play, no checkout needed.</p>
+      </div>
     } @else if (items().length === 0) {
       <div class="bl-empty">
         <p class="title">No games match</p>
@@ -97,7 +117,12 @@
     } @else {
       <!-- Dimmed while a new search loads, so it's clear the results are about to change. -->
       <div [style.opacity]="loading() ? 0.5 : 1">
-        @for (row of rows(); track row.item.id) {
+        @for (group of rowGroups(); track group.title) {
+        @if (group.title) {
+          <h2 class="bl-section">{{ group.title }}</h2>
+          @if (group.note) { <p class="bl-sheet-note" style="padding: 0 16px 6px">{{ group.note }}</p> }
+        }
+        @for (row of group.rows; track row.item.id) {
           <div class="bl-row">
             <button type="button" class="bl-row-main" (click)="openDetails(row.item)">
               <!-- Fixed size so rows don't jump as images load; shows a letter tile when there's no thumbnail. -->
@@ -106,7 +131,7 @@
               <span class="bl-row-text">
                 <span class="bl-name">{{ row.item.name }}</span>
                 <span class="bl-status-line">
-                  <span class="bl-pill" [class.out]="row.out">{{ row.status }}</span>
+                  <span class="bl-pill" [class.out]="row.out" [class.new]="row.isNew">{{ row.status }}</span>
                   <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ row.shelf }}</span>
                 </span>
                 <span class="bl-meta">
@@ -120,6 +145,7 @@
               <bl-icon [name]="row.inList ? 'check' : 'plus'" [stroke]="2.5" />
             </button>
           </div>
+        }
         }
       </div>
       @if (hasMore()) {
