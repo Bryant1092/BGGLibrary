@@ -84,6 +84,14 @@ const PAGE_SIZE = 100;
 const FRESH_MS = 5 * 60_000;
 const STAR_KEY = 'bgglibrary.starredEvents';
 /**
+ * The schedule saved on this phone, per convention. The tab shows it instantly
+ * and refreshes in the background. Before, every visit waited for 4 downloads
+ * (about 5 s on good Wi-Fi, far longer on crowded con Wi-Fi), because the
+ * service worker only falls back to its copy after 8 s with no answer.
+ * About 250 KB for BGG.CON 2026's 345 events.
+ */
+const SAVED_PREFIX = 'bgglibrary.events.';
+/**
  * Tabletop.Events has no "ticket optional" setting, so organizers write it in
  * the description instead (Nov 2026: Board Game Bazaar and Virtual Flea Market,
  * "BUYERS **DO NOT** need a ticket to enter this event. Tickets are available
@@ -121,6 +129,7 @@ export class EventsService {
   load(convention: Convention, force = false): void {
     const id = convention.tteConventionId;
     if (!id || this.loading()) return;
+    if (this.loadedFor !== id) this.showSaved(id);
     const fresh = this.loadedFor === id && Date.now() - (this.loadedAt() || 0) < FRESH_MS;
     if (fresh && !force) return;
     this.loading.set(true);
@@ -132,6 +141,7 @@ export class EventsService {
         this.loadedFor = id;
         this.loadedAt.set(Date.now());
         this.loading.set(false);
+        this.save(id, this.events()!);
       },
       error: err => {
         console.error('Failed to load events', err);
@@ -291,6 +301,26 @@ export class EventsService {
     if (!space || space === room) return room;
     if (!room || space.toLowerCase().startsWith(room.toLowerCase())) return space;
     return `${room} · ${space}`;
+  }
+
+  /** Shows the saved schedule (if any) while the fresh one loads. "Updated … ago" stays truthful. */
+  private showSaved(id: string): void {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SAVED_PREFIX + id) || 'null');
+      if (Array.isArray(saved?.events) && saved.at) {
+        this.events.set(saved.events);
+        this.loadedFor = id;
+        this.loadedAt.set(saved.at);
+      }
+    } catch { /* unreadable copy: just load normally */ }
+  }
+
+  private save(id: string, events: ConEvent[]): void {
+    try {
+      // One convention at a time: drop other conventions' copies first.
+      Object.keys(localStorage).filter(k => k.startsWith(SAVED_PREFIX) && k !== SAVED_PREFIX + id).forEach(k => localStorage.removeItem(k));
+      localStorage.setItem(SAVED_PREFIX + id, JSON.stringify({ at: Date.now(), events }));
+    } catch { /* storage full or blocked: the app still works, it just waits next time */ }
   }
 
   private readStars(): Set<string> {
