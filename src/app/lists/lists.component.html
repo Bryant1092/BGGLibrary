@@ -15,14 +15,17 @@
     </div>
 
     @if (lists()?.length) {
-      <div class="bl-chips" role="group" aria-label="Your lists">
-        @for (list of lists(); track list.id) {
-          <button type="button" class="bl-chip" [class.on]="list.id === selectedId()" [attr.aria-pressed]="list.id === selectedId()" (click)="select(list.id)">
-            {{ list.name }}
-          </button>
-        }
-        <button type="button" class="bl-chip dashed" aria-label="New list" (click)="openForm('create')"><bl-icon name="plus" [size]="18" [stroke]="2.4" /></button>
-      </div>
+      <!--
+        Same switcher and sheet as the Library. It replaced a row of chips: past ~5 lists most were
+        off-screen, a mouse couldn't scroll them, and choosing a list worked differently per tab.
+        "New list" is in the sheet and in the ⋯ menu.
+      -->
+      <button type="button" class="bl-list-switch" style="flex: none; width: 100%" (click)="sheet.set('lists')"
+              [attr.aria-label]="'Showing ' + (selectedList()?.name || 'no list') + '. Change list'">
+        <span class="label">List</span>
+        <strong>{{ selectedList()?.name || 'Choose a list' }}</strong>
+        <bl-icon name="chevronDown" [size]="18" [stroke]="2.4" />
+      </button>
       <div class="bl-subrow">
         <span>{{ summary() }}</span>
         <span>{{ refreshing() ? 'Checking…' : updatedText() }}</span>
@@ -36,7 +39,7 @@
       @for (n of [1, 2, 3, 4]; track n) {
         <div class="bl-row" aria-hidden="true">
           <div class="bl-row-main">
-            <div class="bl-shelf-badge bl-skel"></div>
+            <div class="bl-skel" style="width: 52px; height: 52px; border-radius: 10px; flex: none"></div>
             <div class="bl-row-text">
               <div class="bl-skel" style="height: 16px; width: 65%"></div>
               <div class="bl-skel" style="height: 14px; width: 40%"></div>
@@ -62,13 +65,11 @@
         @for (row of section.rows; track row.game.id) {
           <div class="bl-row" style="padding-right: 8px">
             <button type="button" class="bl-row-main" style="align-items: center" (click)="openGame(row)" [disabled]="!row.item">
-              @if (row.item) {
-                <span class="bl-shelf-badge" [class.out]="section.out" [class.long]="row.longShelf">
-                  <small>Shelf</small><strong>{{ row.shelf }}</strong>
-                </span>
-              } @else {
-                <span class="bl-shelf-badge" [class.bl-skel]="!row.failed"><small>Shelf</small><strong>?</strong></span>
-              }
+              <!--
+                Box art first: at the shelf you're scanning for the box, so the picture is what you
+                match against. The shelf badge stays big on the right: which shelf, then which box.
+              -->
+              <app-thumb [src]="row.item?.bgg_icon_uri" [name]="row.game.name || ''" [size]="52" [style.opacity]="section.out ? 0.6 : 1" />
               <span class="bl-row-text">
                 <span class="bl-name" [style.color]="section.out ? 'var(--bl-muted)' : null">{{ row.game.name }}</span>
                 <span class="bl-meta">
@@ -82,6 +83,13 @@
                   }
                 </span>
               </span>
+              @if (row.item) {
+                <span class="bl-shelf-badge" [class.out]="section.out" [class.long]="row.longShelf">
+                  <small>Shelf</small><strong>{{ row.shelf }}</strong>
+                </span>
+              } @else {
+                <span class="bl-shelf-badge" [class.bl-skel]="!row.failed"><small>Shelf</small><strong>?</strong></span>
+              }
             </button>
             @if (section.out) {
               <!-- Only checked-out games get a bell; an available game has nothing to wait for. -->
@@ -105,6 +113,10 @@
 </div>
 
 @switch (sheet()) {
+  @case ('lists') {
+    <app-list-picker-sheet [lists]="lists() || []" [currentId]="selectedId()" [uid]="uid()"
+                           (pick)="pickList($event)" (create)="createList($event)" (closed)="sheet.set(null)" />
+  }
   @case ('details') {
     @if (selectedGame(); as selected) {
       <app-game-sheet [game]="selected.item" [now]="now()" [listName]="selectedList()?.name" [inList]="true" [busy]="busy()"

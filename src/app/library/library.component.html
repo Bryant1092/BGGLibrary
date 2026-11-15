@@ -46,13 +46,13 @@
 
     <div class="bl-subrow">
       @if (signedIn()) {
-        <span style="display: flex; align-items: center; min-width: 0">
-          Adding to
-          <button type="button" class="bl-link-btn" style="min-width: 0" (click)="sheet.set('lists')">
-            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ currentList()?.name || 'Choose a list' }}</span>
-            <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
-          </button>
-        </span>
+        <!-- Same switcher and sheet as My Lists (one way to choose a list everywhere). -->
+        <button type="button" class="bl-list-switch" (click)="sheet.set('lists')"
+                [attr.aria-label]="'Adding to ' + (currentList()?.name || 'no list') + '. Change list'">
+          <span class="label">Adding to</span>
+          <strong>{{ currentList()?.name || 'Choose a list' }}</strong>
+          <bl-icon name="chevronDown" [size]="18" [stroke]="2.4" />
+        </button>
       } @else {
         <span>Sign in to save games to lists</span>
       }
@@ -197,7 +197,12 @@
         }
       </div>
       @if (hasMore()) {
-        <div class="bl-more">
+        <!--
+          Infinite scroll: the next page loads by itself when this comes within 200px of the
+          screen (blInView), so browsing ~1,900 games isn't a tap every 100. The button stays as a
+          fallback, e.g. when a load fails on con Wi-Fi or for keyboard users.
+        -->
+        <div class="bl-more" (blInView)="loadMore()">
           <button type="button" class="bl-btn outline" [disabled]="loadingMore()" (click)="loadMore()">
             {{ loadingMore() ? 'Loading…' : 'Load more games' }}
           </button>

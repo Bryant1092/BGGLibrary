@@ -16,6 +16,8 @@ import { GameSheetComponent } from '../shared/game-sheet.component';
 import { IconComponent } from '../shared/icon.component';
 import { SheetComponent } from '../shared/sheet.component';
 import { OfflineBarComponent } from '../shared/offline-bar.component';
+import { ListPickerSheetComponent } from '../shared/list-picker-sheet.component';
+import { ThumbComponent } from '../shared/thumb.component';
 import { dueInfo, shortDuration } from '../util/library-time';
 import { minutesText, playersText, shelfText, statusText } from '../util/game-format';
 
@@ -54,7 +56,7 @@ export class ListDetailsCache {
   }
 }
 
-type ListSheet = 'details' | 'actions' | 'create' | 'rename' | 'share' | 'delete' | null;
+type ListSheet = 'lists' | 'details' | 'actions' | 'create' | 'rename' | 'share' | 'delete' | null;
 
 interface ListRow {
   game: Game;
@@ -70,7 +72,7 @@ interface ListRow {
 @Component({
   selector: 'app-lists',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent],
+  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './lists.component.html',
 })
@@ -264,6 +266,31 @@ export class ListsComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Picking a list here also makes it the Library's "Adding to" list: one current list for the
+   * whole app, so the two tabs never show different lists.
+   */
+  pickList(list: UserGameListRef): void {
+    this.userService.setCurrentGameList(list);
+    this.select(list.id);
+    this.sheet.set(null);
+  }
+
+  createList(name: string): void {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.gameService.createGameList(name)
+      .then(id => {
+        this.pickList({ id, name, owner: this.uid() });
+        this.toast.show({ text: `Created ${name}` });
+      })
+      .catch(err => {
+        console.error('Failed to create list', err);
+        this.toast.error("Couldn't create the list. Check your connection and try again.");
+      })
+      .finally(() => this.busy.set(false));
+  }
+
   /** Requests details for games that aren't loaded or in flight. force=true re-downloads everything (refresh button). */
   loadDetails(force = false): void {
     if (force) {
@@ -349,6 +376,7 @@ export class ListsComponent implements OnInit, OnDestroy {
     let action: Promise<unknown>;
     if (this.sheet() === 'create') {
       action = this.gameService.createGameList(value).then(id => {
+        this.userService.setCurrentGameList({ id, name: value, owner: this.uid() });
         this.select(id);
         this.toast.show({ text: `Created ${value}` });
       });

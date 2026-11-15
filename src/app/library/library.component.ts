@@ -21,6 +21,7 @@ import { ShelfListComponent } from './shelf-list.component';
 import { currentOrNextConvention, libraryStatus, shortDuration } from '../util/library-time';
 import { isNewArrival, minutesText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
 import { matchHotGames } from '../util/hot-games';
+import { InViewDirective } from '../shared/in-view.directive';
 
 /**
  * 12 per page. Tabletop.Events' response time grows with page size (measured
@@ -76,7 +77,7 @@ export class LibraryPageState {
 @Component({
   selector: 'app-library',
   standalone: true,
-  imports: [IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent],
+  imports: [InViewDirective, IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './library.component.html',
 })
@@ -382,7 +383,9 @@ export class LibraryComponent implements OnInit, OnDestroy {
   }
 
   loadMore(): void {
-    if (!this.loadingMore()) {
+    // Also called automatically when the end of the list scrolls into view. Skipped while a new
+    // search is loading: switchMap would cancel that search in favour of page 2 of the old one.
+    if (!this.loadingMore() && !this.loading() && this.hasMore()) {
       this.requests.next({ page: this.page + 1, append: true });
     }
   }

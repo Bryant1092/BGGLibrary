@@ -35,6 +35,16 @@ export class AppComponent implements OnInit {
   isHideNav = false;
 
   ngOnInit(): void {
+    // A mouse wheel only scrolls up and down, so the sideways chip rows (filters, map categories)
+    // couldn't be scrolled without a touchscreen. Over a chip row that can scroll sideways, turn
+    // vertical wheel movement into horizontal scrolling. Touch and trackpad swipes are unaffected.
+    document.addEventListener('wheel', e => {
+      const row = (e.target as Element | null)?.closest?.('.bl-chips, app-map-viewer .chips') as HTMLElement | null;
+      if (!row || e.shiftKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || row.scrollWidth <= row.clientWidth) return;
+      row.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }, { passive: false });
+
     this.hideNavService.checkHideNav()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(value => {

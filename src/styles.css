@@ -182,6 +182,13 @@ body {
 /* Horizontally scrolling chip row; the negative margin lets chips scroll edge to edge. */
 .bl-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
 .bl-chips::-webkit-scrollbar { display: none; }
+/* With a mouse there's no swipe, so the hidden scrollbar left extra chips unreachable. Show a thin
+   one on devices with a fine pointer; the wheel also scrolls these rows sideways (AppComponent). */
+@media (hover: hover) and (pointer: fine) {
+  .bl-chips { scrollbar-width: thin; padding-bottom: 6px; }
+  .bl-chips::-webkit-scrollbar { display: block; height: 6px; }
+  .bl-chips::-webkit-scrollbar-thumb { background: var(--bl-hair); border-radius: 3px; }
+}
 .bl-chip {
   flex: none; height: 44px; padding: 0 16px; border-radius: 22px; display: inline-flex; align-items: center; gap: 6px;
   font-size: 15px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--bl-control-border); background: var(--bl-surface); color: var(--bl-text);
@@ -189,6 +196,15 @@ body {
 .bl-chip.on { background: var(--bl-accent); border-color: var(--bl-accent); color: var(--bl-on-accent); }
 .bl-chip.dashed { border-style: dashed; border-color: var(--bl-muted); color: var(--bl-muted); width: 44px; padding: 0; justify-content: center; }
 
+/*
+ * The list switcher: same button on Library and My Lists, opening the same sheet. It replaced a
+ * small text link (Library) and a row of chips (My Lists), so choosing a list looks and works the
+ * same everywhere, and it's a full 44px+ touch target.
+ */
+.bl-list-switch { flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 12px; border-radius: 12px; border: 1.5px solid var(--bl-control-border); background: var(--bl-surface); color: var(--bl-text); text-align: left; }
+.bl-list-switch .label { flex: none; font-size: 13px; color: var(--bl-muted); }
+.bl-list-switch strong { flex: 1; min-width: 0; font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bl-list-switch bl-icon { color: var(--bl-accent-text); }
 .bl-link-btn { border: 0; background: transparent; padding: 4px 6px; margin: -4px 0; min-height: 36px; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--bl-accent-text); }
 
 .bl-btn {
