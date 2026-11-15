@@ -58,6 +58,12 @@
               "outputHashing": "all",
               "serviceWorker": "ngsw-config.json"
             },
+            "fork": {
+              "fileReplacements": [{
+                "replace": "src/environments/environment.ts",
+                "with": "src/environments/environment.fork.ts"
+              }]
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,

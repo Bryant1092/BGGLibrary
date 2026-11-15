@@ -54,6 +54,17 @@ ng build
 
 This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
+### Test Firebase project (fork only)
+
+`ng build --configuration production,fork` builds against a separate Firebase project
+(`src/environments/environment.fork.ts`) used by the fork's test site, so new features can be
+tried with real sign-in and lists without touching the real app's users. A plain `ng build`
+still uses the real project.
+
+The Firestore security rules and index the app needs are in `firestore.rules` and
+`firestore.indexes.json` (paste into the Firebase console, or
+`firebase deploy --only firestore`).
+
 ## Running unit tests
 
 To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:

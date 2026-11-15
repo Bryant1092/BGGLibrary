@@ -1,0 +1,97 @@
+rules_version = '2';
+
+// Security rules for the app's Firestore database.
+//
+// Written for the fork's test project (bgg-library-test) from what the code
+// actually reads and writes (service/game.service.ts, user.service.ts). Kept in
+// the repo so the real project's rules can be compared and reviewed like code.
+// Paste into Firebase console -> Firestore Database -> Rules, or deploy with
+// `firebase deploy --only firestore:rules`.
+//
+// Data layout:
+//   users/{uid}                       profile: uid, email, firstName, lastName, provider
+//   users/{uid}/gameLists/{listId}    "this person has this list": id, name, userId, owner
+//   dataLists/{listId}                the list itself: name, gameList[] (games, played ticks)
+//
+// The key idea: you may open a list only if you hold a reference to it in your
+// own gameLists. Sharing gives a friend that reference.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myRef(listId) {
+      return /databases/$(database)/documents/users/$(request.auth.uid)/gameLists/$(listId);
+    }
+
+    // The signed-in person holds this list (their own or shared with them).
+    function holds(listId) {
+      return exists(myRef(listId));
+    }
+
+    // The signed-in person created this list.
+    function owns(listId) {
+      return holds(listId) && get(myRef(listId)).data.owner == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      // Your own profile only.
+      allow get: if signedIn() && request.auth.uid == uid;
+      // Sharing looks a friend up by exact email. Only one-result queries are
+      // allowed (the app uses limit(1)), so nobody can download every email.
+      allow list: if signedIn() && request.query.limit == 1;
+      // The profile email must be the account's own (lowercased, as the app saves it).
+      // Otherwise someone could put a friend's email on their profile and receive
+      // lists meant for that friend.
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email.lower();
+      allow delete: if false;
+
+      match /gameLists/{listId} {
+        // Your own list references.
+        allow read: if signedIn() && request.auth.uid == uid;
+        // Two cases:
+        // - Your own, for a list you're creating right now. exists() sees the
+        //   database before this write, so the list must not exist yet; the
+        //   app creates both in one batch (GameService.createGameList). This
+        //   stops someone who learned a list's id from adding it to themselves.
+        // - A friend's, when you share a list you hold.
+        allow create: if signedIn()
+          && request.resource.data.id == listId
+          && request.resource.data.userId == uid
+          && (
+            (request.auth.uid == uid && request.resource.data.owner == uid
+              && !exists(/databases/$(database)/documents/dataLists/$(listId)))
+            || (request.auth.uid != uid && holds(listId))
+          );
+        // Renaming a list updates the name on everyone's copy, and nothing else.
+        allow update: if signedIn() && holds(listId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']);
+        // Leave a list yourself, or the owner removes it from everyone when deleting.
+        allow delete: if signedIn() && (request.auth.uid == uid || owns(listId));
+      }
+    }
+
+    // "Who has this list?" (rename and delete look up every holder by list id).
+    // Only people who hold the list can ask.
+    match /{path=**}/gameLists/{listId} {
+      allow read: if signedIn() && holds(resource.data.id);
+    }
+
+    match /dataLists/{listId} {
+      // A new list must arrive together with its creator's reference (same batch;
+      // getAfter sees the batch's result).
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['name', 'gameList'])
+        && getAfter(myRef(listId)).data.owner == request.auth.uid;
+      // Holders can see it and add/remove/tick games or rename it.
+      allow read, update: if signedIn() && holds(listId);
+      // Only the owner deletes it for everyone.
+      allow delete: if signedIn() && owns(listId);
+    }
+  }
+}

@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { FirestoreService } from './firestore.service';
 import { USERS_DB, UserService } from './user.service';
 import { Game } from '../model/game.model';
-import { where } from '@angular/fire/firestore';
+import { limit, where } from '@angular/fire/firestore';
 import { firstValueFrom, Observable } from 'rxjs';
 import { GameList } from '../model/gamelist.model';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
@@ -20,15 +20,24 @@ export class GameService {
 
   constructor() { }
 
+  /**
+   * Creates the list and the owner's reference to it in one atomic write.
+   * Before, they were two separate writes: if the second failed (bad Wi-Fi),
+   * the list existed but nobody could see it. The security rules also rely on
+   * the two arriving together to tell a brand-new list from someone else's
+   * existing list (see firestore.rules).
+   */
   createGameList(listName: string, game?: Game): Promise<string> {
-    return this.firestore.setDocData({
-      name: listName,
-      gameList: !!game ? [game] : []
-    }, DATALIST_DB.DATA_LISTS).then(id => {
-      return this.createUserGameList(id, listName).then((newId: string) => {
-        return newId;
-      });
-   });
+    const uid = this.userService.getCurrentUid();
+    if (!uid) {
+      return Promise.reject(new Error('Not signed in'));
+    }
+    return this.firestore.createWithRef(
+      DATALIST_DB.DATA_LISTS,
+      { name: listName, gameList: !!game ? [game] : [] },
+      id => [USERS_DB.USERS, uid, USERS_DB.GAME_LISTS, id],
+      id => ({ id, name: listName, userId: uid, owner: uid }),
+    );
   }
 
   /** Adds the game unless a game with the same id is already in the list. */
@@ -105,14 +114,26 @@ export class GameService {
     return !gameList.owner || gameList.owner === this.userService.getCurrentUid();
   }
 
-  /** Owner only: deletes the list and removes it from everyone it was shared with. */
+  /**
+   * Owner only: deletes the list and removes it from everyone it was shared with.
+   *
+   * Order matters: other people's copies first, then the list, then the owner's
+   * own copy last. The security rules check "does the owner still hold this
+   * list?" on every step; deleting everything at once (as before) could remove
+   * the owner's copy first and get the remaining deletes refused, leaving
+   * friends with a dead list.
+   */
   deleteGameListAndReferences(gameListId: string): Promise<string> {
+    const uid = this.userService.getCurrentUid();
     return this.fetchUsersWithGameList(gameListId).then(dataArray => {
-      return this.firestore.deleteDocument(DATALIST_DB.DATA_LISTS, gameListId).then(id => {
-        return Promise.all(dataArray.map(userGameList =>
-          this.firestore.deleteDocument(USERS_DB.USERS, userGameList.userId!, USERS_DB.GAME_LISTS, gameListId)
-        )).then(() => id);
-      });
+      const others = dataArray.filter(ref => ref.userId !== uid);
+      return Promise.all(others.map(ref =>
+        this.firestore.deleteDocument(USERS_DB.USERS, ref.userId!, USERS_DB.GAME_LISTS, gameListId)
+      ))
+        .then(() => this.firestore.deleteDocument(DATALIST_DB.DATA_LISTS, gameListId))
+        .then(id => uid
+          ? this.firestore.deleteDocument(USERS_DB.USERS, uid, USERS_DB.GAME_LISTS, gameListId).then(() => id)
+          : id);
     });
   }
 
@@ -125,8 +146,13 @@ export class GameService {
     return this.firestore.deleteDocument(USERS_DB.USERS, uid, USERS_DB.GAME_LISTS, gameListId);
   }
 
+  /**
+   * limit(1): an email belongs to one account, and the security rules
+   * (firestore.rules) only allow one-result lookups, so a signed-in user can't
+   * pull the whole users collection (everyone's email) with an open query.
+   */
   shareGameList(gameList: UserGameListRef, email: string): Promise<string> {
-    return this.firestore.queryCollectionData(USERS_DB.USERS, where('email', '==', email)).then((users: any) => {
+    return this.firestore.queryCollectionData(USERS_DB.USERS, where('email', '==', email), limit(1)).then((users: any) => {
       if (users.length === 0) {
         console.error(`No user found with email: ${email}`);
         return '';
