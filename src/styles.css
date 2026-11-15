@@ -46,6 +46,8 @@
   --bl-toast-bg: #1c1b1a;
   --bl-toast-fg: #ffffff;
   --bl-toast-action: #f0a07e;
+  /* Secondary text on the toast/new-post message (11:1 on the dark toast). */
+  --bl-toast-muted: #cfc9c3;
   --bl-danger: #b42318;
   /* Red fills with white text (error toast, Delete button); the same in both modes. */
   --bl-danger-fill: #b42318;
@@ -83,6 +85,7 @@
     --bl-toast-fg: #191817;
     /* Darker than the accent so Undo on the light toast is a clear 5.7:1, not a borderline 4.55:1. */
     --bl-toast-action: #a8380a;
+    --bl-toast-muted: #4f4a45;
     /* Lighter red reads well as text on the dark page; fills use --bl-danger-fill, since
        white on this lighter red was only 2.8:1. */
     --bl-danger: #f97066;
@@ -342,3 +345,82 @@ body {
    read as links without relying on color alone; long URLs may break anywhere. */
 .bl-text-link { color: var(--bl-accent-text, var(--bl-accent)); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
 .bl-text-link.bold { font-weight: 700; }
+
+/* ---------- Unread number on the Events tab ---------- */
+.bl-tab-icon { position: relative; display: inline-flex; }
+/* Red pill like iOS tab badges; white on --bl-danger-fill is 6.5:1. The ring in the
+   bar's own color separates it from the icon underneath. */
+.bl-count {
+  position: absolute; top: -6px; left: 14px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box;
+  border-radius: 10px; border: 2px solid var(--bl-surface); background: var(--bl-danger-fill); color: #fff;
+  font-size: 12px; font-weight: 800; line-height: 16px; text-align: center;
+}
+
+/* ---------- "New from BGG" message (NewsPromptComponent) ---------- */
+/* Same look and place as toasts (just above the tab bar) but it waits for the reader.
+   z-index under toasts (60) and sheets (50+), and hidden while a sheet is open, so it
+   never covers a sheet's buttons. */
+.bl-news-prompt {
+  position: fixed; left: 12px; right: 12px; bottom: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom) + 12px); z-index: 45;
+  max-width: 480px; margin: 0 auto; padding: 12px 14px 12px; border-radius: 16px; display: flex; flex-direction: column; gap: 8px;
+  background: var(--bl-toast-bg); color: var(--bl-toast-fg); box-shadow: 0 8px 28px rgba(0, 0, 0, .28); font-family: var(--bl-font);
+  animation: bl-rise .32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.bl-sheet-open .bl-news-prompt { display: none; }
+@keyframes bl-rise { from { transform: translateY(16px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bl-news-prompt { animation: none; } }
+.bl-news-prompt .head { display: flex; align-items: center; gap: 8px; }
+.bl-news-prompt .badge-icon { flex: none; width: 26px; height: 26px; border-radius: 13px; display: flex; align-items: center; justify-content: center; background: var(--bl-accent); color: #fff; }
+.bl-news-prompt .kicker { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--bl-toast-muted); }
+.bl-news-prompt .close { width: 44px; height: 44px; margin: -12px -10px -12px 0; border: 0; background: transparent; color: var(--bl-toast-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.bl-news-prompt .post { display: flex; flex-direction: column; gap: 2px; }
+.bl-news-prompt .post strong { font-size: 16px; line-height: 21px; }
+.bl-news-prompt .post span, .bl-news-prompt .more { font-size: 14px; line-height: 19px; color: var(--bl-toast-muted); }
+.bl-news-prompt .actions { display: flex; gap: 10px; margin-top: 4px; }
+.bl-news-prompt .actions button { height: 44px; border-radius: 12px; font: inherit; font-size: 15px; cursor: pointer; }
+/* White on the accent is 5.2:1 in both modes. */
+.bl-news-prompt .read { flex: 1; border: 0; background: var(--bl-accent); color: #fff; font-weight: 700; }
+.bl-news-prompt .later { flex: none; width: 96px; border: 1.5px solid var(--bl-toast-muted); background: transparent; color: var(--bl-toast-fg); font-weight: 600; }
+.bl-news-prompt :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+/* ---------- BGG posts and guide pages (ConHtmlComponent) ---------- */
+/* Their HTML comes without styling (see cleanConHtml), so it's laid out here in the app's type. */
+.bl-con-html { display: block; font-size: 16px; line-height: 23px; overflow-wrap: anywhere; }
+.bl-con-html :where(p, ul, ol, blockquote, table) { margin: 0 0 12px; }
+.bl-con-html :where(h1, h2, h3, h4, h5, h6) { margin: 20px 0 8px; font-size: 18px; line-height: 23px; font-weight: 700; scroll-margin-top: 12px; }
+.bl-con-html [id] { scroll-margin-top: 12px; }
+.bl-con-html :where(ul, ol) { padding-left: 22px; }
+.bl-con-html li { margin-bottom: 4px; }
+.bl-con-html a { color: var(--bl-accent-text); text-decoration: underline; text-underline-offset: 2px; }
+.bl-con-html img { max-width: 100%; height: auto; border-radius: 8px; }
+.bl-con-html hr { border: 0; border-top: 1px solid var(--bl-hair); margin: 16px 0; }
+.bl-con-html blockquote { padding-left: 12px; border-left: 3px solid var(--bl-hair); color: var(--bl-muted); }
+/* Email tables (hours, schedules) scroll sideways instead of widening the page. */
+.bl-con-html table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 15px; }
+.bl-con-html :where(td, th) { padding: 6px 10px; border: 1px solid var(--bl-hair); text-align: left; vertical-align: top; }
+
+/* ---------- Browse a shelf (ShelfListComponent) ---------- */
+.shelf-head { display: flex; align-items: center; gap: 12px; padding: 12px 12px 10px 16px; border-bottom: 1px solid var(--bl-hair); }
+.shelf-badge { flex: none; width: 52px; height: 52px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: var(--bl-accent-soft); color: var(--bl-accent-text); }
+.shelf-badge small { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.shelf-badge strong { font-size: 20px; font-weight: 800; line-height: 22px; }
+.shelf-badge strong.long { font-size: 10px; line-height: 11px; padding: 0 3px; }
+.shelf-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.shelf-title strong { font-size: 17px; }
+.shelf-title span { font-size: 14px; color: var(--bl-muted); }
+.shelf-letter { background: var(--bl-field); padding-top: 8px; padding-bottom: 6px; }
+app-shelf-list.has-index :is(.bl-row, .shelf-head) { padding-right: 36px; }
+/* Letter index down the right edge (like Contacts), between the pinned header and the tab bar. */
+.shelf-index {
+  position: fixed; right: max(2px, env(safe-area-inset-right)); top: calc(var(--strip-top, 260px) + 6px); bottom: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom) + 6px);
+  z-index: 9; width: 28px; display: flex; flex-direction: column; justify-content: center; touch-action: none; user-select: none;
+}
+.shelf-index button { flex: 0 1 20px; min-height: 12px; border: 0; padding: 0; background: transparent; color: var(--bl-accent-text); font: inherit; font-size: 12px; font-weight: 800; line-height: 1; cursor: pointer; }
+/* Big letter in the middle of the screen while sliding, so you can see where you are under your thumb. */
+.shelf-bubble {
+  position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%); z-index: 30; width: 88px; height: 88px; border-radius: 22px;
+  display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 800;
+  background: var(--bl-toast-bg); color: var(--bl-toast-fg); box-shadow: 0 8px 28px rgba(0, 0, 0, .3); pointer-events: none;
+}
+/* "CARD RACK NEW"-length names in the shelf picker grid. */
+.bl-option.small-text { font-size: 13px; }

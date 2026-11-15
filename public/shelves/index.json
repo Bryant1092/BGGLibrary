@@ -1,0 +1,167 @@
+{
+ "builtAt": "2026-11-15T15:36:32.305Z",
+ "total": 9042,
+ "thumbHost": "https://cf.geekdo-images.com/",
+ "shelves": [
+  {
+   "shelf": "#",
+   "slug": "num",
+   "count": 109
+  },
+  {
+   "shelf": "A",
+   "slug": "a",
+   "count": 388
+  },
+  {
+   "shelf": "B",
+   "slug": "b",
+   "count": 325
+  },
+  {
+   "shelf": "C",
+   "slug": "c",
+   "count": 622
+  },
+  {
+   "shelf": "CARD RACK",
+   "slug": "card-rack",
+   "count": 711
+  },
+  {
+   "shelf": "CARD RACK NEW",
+   "slug": "card-rack-new",
+   "count": 213
+  },
+  {
+   "shelf": "D",
+   "slug": "d",
+   "count": 483
+  },
+  {
+   "shelf": "E",
+   "slug": "e",
+   "count": 228
+  },
+  {
+   "shelf": "F",
+   "slug": "f",
+   "count": 369
+  },
+  {
+   "shelf": "FLUXX BIN",
+   "slug": "fluxx-bin",
+   "count": 18
+  },
+  {
+   "shelf": "G",
+   "slug": "g",
+   "count": 281
+  },
+  {
+   "shelf": "H",
+   "slug": "h",
+   "count": 274
+  },
+  {
+   "shelf": "I",
+   "slug": "i",
+   "count": 153
+  },
+  {
+   "shelf": "J",
+   "slug": "j",
+   "count": 42
+  },
+  {
+   "shelf": "K",
+   "slug": "k",
+   "count": 166
+  },
+  {
+   "shelf": "L",
+   "slug": "l",
+   "count": 301
+  },
+  {
+   "shelf": "M",
+   "slug": "m",
+   "count": 531
+  },
+  {
+   "shelf": "N",
+   "slug": "n",
+   "count": 173
+  },
+  {
+   "shelf": "NEW",
+   "slug": "new",
+   "count": 961
+  },
+  {
+   "shelf": "O",
+   "slug": "o",
+   "count": 145
+  },
+  {
+   "shelf": "OVERSIZED",
+   "slug": "oversized",
+   "count": 32
+  },
+  {
+   "shelf": "P",
+   "slug": "p",
+   "count": 394
+  },
+  {
+   "shelf": "Q",
+   "slug": "q",
+   "count": 48
+  },
+  {
+   "shelf": "R",
+   "slug": "r",
+   "count": 335
+  },
+  {
+   "shelf": "S",
+   "slug": "s",
+   "count": 783
+  },
+  {
+   "shelf": "T",
+   "slug": "t",
+   "count": 435
+  },
+  {
+   "shelf": "U",
+   "slug": "u",
+   "count": 96
+  },
+  {
+   "shelf": "V",
+   "slug": "v",
+   "count": 122
+  },
+  {
+   "shelf": "W",
+   "slug": "w",
+   "count": 221
+  },
+  {
+   "shelf": "X",
+   "slug": "x",
+   "count": 13
+  },
+  {
+   "shelf": "Y",
+   "slug": "y",
+   "count": 31
+  },
+  {
+   "shelf": "Z",
+   "slug": "z",
+   "count": 39
+  }
+ ]
+}

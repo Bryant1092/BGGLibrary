@@ -12,6 +12,20 @@ ng serve
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
 
+## Shelf lists ("Browse a shelf")
+
+The Library page's **Shelf** filter shows the games on one library shelf (A–Z, NEW, CARD RACK…).
+Tabletop.Events can't filter games by shelf, so the shelf lists are built ahead of time from the
+full catalog and shipped with the app in `public/shelves/`:
+
+```bash
+npm run shelves   # downloads all ~9,000 games (about 5 minutes), rewrites public/shelves/
+```
+
+Run it before building whenever the library's collection changes (new games get added up to and
+during each convention). Whether a game is checked out is never stored there: the app fetches that
+live as each row comes on screen. See `scripts/build-shelf-index.mjs` for details.
+
 ## Code scaffolding
 
 Angular CLI includes powerful code scaffolding tools. To generate a new component, run:

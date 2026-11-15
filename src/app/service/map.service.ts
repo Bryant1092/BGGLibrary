@@ -8,7 +8,25 @@ export interface MapRequest {
   spot?: MapSpot;
   /** Shown in the viewer's top bar, e.g. "Gaston" or "Booth 204 · Brookspun Games". */
   label?: string;
+  /**
+   * Several places at once, each circled with its name under it (e.g. every
+   * room HomeGrown playtesting uses). The map opens zoomed to fit them all.
+   */
+  spots?: { spot: MapSpot; label: string }[];
 }
+
+/**
+ * Rooms used for HomeGrown (unpublished designers') playtesting at BGG.CON 2026,
+ * from the schedule: Pegasus A is the HomeGrown Games Lab ("Pegagus A -
+ * HomeGrown Playtesting", 10 events); Gaston tables, Bryan Beeman B and
+ * McMillan host the rest. Room names as Tabletop.Events spells them.
+ */
+const HOMEGROWN_ROOMS: { room: string; label: string }[] = [
+  { room: 'Pegasus A', label: 'Pegasus A · HomeGrown Lab' },
+  { room: 'Gaston', label: 'Gaston' },
+  { room: 'Bryan Beeman', label: 'Bryan Beeman' },
+  { room: 'McMillan', label: 'McMillan' },
+];
 
 /** Lowercase, no accents/punctuation/company suffixes, for matching names typed slightly differently. */
 function normalize(name: string): string {
@@ -45,6 +63,15 @@ export class MapService {
     if (!rooms || !roomName) return null;
     const spot = rooms[roomName] ?? Object.entries(rooms).find(([key]) => normalize(key) === normalize(roomName))?.[1];
     return spot ? { map: 'hotel', spot, label } : null;
+  }
+
+  /** All HomeGrown playtesting rooms circled on the hotel map (null if this convention has no map). */
+  homegrownRequest(): MapRequest | null {
+    const rooms = this.maps()?.rooms;
+    const spots = HOMEGROWN_ROOMS
+      .map(r => ({ spot: rooms?.[r.room], label: r.label }))
+      .filter((s): s is { spot: MapSpot; label: string } => !!s.spot);
+    return spots.length ? { map: 'hotel', spots, label: 'HomeGrown playtesting rooms' } : null;
   }
 
   /**

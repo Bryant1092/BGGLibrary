@@ -30,6 +30,13 @@ const ICONS: Record<string, string> = {
   star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
   starFilled: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="currentColor"/>',
   flame: '<path d="M12 22c4 0 7-2.8 7-7 0-3.5-2.5-6-4-8-.5 2-1.5 3-3 3 1-3 0-6-3-8 0 4-4 6-4 11 0 4.2 3 9 7 9z"/>',
+  megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h3l6 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M17 9a4 4 0 0 1 0 6"/>',
+  // Two stacked shelves, for "Browse a shelf".
+  shelves: '<path d="M4 4h16v6H4zM4 14h16v6H4z"/>',
+  // Lab flask, for the HomeGrown playtest prototypes.
+  flask: '<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>',
+  book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M8 7h7"/>',
+  chevronRight: '<path d="m9 6 6 6-6 6"/>',
   // Filled bell = alert on; outlined bell with a slash = off. The shapes differ,
   // not just the color, so the state is clear to color-blind users too.
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" fill="currentColor"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',

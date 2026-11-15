@@ -16,6 +16,8 @@ import { ListPickerSheetComponent } from '../shared/list-picker-sheet.component'
 import { SheetComponent } from '../shared/sheet.component';
 import { ThumbComponent } from '../shared/thumb.component';
 import { OfflineBarComponent } from '../shared/offline-bar.component';
+import { ShelfIndex, ShelfInfo, ShelfService } from '../service/shelf.service';
+import { ShelfListComponent } from './shelf-list.component';
 import { currentOrNextConvention, libraryStatus, shortDuration } from '../util/library-time';
 import { isNewArrival, minutesText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
 import { matchHotGames } from '../util/hot-games';
@@ -46,6 +48,8 @@ const SORT_OPTIONS: { value: LibrarySort; label: string; chip: string; note: str
 ];
 
 interface Filters {
+  /** "Browse a shelf": a shelf name like "M" or "CARD RACK", or null for the whole library. */
+  shelf: string | null;
   query: string;
   availableOnly: boolean;
   players: number | null;
@@ -53,7 +57,7 @@ interface Filters {
   sort: LibrarySort;
 }
 
-const DEFAULT_FILTERS: Filters = { query: '', availableOnly: false, players: null, playTime: null, sort: 'name' };
+const DEFAULT_FILTERS: Filters = { shelf: null, query: '', availableOnly: false, players: null, playTime: null, sort: 'name' };
 
 /**
  * Remembers the Library page's search, filters and loaded results while the
@@ -72,7 +76,7 @@ export class LibraryPageState {
 @Component({
   selector: 'app-library',
   standalone: true,
-  imports: [IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent],
+  imports: [IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './library.component.html',
 })
@@ -87,6 +91,9 @@ export class LibraryComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   watch = inject(WatchService);
   recent = inject(RecentService);
+  private shelfService = inject(ShelfService);
+  /** Which shelves exist and their sizes (public/shelves/index.json); null until loaded. */
+  shelfIndex = signal<ShelfIndex | null>(null);
   /** Recent games whose status was re-checked since the page opened; the rest show "Checking…". */
   private recentChecked = signal<Set<string>>(new Set());
   private recentCheckedAt = 0;
@@ -117,7 +124,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
   /** Games with an add/remove in progress, keyed by id. */
   busyIds = signal<Set<string>>(new Set());
 
-  sheet = signal<'details' | 'players' | 'time' | 'sort' | 'lists' | null>(null);
+  sheet = signal<'details' | 'players' | 'time' | 'sort' | 'lists' | 'shelf' | null>(null);
   selected = signal<BggItem | null>(null);
   /** A game the user tried to add before choosing/creating a list; added once they do. */
   private pendingAdd: BggItem | null = null;
@@ -130,6 +137,22 @@ export class LibraryComponent implements OnInit, OnDestroy {
   private debounceTimer?: ReturnType<typeof setTimeout>;
 
   status = computed(() => libraryStatus(this.now()));
+
+  /** The picked shelf's details, when browsing a shelf. */
+  shelfInfo = computed<ShelfInfo | null>(() => {
+    const name = this.filters().shelf;
+    return name ? this.shelfIndex()?.shelves.find(s => s.shelf === name) ?? null : null;
+  });
+  /** Shelf picker: NEW, # and A–Z as a grid; racks and bins as a list with their sizes. */
+  shelfLetters = computed(() => {
+    const shelves = this.shelfIndex()?.shelves || [];
+    const order = ['NEW', '#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+    return order.map(name => shelves.find(s => s.shelf === name)).filter((s): s is ShelfInfo => !!s);
+  });
+  shelfRacks = computed(() => (this.shelfIndex()?.shelves || [])
+    .filter(s => s.shelf.length > 1 && s.shelf !== 'NEW' && s.shelf !== 'Unknown')
+    .sort((a, b) => b.count - a.count));
+  shelfChip = computed(() => this.filters().shelf ? `Shelf: ${this.filters().shelf}` : 'Shelf');
   hasHotGames = computed(() => currentOrNextConvention(this.now())?.hasHotGames ?? false);
   hasMore = computed(() => this.items().length < this.total());
   playersChip = computed(() => {
@@ -143,7 +166,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
   });
   hasFilters = computed(() => {
     const f = this.filters();
-    return !!(f.query || f.availableOnly || f.players || f.playTime);
+    return !!(f.shelf || f.query || f.availableOnly || f.players || f.playTime);
   });
 
   /** Row view-models, so the template doesn't recompute text for every row on every change check. */
@@ -283,6 +306,8 @@ export class LibraryComponent implements OnInit, OnDestroy {
     }
     this.checkRecent();
     this.openSharedGame();
+    // Small file (shelf names and sizes); the shelf picker needs it.
+    this.shelfService.index().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(index => this.shelfIndex.set(index));
   }
 
   /**
@@ -340,7 +365,20 @@ export class LibraryComponent implements OnInit, OnDestroy {
   search(): void {
     clearTimeout(this.debounceTimer);
     window.scrollTo(0, 0);
+    // Browsing a shelf filters on the phone (ShelfListComponent), so there's nothing to ask
+    // Tabletop.Events; the normal results reload when the shelf is cleared.
+    if (this.filters().shelf) return;
     this.requests.next({ page: 1, append: false });
+  }
+
+  /** Picking a shelf (or null for the whole library again). */
+  setShelf(shelf: string | null): void {
+    this.sheet.set(null);
+    if (shelf === this.filters().shelf) return;
+    this.filters.update(f => ({ ...f, shelf }));
+    window.scrollTo(0, 0);
+    // Back to the whole library: reload its results with the current search and filters.
+    if (!shelf) this.search();
   }
 
   loadMore(): void {

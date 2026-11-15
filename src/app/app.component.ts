@@ -5,6 +5,8 @@ import { HideNavService } from './service/hide-nav.service';
 import { WatchService } from './service/watch.service';
 import { InstallService } from './service/install.service';
 import { MapService } from './service/map.service';
+import { ConInfoService } from './service/con-info.service';
+import { NewsPromptComponent } from './shared/news-prompt.component';
 import { MapViewerComponent } from './shared/map-viewer.component';
 import { IconComponent } from './shared/icon.component';
 import { SheetComponent } from './shared/sheet.component';
@@ -14,7 +16,7 @@ import { ToastComponent } from './shared/toast.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, TabBarComponent, ToastComponent, SheetComponent, IconComponent, MapViewerComponent],
+  imports: [RouterOutlet, TabBarComponent, ToastComponent, SheetComponent, IconComponent, MapViewerComponent, NewsPromptComponent],
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnInit {
@@ -27,6 +29,8 @@ export class AppComponent implements OnInit {
   private install = inject(InstallService);
   /** The full-screen venue map is shown here so any tab can open it (MapService.show). */
   map = inject(MapService);
+  /** BGG news posts: the Events tab's unread number and the new-post message. */
+  private conInfo = inject(ConInfoService);
 
   isHideNav = false;
 
@@ -39,5 +43,7 @@ export class AppComponent implements OnInit {
       });
     // Started here (not on My Lists) so bells are checked whichever tab is open.
     this.watch.start(this.destroyRef);
+    // Also here, so new BGG posts are noticed (badge + message) whichever tab is open.
+    this.conInfo.start(this.destroyRef);
   }
 }

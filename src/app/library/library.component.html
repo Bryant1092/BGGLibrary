@@ -25,10 +25,17 @@
     </div>
 
     <div class="bl-chips">
-      <button type="button" class="bl-chip" [class.on]="filters().availableOnly" [attr.aria-pressed]="filters().availableOnly" (click)="toggleAvailable()">
-        @if (filters().availableOnly) { <bl-icon name="check" [size]="16" [stroke]="2.6" /> }
-        Available now
+      <!-- Browse a shelf: first, because it's what you reach for while standing at the shelves. -->
+      <button type="button" class="bl-chip" [class.on]="!!filters().shelf" (click)="sheet.set('shelf')">
+        <bl-icon name="shelves" [size]="16" /> {{ shelfChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
       </button>
+      <!-- Hidden while browsing a shelf: availability is only known for the rows checked so far. -->
+      @if (!filters().shelf) {
+        <button type="button" class="bl-chip" [class.on]="filters().availableOnly" [attr.aria-pressed]="filters().availableOnly" (click)="toggleAvailable()">
+          @if (filters().availableOnly) { <bl-icon name="check" [size]="16" [stroke]="2.6" /> }
+          Available now
+        </button>
+      }
       <button type="button" class="bl-chip" [class.on]="!!filters().players" (click)="sheet.set('players')">
         {{ playersChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
       </button>
@@ -53,14 +60,28 @@
         Sort lives here rather than in the chip row: as a fourth chip it was
         scrolled off-screen on phones, so people didn't know it existed.
       -->
-      <button type="button" class="bl-link-btn" style="flex: none" (click)="sheet.set('sort')" [attr.aria-label]="'Sort: ' + sortChip() + '. Change sort'">
-        <bl-icon name="sort" [size]="15" /> {{ sortChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
-      </button>
+      <!-- A shelf is always in its own (A–Z) order, so Sort only shows for the whole library. -->
+      @if (!filters().shelf) {
+        <button type="button" class="bl-link-btn" style="flex: none" (click)="sheet.set('sort')" [attr.aria-label]="'Sort: ' + sortChip() + '. Change sort'">
+          <bl-icon name="sort" [size]="15" /> {{ sortChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+        </button>
+      }
     </div>
     <app-offline-bar />
   </header>
 
   <main>
+    @if (filters().shelf) {
+      @if (shelfInfo(); as info) {
+        <app-shelf-list [info]="info" [thumbHost]="shelfIndex()?.thumbHost || ''" [query]="filters().query"
+                        [players]="filters().players" [playTime]="filters().playTime" [now]="now()"
+                        [listIds]="listGameIds()" [busyIds]="busyIds()" [listName]="signedIn() ? currentList()?.name : undefined"
+                        (open)="openDetails($event)" (toggle)="toggleGame($event)" />
+      } @else if (shelfIndex()) {
+        <div class="bl-empty"><p class="title">That shelf isn't in the library list</p>
+          <button type="button" class="bl-btn outline" (click)="setShelf(null)">Show all games</button></div>
+      }
+    } @else {
     <!-- BGG.CON Hot Games matching the search (list in config/conventions.ts). -->
     @for (title of hotMatches(); track title) {
       <div class="bl-hot-card">
@@ -183,6 +204,7 @@
         </div>
       }
     }
+    }
   </main>
 </div>
 
@@ -233,6 +255,36 @@
           </button>
         }
       </div>
+    </app-sheet>
+  }
+  @case ('shelf') {
+    <app-sheet label="Browse a shelf" (closed)="closeSheet()">
+      <div class="bl-sheet-head">
+        <h2>Browse a shelf</h2>
+        @if (filters().shelf) { <button type="button" class="bl-link-btn" (click)="setShelf(null)">Show all games</button> }
+      </div>
+      <p class="bl-sheet-note">Standing at a shelf? Pick it to see its games in shelf order, with what's checked out.</p>
+      @if (shelfIndex() === null) {
+        <p class="bl-sheet-note">Loading shelves…</p>
+      } @else {
+        <div class="bl-option-grid" style="grid-template-columns: repeat(6, minmax(0, 1fr))">
+          @for (s of shelfLetters(); track s.slug) {
+            <button type="button" class="bl-option" [class.small-text]="s.shelf.length > 1" [attr.aria-pressed]="filters().shelf === s.shelf"
+                    [attr.aria-label]="'Shelf ' + s.shelf + ', ' + s.count + ' games'" (click)="setShelf(s.shelf)">{{ s.shelf }}</button>
+          }
+        </div>
+        @if (shelfRacks().length) {
+          <h3 class="bl-section" style="padding: 16px 0 4px">Racks and bins</h3>
+          <div>
+            @for (s of shelfRacks(); track s.slug) {
+              <button type="button" class="bl-choice" [attr.aria-pressed]="filters().shelf === s.shelf" (click)="setShelf(s.shelf)">
+                <span class="bl-radio"></span>
+                <span class="text"><strong>{{ s.shelf }}</strong><small>{{ s.count }} games</small></span>
+              </button>
+            }
+          </div>
+        }
+      }
     </app-sheet>
   }
   @case ('lists') {

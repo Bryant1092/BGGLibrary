@@ -3,16 +3,20 @@
     <div class="bl-title-row">
       <img src="icons/icon-72x72.png" alt="" width="30" height="30">
       <h1 class="visually-hidden">Events</h1>
-      <!-- Schedule and exhibitor list share the tab; both come from Tabletop.Events. -->
+      <!-- Schedule, exhibitors and BGG's news/guide share the tab; all come from Tabletop.Events. -->
       <div class="view-switch" role="tablist" aria-label="Events view">
         <button type="button" role="tab" [attr.aria-selected]="view() === 'schedule'" [class.on]="view() === 'schedule'" (click)="setView('schedule')">Schedule</button>
         <button type="button" role="tab" [attr.aria-selected]="view() === 'exhibitors'" [class.on]="view() === 'exhibitors'" (click)="setView('exhibitors')">Exhibitors</button>
+        <button type="button" role="tab" [attr.aria-selected]="view() === 'info'" [class.on]="view() === 'info'" (click)="setView('info')"
+                [attr.aria-label]="info.unreadCount() ? 'Info, ' + info.unreadCount() + ' unread' : null">
+          Info @if (info.unreadCount()) { <span class="tab-count" aria-hidden="true">{{ info.unreadCount() > 9 ? '9+' : info.unreadCount() }}</span> }
+        </button>
       </div>
       @if (hasMaps()) {
         <button type="button" class="bl-icon-btn accent" aria-label="Open venue maps" (click)="openMaps()"><bl-icon name="map" [size]="22" /></button>
       }
-      <!-- Seat counts change constantly at the con; this re-downloads them. -->
-      <button type="button" class="bl-icon-btn accent" aria-label="Refresh events" [disabled]="service.loading()" (click)="refresh()" style="margin-right: -8px">
+      <!-- Seat counts change constantly at the con; this re-downloads them (or the news, on Info). -->
+      <button type="button" class="bl-icon-btn accent" [attr.aria-label]="view() === 'info' ? 'Check for new posts' : 'Refresh events'" [disabled]="service.loading()" (click)="refresh()" style="margin-right: -8px">
         <bl-icon name="refresh" [size]="22" />
       </button>
     </div>
@@ -162,22 +166,70 @@
         }
       }
     </main>
-  } @else {
-    <!-- Exhibitors: who's in the exhibit hall and where (booth numbers from the hall map's directory). -->
+  } @else if (view() === 'exhibitors') {
+    <!--
+      Exhibitors: who's in the exhibit hall and where (booth numbers from the hall map's directory).
+      Playtest: the HomeGrown designers' prototypes. Tabletop.Events lists them on a page few people
+      find, so they sit next to the exhibitors here.
+    -->
     <div class="ev-controls">
+      <div class="bl-chips" role="radiogroup" aria-label="Show">
+        <button type="button" class="bl-chip" role="radio" [class.on]="exhibitorMode() === 'exhibitors'" [attr.aria-checked]="exhibitorMode() === 'exhibitors'" (click)="setExhibitorMode('exhibitors')">
+          Exhibitors @if (service.exhibitors()) { · {{ service.exhibitors()!.length }} }
+        </button>
+        <button type="button" class="bl-chip" role="radio" [class.on]="exhibitorMode() === 'playtest'" [attr.aria-checked]="exhibitorMode() === 'playtest'" (click)="setExhibitorMode('playtest')">
+          <bl-icon name="flask" [size]="16" /> Playtest @if (service.prototypes()) { · {{ service.prototypes()!.length }} }
+        </button>
+      </div>
       <div class="bl-search" role="search">
-        <label class="visually-hidden" for="exhibitor-search">Search exhibitors</label>
+        <label class="visually-hidden" for="exhibitor-search">{{ exhibitorMode() === 'playtest' ? 'Search prototypes' : 'Search exhibitors' }}</label>
         <bl-icon name="search" />
-        <input #exSearch id="exhibitor-search" type="search" placeholder="Search exhibitors" autocomplete="off"
+        <input #exSearch id="exhibitor-search" type="search" [placeholder]="exhibitorMode() === 'playtest' ? 'Search prototypes' : 'Search exhibitors'" autocomplete="off"
                enterkeyhint="search" [value]="exhibitorQuery()" (input)="exhibitorQuery.set(exSearch.value)" (keydown.enter)="exSearch.blur()">
         @if (exhibitorQuery()) {
           <button type="button" class="bl-icon-btn" aria-label="Clear search" (click)="exhibitorQuery.set(''); exSearch.focus()"><bl-icon name="close" [size]="18" /></button>
         }
       </div>
-      <div class="bl-subrow"><span>{{ exhibitorRows().length }} exhibitors and sponsors</span><span>Exhibit hall: Marsalis</span></div>
+      @if (exhibitorMode() === 'exhibitors') {
+        <div class="bl-subrow"><span>{{ exhibitorRows().length }} exhibitors and sponsors</span><span>Exhibit hall: Marsalis</span></div>
+      } @else {
+        <div class="bl-subrow"><span>{{ prototypeRows().length }} prototypes · most interest first</span></div>
+      }
     </div>
     <main>
-      @if (service.exhibitors() === null) {
+      @if (exhibitorMode() === 'playtest') {
+        <!-- Where they're played: a card at the top, since Tabletop.Events doesn't give a room per prototype. -->
+        <div class="pt-intro">
+          <bl-icon name="flask" [size]="20" />
+          <p>Unpublished games from HomeGrown designers. Drop by the <strong>HomeGrown Games Lab</strong> (Pegasus A) to play them and give feedback.</p>
+          <div class="pt-actions">
+            @if (hasMaps()) {
+              <button type="button" class="bl-btn outline small" (click)="showHomegrown()"><bl-icon name="pin" [size]="18" /> Rooms on the map</button>
+            }
+            <button type="button" class="bl-btn outline small" (click)="showPlaytestSessions()"><bl-icon name="calendar" [size]="18" /> Scheduled playtests</button>
+          </div>
+        </div>
+        @if (service.prototypes() === null) {
+          @for (n of [1, 2, 3, 4]; track n) {
+            <div class="ev-row" aria-hidden="true"><div class="ev-main"><div class="bl-skel" style="height: 17px; width: 55%"></div><div class="bl-skel" style="height: 14px; width: 40%"></div></div></div>
+          }
+        } @else {
+          @for (r of prototypeRows(); track r.proto.id) {
+            <button type="button" class="pt-row" (click)="openPrototype(r.proto)">
+              <span class="bl-name" style="-webkit-line-clamp: 1">{{ r.proto.name }}</span>
+              @if (r.meta) { <span class="pt-meta">{{ r.meta }}</span> }
+              <span class="pt-badges">
+                <!-- Stage is in words; the tint only repeats it (finished stages are tinted), so color isn't the only cue. -->
+                <span class="pt-stage" [class.done]="r.done">{{ r.stage }}</span>
+                @if (r.proto.interested) { <span class="pt-interest">{{ r.proto.interested }} interested</span> }
+              </span>
+              @if (r.preview) { <span class="ex-desc">{{ r.preview }}</span> }
+            </button>
+          } @empty {
+            <div class="bl-empty"><p class="title">No prototypes match</p></div>
+          }
+        }
+      } @else if (service.exhibitors() === null) {
         @for (n of [1, 2, 3, 4]; track n) {
           <div class="ev-row" aria-hidden="true"><div class="ev-main"><div class="bl-skel" style="height: 17px; width: 60%"></div><div class="bl-skel" style="height: 14px; width: 85%"></div></div></div>
         }
@@ -192,6 +244,73 @@
           </button>
         } @empty {
           <div class="bl-empty"><p class="title">No exhibitors match</p></div>
+        }
+      }
+    </main>
+  } @else {
+    <!--
+      Info: BGG's news posts (also emailed to badge holders) and the convention's guide
+      pages, saved on the phone so they open on bad convention Wi-Fi (ConInfoService).
+    -->
+    <main class="info-view">
+      <div class="bl-section-head">
+        <h2 class="bl-section">News from BGG</h2>
+        @if (info.unreadCount() > 1) {
+          <button type="button" class="bl-link-btn" (click)="info.markAllRead()">Mark all read</button>
+        }
+      </div>
+      @if (info.posts() === null) {
+        @if (info.postsError()) {
+          <div class="bl-empty">
+            <p class="title">Couldn't load the news</p>
+            <p class="body">Check your connection and try again.</p>
+            <button type="button" class="bl-btn outline" (click)="info.checkNews()">Try again</button>
+          </div>
+        } @else {
+          @for (n of [1, 2, 3]; track n) {
+            <div class="ev-row" aria-hidden="true"><div class="ev-main"><div class="bl-skel" style="height: 17px; width: 65%"></div><div class="bl-skel" style="height: 14px; width: 40%"></div></div></div>
+          }
+        }
+      } @else {
+        @for (r of postRows(); track r.post.id) {
+          <button type="button" class="post-row" [class.unread]="r.unread" (click)="openPost(r.post)">
+            <span class="post-title">
+              <!-- "New" in words, not just a dot, so it doesn't rely on color. -->
+              @if (r.unread) { <span class="new-pill">New</span> }
+              <strong>{{ r.post.title }}</strong>
+            </span>
+            <span class="post-when">{{ r.when }}</span>
+            @if (r.preview) { <span class="post-preview">{{ r.preview }}</span> }
+          </button>
+        } @empty {
+          <div class="bl-empty"><p class="title">No news yet</p><p class="body">BGG's updates show up here when they're posted.</p></div>
+        }
+      }
+
+      <div class="bl-section-head">
+        <h2 class="bl-section">Con guide</h2>
+        @if (info.pages()?.length) {
+          <span class="saved"><bl-icon name="check" [size]="14" [stroke]="2.6" /> Saved for offline</span>
+        }
+      </div>
+      @if (info.pages() === null) {
+        @if (info.pagesError()) {
+          <div class="bl-empty">
+            <p class="title">Couldn't load the guide</p>
+            <button type="button" class="bl-btn outline" (click)="info.loadPages(true)">Try again</button>
+          </div>
+        } @else {
+          @for (n of [1, 2, 3]; track n) {
+            <div class="ev-row" aria-hidden="true"><div class="ev-main"><div class="bl-skel" style="height: 17px; width: 50%"></div></div></div>
+          }
+        }
+      } @else {
+        @for (p of info.pages(); track p.id) {
+          <button type="button" class="guide-row" (click)="openPage(p)">
+            <bl-icon name="book" [size]="20" />
+            <span>{{ p.name }}</span>
+            <bl-icon [name]="p.link ? 'external' : 'chevronRight'" [size]="18" />
+          </button>
         }
       }
     </main>
@@ -278,6 +397,71 @@
         }
         @if (d.exhibitor.website) {
           <a class="more" [href]="d.exhibitor.website" target="_blank" rel="noopener">Website <bl-icon name="external" [size]="16" /></a>
+        }
+      </app-sheet>
+    }
+  }
+  @case ('post') {
+    @if (selectedPost(); as post) {
+      <app-sheet [label]="post.title" (closed)="sheet.set(null)">
+        <div class="sheet-head">
+          <div>
+            <span class="ev-type">News from BGG · {{ info.postedText(post.postedAt, now()) }}</span>
+            <h2>{{ post.title }}</h2>
+          </div>
+          <button type="button" class="bl-icon-btn" aria-label="Close" (click)="sheet.set(null)" style="margin: -6px -10px 0 0"><bl-icon name="close" /></button>
+        </div>
+        <bl-con-html [html]="post.html" />
+        @if (post.url) {
+          <a class="more" [href]="post.url" target="_blank" rel="noopener">Open on Tabletop.Events <bl-icon name="external" [size]="16" /></a>
+        }
+      </app-sheet>
+    }
+  }
+  @case ('page') {
+    @if (selectedPage(); as page) {
+      <app-sheet [label]="page.name" (closed)="sheet.set(null)">
+        <div class="sheet-head">
+          <div>
+            <span class="ev-type">Con guide · saved on this phone</span>
+            <h2>{{ page.name }}</h2>
+          </div>
+          <button type="button" class="bl-icon-btn" aria-label="Close" (click)="sheet.set(null)" style="margin: -6px -10px 0 0"><bl-icon name="close" /></button>
+        </div>
+        <bl-con-html [html]="page.html" />
+      </app-sheet>
+    }
+  }
+  @case ('prototype') {
+    @if (prototypeDetail(); as d) {
+      <app-sheet [label]="d.proto.name" (closed)="sheet.set(null)">
+        <div class="sheet-head">
+          <div>
+            <span class="ev-type"><bl-icon name="flask" [size]="14" /> HomeGrown prototype</span>
+            <h2>{{ d.proto.name }}</h2>
+          </div>
+          <button type="button" class="bl-icon-btn" aria-label="Close" (click)="sheet.set(null)" style="margin: -6px -10px 0 0"><bl-icon name="close" /></button>
+        </div>
+        <ul class="facts">
+          @if (d.meta) { <li><bl-icon name="users" [size]="18" /><span>{{ d.meta }}</span></li> }
+          <li><bl-icon name="flask" [size]="18" /><span>{{ d.stage }}@if (d.proto.interested) { · {{ d.proto.interested }} interested }</span></li>
+        </ul>
+        @if (d.proto.description) { <p class="desc"><bl-rich-text [text]="d.proto.description" /></p> }
+        @if (d.sessions.length) {
+          <div>
+            <h3 class="sub">Scheduled sessions</h3>
+            @for (s of d.sessions; track s.event.id) {
+              <button type="button" class="bl-choice" (click)="openEventFromExhibitor(s.event)">
+                <span class="text"><strong>{{ s.when }}</strong><small>{{ s.room }}</small></span>
+              </button>
+            }
+          </div>
+        }
+        @if (hasMaps()) {
+          <button type="button" class="bl-btn" (click)="showHomegrown()"><bl-icon name="pin" [size]="20" /> HomeGrown rooms on the map</button>
+        }
+        @if (d.proto.url) {
+          <a class="more" [href]="d.proto.url" target="_blank" rel="noopener">More on Tabletop.Events <bl-icon name="external" [size]="16" /></a>
         }
       </app-sheet>
     }

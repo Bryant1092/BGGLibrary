@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "deploy": "ng deploy --base-href=/BGGLibrary/ --repo=https://github.com/billythekid664/BGGLibrary.git",
-    "test": "ng test"
+    "test": "ng test",
+    "shelves": "node scripts/build-shelf-index.mjs"
   },
   "private": true,
   "dependencies": {

@@ -54,6 +54,30 @@ export interface Exhibitor {
   sponsorOnly: boolean;
 }
 
+/**
+ * An unpublished game a HomeGrown designer brings to playtest. Tabletop.Events
+ * lists them per convention (12 for BGG.CON 2026) but not when or where each
+ * is played; HomeGrown playtesting happens in Pegasus A and a few other rooms.
+ */
+export interface Prototype {
+  id: string;
+  name: string;
+  description: string;
+  minPlayers: number;
+  maxPlayers: number;
+  minutes: number;
+  /** How finished it is, in the designer's words on Tabletop.Events. */
+  stage: 'final' | 'nearly' | 'mid' | 'early';
+  /** People who pressed "I'm interested" on Tabletop.Events. */
+  interested: number;
+  url: string;
+}
+
+/** Tabletop.Events' prototype status values, in plain words, most finished first. */
+const PROTOTYPE_STAGES: Record<string, Prototype['stage']> = {
+  final_testing: 'final', nearing_completion: 'nearly', middling: 'mid', new: 'early',
+};
+
 const API = 'https://tabletop.events/api';
 const PAGE_SIZE = 100;
 /** Seat counts change all the time during the con; anything older than this is reloaded. */
@@ -88,6 +112,8 @@ export class EventsService {
   readonly loadedAt = signal<number | null>(null);
   readonly starred = signal<Set<string>>(this.readStars());
   readonly exhibitors = signal<Exhibitor[] | null>(null);
+  readonly prototypes = signal<Prototype[] | null>(null);
+  private prototypesFor = '';
   private exhibitorsFor = '';
   private loadedFor = '';
 
@@ -143,6 +169,39 @@ export class EventsService {
         return of(null);
       })
     ).subscribe(list => { if (list) this.exhibitors.set(list); });
+  }
+
+  /**
+   * HomeGrown playtest prototypes (public, one request). Sorted by how many
+   * people are interested, then by how finished they are, so the ones worth a
+   * look come first.
+   */
+  loadPrototypes(convention: Convention): void {
+    const id = convention.tteConventionId;
+    if (!id || this.prototypesFor === id) return;
+    this.prototypesFor = id;
+    this.fetchAllPages(`${API}/convention/${id}/prototypes`, new HttpParams()).pipe(
+      map(items => items.map((p: any): Prototype => ({
+        id: p.id,
+        name: (p.name || '').trim(),
+        description: (p.description || p.synopsis || '').trim(),
+        minPlayers: Number(p.min_players) || 0,
+        maxPlayers: Number(p.max_players) || 0,
+        minutes: Number(p.play_time) || 0,
+        stage: PROTOTYPE_STAGES[p.status] || 'early',
+        interested: Number(p.interested_count) || 0,
+        url: p.view_uri ? `https://tabletop.events${p.view_uri}` : '',
+      }))
+        .filter((p: Prototype) => p.name)
+        .sort((a: Prototype, b: Prototype) => b.interested - a.interested
+          || Object.values(PROTOTYPE_STAGES).indexOf(a.stage) - Object.values(PROTOTYPE_STAGES).indexOf(b.stage)
+          || a.name.localeCompare(b.name))),
+      catchError(err => {
+        console.error('Failed to load prototypes', err);
+        this.prototypesFor = ''; // allow a retry next time
+        return of(null);
+      })
+    ).subscribe(list => { if (list) this.prototypes.set(list); });
   }
 
   isStarred(id: string): boolean {

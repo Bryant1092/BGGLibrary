@@ -1,8 +1,12 @@
+import { AfterViewInit, ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, OnDestroy, OnInit, signal, untracked, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { RichTextComponent } from '../shared/rich-text.component';
+import { ConHtmlComponent } from '../shared/con-html.component';
 import { plainText } from '../util/rich-text';
-import { AfterViewInit, ChangeDetectionStrategy, Component, computed, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
+import { ConInfoService, GuidePage, NewsPost } from '../service/con-info.service';
 import { CONVENTIONS, Convention } from '../config/conventions';
-import { ConEvent, EventsService, Exhibitor } from '../service/events.service';
+import { ConEvent, EventsService, Exhibitor, Prototype } from '../service/events.service';
 import { MapRequest, MapService } from '../service/map.service';
 import { ToastService } from '../service/toast.service';
 import { IconComponent } from '../shared/icon.component';
@@ -25,8 +29,13 @@ const TYPE_COLORS: Record<string, string> = {
   '18xx': '#475569',
 };
 
+type EventsView = 'schedule' | 'exhibitors' | 'info';
+
+/** Prototype stages in plain words (Tabletop.Events says "final_testing", "middling"…). */
+const STAGE_TEXT: Record<Prototype['stage'], string> = { final: 'Final testing', nearly: 'Nearly done', mid: 'Mid-design', early: 'Early idea' };
+
 /** Page choices kept while the app is open, so switching tabs doesn't reset them. */
-const pageState = { view: 'schedule' as 'schedule' | 'exhibitors', exhibitorQuery: '', day: '', query: '', hasSeats: true, starredOnly: false, types: [] as string[], showEarlier: false };
+const pageState = { view: 'schedule' as EventsView, exhibitorMode: 'exhibitors' as 'exhibitors' | 'playtest', exhibitorQuery: '', day: '', query: '', hasSeats: true, starredOnly: false, types: [] as string[], showEarlier: false };
 
 interface EventRow {
   event: ConEvent;
@@ -54,7 +63,7 @@ interface EventRow {
 @Component({
   selector: 'app-events',
   standalone: true,
-  imports: [IconComponent, SheetComponent, OfflineBarComponent, RichTextComponent],
+  imports: [IconComponent, SheetComponent, OfflineBarComponent, RichTextComponent, ConHtmlComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './events.component.html',
   styleUrl: './events.component.css',
@@ -62,7 +71,11 @@ interface EventRow {
 export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
   service = inject(EventsService);
   mapService = inject(MapService);
+  info = inject(ConInfoService);
   private toast = inject(ToastService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
   private header = viewChild.required<ElementRef<HTMLElement>>('header');
   private resize?: ResizeObserver;
 
@@ -80,12 +93,17 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
   starredOnly = signal(pageState.starredOnly);
   types = signal<Set<string>>(new Set(pageState.types));
   showEarlier = signal(pageState.showEarlier);
-  sheet = signal<'event' | 'types' | 'exhibitor' | null>(null);
+  sheet = signal<'event' | 'types' | 'exhibitor' | 'post' | 'page' | 'prototype' | null>(null);
   selected = signal<ConEvent | null>(null);
-  /** Schedule or the exhibitor list (both come from Tabletop.Events). */
-  view = signal(pageState.view);
+  /** Schedule, the exhibitor list, or Info (BGG's news posts and con guide); all from Tabletop.Events. */
+  view = signal<EventsView>(pageState.view);
+  /** The Exhibitors view also lists the HomeGrown playtest prototypes. */
+  exhibitorMode = signal(pageState.exhibitorMode);
   exhibitorQuery = signal(pageState.exhibitorQuery);
   selectedExhibitor = signal<Exhibitor | null>(null);
+  selectedPost = signal<NewsPost | null>(null);
+  selectedPage = signal<GuidePage | null>(null);
+  selectedPrototype = signal<Prototype | null>(null);
   /** The convention has venue maps (config/venue-maps.ts). */
   hasMaps = computed(() => !!this.mapService.maps());
 
@@ -187,6 +205,40 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
       .sort((a, b) => Number(!a.booth) - Number(!b.booth) || a.exhibitor.name.localeCompare(b.exhibitor.name));
   });
 
+  /** Prototypes matching the search (same box as exhibitors), most interest first. */
+  prototypeRows = computed(() => {
+    const q = this.exhibitorQuery().trim().toLowerCase();
+    return (this.service.prototypes() || [])
+      .filter(p => !q || p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q))
+      .map(p => ({ proto: p, meta: this.prototypeMeta(p), stage: STAGE_TEXT[p.stage], done: p.stage === 'final' || p.stage === 'nearly', preview: plainText(p.description) }));
+  });
+
+  /**
+   * For the prototype sheet: scheduled sessions of this game, matched by name
+   * (e.g. "Isle of Trez 3 - PLAYTEST" for Isle of Trez), next one first.
+   */
+  prototypeDetail = computed(() => {
+    const p = this.selectedPrototype();
+    if (!p) return null;
+    const key = p.name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const now = this.now();
+    const sessions = key.length < 4 ? [] : (this.service.events() || [])
+      .filter(e => !e.info && e.end > now && e.name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().startsWith(key))
+      .map(e => ({ event: e, when: this.whenText(e), room: e.room }));
+    return { proto: p, meta: this.prototypeMeta(p), stage: STAGE_TEXT[p.stage], sessions };
+  });
+
+  /** News posts with their display text, newest first. */
+  postRows = computed(() => {
+    const now = this.now();
+    return (this.info.posts() || []).map(p => ({
+      post: p,
+      when: this.info.postedText(p.postedAt, now),
+      unread: !this.info.isRead(p.id),
+      preview: p.topics.length ? p.topics.slice(0, 3).join(' · ') : p.snippet,
+    }));
+  });
+
   /** For the exhibitor sheet: their booth and their events at the booth (room Marsalis, space = exhibitor). */
   exhibitorDetail = computed(() => {
     const x = this.selectedExhibitor();
@@ -227,14 +279,73 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   openMaps(): void {
-    this.mapService.show({ map: this.view() === 'exhibitors' ? 'hall' : 'hotel' });
+    if (this.view() === 'exhibitors' && this.exhibitorMode() === 'playtest') this.showHomegrown();
+    else this.mapService.show({ map: this.view() === 'exhibitors' ? 'hall' : 'hotel' });
   }
 
-  setView(view: 'schedule' | 'exhibitors'): void {
+  /** Every HomeGrown playtesting room circled on the hotel map. */
+  showHomegrown(): void {
+    this.showPlace(this.mapService.homegrownRequest());
+  }
+
+  setView(view: EventsView): void {
     this.view.set(view);
     window.scrollTo(0, 0);
+    this.loadForView();
+  }
+
+  setExhibitorMode(mode: 'exhibitors' | 'playtest'): void {
+    this.exhibitorMode.set(mode);
+    window.scrollTo(0, 0);
+    this.loadForView();
+  }
+
+  /** Exhibitors, prototypes and the guide load only when their view is opened. */
+  private loadForView(): void {
     const convention = this.convention();
-    if (view === 'exhibitors' && convention) this.service.loadExhibitors(convention);
+    if (!convention) return;
+    if (this.view() === 'exhibitors') {
+      if (this.exhibitorMode() === 'playtest') this.service.loadPrototypes(convention);
+      else this.service.loadExhibitors(convention);
+    }
+    if (this.view() === 'info') {
+      this.info.checkNews();
+      this.info.loadPages();
+    }
+  }
+
+  /**
+   * Searches the schedule for "playtest", which finds the HomeGrown Playtesting
+   * room and the games named "... - PLAYTEST" (the chosen day only, like any search).
+   */
+  showPlaytestSessions(): void {
+    this.query.set('playtest');
+    this.sheet.set(null);
+    this.setView('schedule');
+  }
+
+  openPrototype(p: Prototype): void {
+    this.selectedPrototype.set(p);
+    this.sheet.set('prototype');
+    // Sessions come from the schedule, which may not be loaded if Events opened on Exhibitors.
+    const convention = this.convention();
+    if (convention) this.service.load(convention);
+  }
+
+  /** Opening a post marks it read, which lowers the number on the Events tab. */
+  openPost(post: NewsPost): void {
+    this.selectedPost.set(post);
+    this.sheet.set('post');
+    this.info.markRead(post.id);
+  }
+
+  openPage(page: GuidePage): void {
+    if (page.link) {
+      window.open(page.link, '_blank', 'noopener');
+      return;
+    }
+    this.selectedPage.set(page);
+    this.sheet.set('page');
   }
 
   openExhibitor(x: Exhibitor): void {
@@ -247,7 +358,26 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.sheet.set('event');
   }
 
+  constructor() {
+    // While the news list is on screen there's nothing left to announce, so the
+    // "New from BGG" message is dismissed (posts stay unread until opened).
+    effect(() => {
+      const pending = this.info.toAnnounce();
+      if (this.view() === 'info' && pending.length) untracked(() => this.info.dismissAnnouncement(pending.map(p => p.id)));
+    });
+  }
+
   ngOnInit(): void {
+    // The new-post message's "Read" opens /events?view=info&post=<id>. Watched
+    // (not read once) because the page may already be open when it's tapped.
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      if (params.get('view') !== 'info') return;
+      this.setView('info');
+      const id = params.get('post');
+      const post = id ? (this.info.posts() || []).find(p => p.id === id) : undefined;
+      if (post) this.openPost(post);
+      this.router.navigate([], { queryParams: { view: null, post: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    });
     // Open on today during the con; otherwise the first day (or the day last viewed).
     const today = dallasDateKey(Date.now());
     const keys = this.days().map(d => d.key);
@@ -255,7 +385,7 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     else if (!keys.includes(this.day())) this.day.set(keys[0] || '');
     const convention = this.convention();
     if (convention) this.service.load(convention);
-    if (convention && this.view() === 'exhibitors') this.service.loadExhibitors(convention);
+    this.loadForView();
   }
 
   ngAfterViewInit(): void {
@@ -271,15 +401,21 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     clearInterval(this.refresher);
     this.resize?.disconnect();
     Object.assign(pageState, {
-      view: this.view(), exhibitorQuery: this.exhibitorQuery(),
+      view: this.view(), exhibitorMode: this.exhibitorMode(), exhibitorQuery: this.exhibitorQuery(),
       day: this.day(), query: this.query(), hasSeats: this.hasSeats(), starredOnly: this.starredOnly(),
       types: [...this.types()], showEarlier: this.showEarlier(),
     });
   }
 
+  /** The title-row refresh button: re-downloads whatever the current view shows. */
   refresh(): void {
     const convention = this.convention();
-    if (convention) this.service.load(convention, true);
+    if (this.view() === 'info') {
+      this.info.checkNews();
+      this.info.loadPages(true);
+    } else if (convention) {
+      this.service.load(convention, true);
+    }
   }
 
   selectDay(key: string): void {
@@ -348,6 +484,14 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
   private clockText(ms: number): string {
     const text = formatLibraryTime(ms, ms).replace(' CT', '');
     return text === '12 AM' ? 'midnight' : text;
+  }
+
+  /** "2–4 players · 60 min" */
+  private prototypeMeta(p: Prototype): string {
+    const players = !p.minPlayers ? ''
+      : p.minPlayers === p.maxPlayers || !p.maxPlayers ? `${p.minPlayers} ${p.minPlayers === 1 ? 'player' : 'players'}`
+      : `${p.minPlayers}–${p.maxPlayers} players`;
+    return [players, p.minutes ? `${p.minutes} min` : ''].filter(Boolean).join(' · ');
   }
 
   private durationText(min: number): string {
