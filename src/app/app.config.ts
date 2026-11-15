@@ -1,4 +1,5 @@
-import { ApplicationConfig, provideZoneChangeDetection, isDevMode } from '@angular/core';
+import { ApplicationConfig, provideZoneChangeDetection, isDevMode, provideAppInitializer } from '@angular/core';
+import { syncConventions } from './service/convention-sync';
 import { provideRouter } from '@angular/router';
 import { REMOVE_STYLES_ON_COMPONENT_DESTROY } from '@angular/platform-browser';
 
@@ -47,6 +48,9 @@ export const appConfig: ApplicationConfig = {
     // this the copy lost its styles mid-animation. The styles are small.
     { provide: REMOVE_STYLES_ON_COMPONENT_DESTROY, useValue: false },
     provideHttpClient(),
+    // Finds the current/next BGG.CON or BGG.Spring on Tabletop.Events before the first screen
+    // (instant when a copy is saved on the phone; see service/convention-sync.ts).
+    provideAppInitializer(syncConventions),
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideAuth(() => getAuth()),
     /*

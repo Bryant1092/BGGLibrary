@@ -1,8 +1,13 @@
 /**
- * Library schedule for each convention, copied from the BGG.CON / BGG.Spring
- * websites. Update this list before each convention: it drives the "Open until
- * midnight" line, due-back times (the last day closes early) and whether the
- * "not found" message mentions Hot Games.
+ * Library schedule for each convention. It drives the "Open until midnight"
+ * line, due-back times (the last day closes early), the Events tab and whether
+ * the "not found" message mentions Hot Games.
+ *
+ * Nothing here needs editing each year any more: the app finds the next
+ * BGG.CON / BGG.Spring on Tabletop.Events at startup (service/convention-sync.ts)
+ * and builds the days from its dates with LIBRARY_HOURS below. CONVENTIONS is
+ * only the starting point used until that first answer arrives (or offline on
+ * a first visit). CONVENTION_OVERRIDES is for a year that breaks the pattern.
  *
  * Times are Dallas (America/Chicago) wall-clock times. `close: '24:00'` means
  * midnight at the end of that day.
@@ -42,8 +47,6 @@ export const CONVENTIONS: Convention[] = [
     name: 'BGG.CON 2026',
     tteConventionId: 'CC4FC78E-17EC-11F1-9082-3FD444321FD1',
     hasHotGames: true,
-    // Not posted yet as of Nov 13; add titles here when the list is out.
-    hotGames: [],
     days: [
       { date: '2026-11-18', open: '09:00', close: '24:00' },
       { date: '2026-11-19', open: '08:00', close: '24:00' },
@@ -79,3 +82,30 @@ export const LIBRARY_RULES = {
   /** Hours from midnight that don't count toward due times. */
   uncountedUntilHour: 8,
 } as const;
+
+/**
+ * Library hours, the same at every BGG.CON and BGG.Spring so far (2021–2027,
+ * from the convention websites): the first day opens when the convention
+ * starts (9 AM), the other days at 8 AM, every day closes at midnight except
+ * the last, which closes at 1 PM. Tabletop.Events lists the convention's dates
+ * but not the library's hours, so this pattern fills them in.
+ */
+export const LIBRARY_HOURS = {
+  otherDaysOpen: '08:00',
+  close: '24:00',
+  lastDayClose: '13:00',
+} as const;
+
+/** The BGG library on Tabletop.Events. Only conventions using it are picked up. */
+export const BGG_LIBRARY_ID = '0AEB11DA-2B7D-11EC-B400-855F800FD618';
+
+/**
+ * Changes for one convention, by its exact Tabletop.Events name. Leave empty in a
+ * normal year. Examples:
+ *   'BGG.CON 2027': { days: [...] }          // the library keeps different hours
+ *   'BGG.CON 2027': { hotGames: ['Ants'] }   // Hot Games titles the news post missed
+ *
+ * Hot Games are read from the convention's news post automatically
+ * (util/hot-games.ts); titles listed here are added to those.
+ */
+export const CONVENTION_OVERRIDES: Record<string, Partial<Convention>> = {};

@@ -51,6 +51,12 @@ export function dallasDateKey(ms: number): string {
   return `${w.y}-${String(w.m).padStart(2, '0')}-${String(w.d).padStart(2, '0')}`;
 }
 
+/** "HH:MM" (24-hour) in Dallas for an instant. */
+export function dallasTimeKey(ms: number): string {
+  const w = wallClock(ms);
+  return `${String(w.h).padStart(2, '0')}:${String(w.mi).padStart(2, '0')}`;
+}
+
 function dayInstant(day: LibraryDay, time: string): number {
   const [y, m, d] = day.date.split('-').map(Number);
   const [h, mi] = time.split(':').map(Number);

@@ -3,6 +3,7 @@ import { computed, DestroyRef, inject, Injectable, signal, WritableSignal } from
 import { catchError, map, Observable, of } from 'rxjs';
 import { CONVENTIONS, Convention } from '../config/conventions';
 import { postSnippet, postTopics } from '../util/con-html';
+import { hotGamesFromPosts, setNewsHotGames } from '../util/hot-games';
 import { currentOrNextConvention, formatLibraryTime, LIBRARY_TIME_ZONE } from '../util/library-time';
 import { parseTteDate } from '../util/time-ago';
 
@@ -92,6 +93,11 @@ export class ConInfoService {
   /** Unread posts the new-post message hasn't shown yet. */
   readonly toAnnounce = computed(() => this.unread().filter(p => !this.promptedIds().has(p.id)));
 
+  constructor() {
+    // Hot Games from the saved posts, so search knows them before the network answers.
+    setNewsHotGames(hotGamesFromPosts(this.posts() || []));
+  }
+
   /** Called once from AppComponent so new posts are noticed on every tab. */
   start(destroyRef: DestroyRef): void {
     if (!this.conId) return;
@@ -129,6 +135,8 @@ export class ConInfoService {
         this.addTo(this.promptedIds, PROMPTED_KEY, old);
       }
       this.posts.set(posts);
+      // BGG posts the final Hot Games list in the news; pick it up without an app update.
+      setNewsHotGames(hotGamesFromPosts(posts));
       this.saveCache({ posts, postsAt: Date.now() });
     });
   }
