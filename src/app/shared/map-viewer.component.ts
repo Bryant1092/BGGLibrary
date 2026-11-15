@@ -104,6 +104,8 @@ const tidy = (s: string) => s.toLowerCase().replace(/(^|[\s/(-])([a-zà-ü’'])
     .label.on { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
     .label.place { font-size: 11px; font-weight: 700; color: var(--bl-due-fg); }
     .label.num { font-size: 10px; line-height: 11px; }
+    /* The selected booth's number becomes a solid accent pill, a second cue besides the ring. */
+    .label.num.sel { padding: 2px 6px; border-radius: 8px; background: var(--bl-accent); color: #fff; text-shadow: none; font-size: 11px; line-height: 13px; }
     .vm-mark { position: absolute; width: 26px; height: 26px; border-radius: 13px; transform: translate(-50%, -50%) scale(var(--inv, 1)); display: flex; align-items: center; justify-content: center; color: #fff; background: #3a3632; box-shadow: 0 0 0 2px var(--bl-surface); pointer-events: none; }
     .vm-mark.wc { background: #2d5a8a; }
     .pin { position: absolute; width: 44px; height: 44px; border-radius: 50%; transform: translate(-50%, -50%) scale(var(--inv, 1)); border: 3px solid var(--bl-accent); box-shadow: 0 0 0 3px #fff; pointer-events: none; }
@@ -111,7 +113,7 @@ const tidy = (s: string) => s.toLowerCase().replace(/(^|[\s/(-])([a-zà-ü’'])
     @keyframes pulse { to { transform: scale(1.8); opacity: 0; } }
     @media (prefers-reduced-motion: reduce) { .pin::after { animation: none; } }
     .floor-name { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); padding: 5px 12px; border-radius: 14px; font-size: 13px; font-weight: 700; white-space: nowrap; background: var(--bl-toast-bg); color: var(--bl-toast-fg); box-shadow: 0 1px 6px rgba(0, 0, 0, .2); z-index: 2; pointer-events: none; }
-    .floors { position: absolute; left: 12px; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); background: var(--bl-surface); z-index: 2; }
+    .floors { position: absolute; left: 12px; transform: translateY(-50%); display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); background: var(--bl-surface); z-index: 2; }
     .floors button { position: relative; width: 48px; height: 48px; border: 0; font-size: 17px; font-weight: 800; background: var(--bl-surface); color: var(--bl-text); }
     .floors button.on { background: var(--bl-accent); color: #fff; }
     /* A selected place on another floor: a dot on that floor's button. */
@@ -190,15 +192,15 @@ const tidy = (s: string) => s.toLowerCase().replace(/(^|[\s/(-])([a-zà-ü’'])
           </div>
         }
         @for (b of boothViews(); track b.num) {
-          <div class="shape" [style.left.px]="b.x" [style.top.px]="b.y" [style.width.px]="b.w" [style.height.px]="b.h" [style.z-index]="b.on ? 5 : 2" [style.filter]="b.outline">
+          <div class="shape" [style.left.px]="b.x" [style.top.px]="b.y" [style.width.px]="b.w" [style.height.px]="b.h" [style.z-index]="b.on ? 5 : 2" [style.filter]="b.outline" [style.opacity]="b.dim ? 0.4 : 1">
             <button type="button" [attr.aria-label]="b.aria" [attr.aria-pressed]="b.on" (click)="selectBooth(b.num)"
                     [style.clip-path]="b.clip" [style.background]="b.fill"></button>
           </div>
           @if (b.logo) {
-            <img class="booth-logo" [src]="b.logo" alt="" loading="lazy" [style.left.px]="b.lx" [style.top.px]="b.ly" [style.width.px]="b.ls" [style.height.px]="b.ls" [style.z-index]="b.on ? 6 : 3" [style.border-radius.px]="b.ls * 0.08">
+            <img class="booth-logo" [src]="b.logo" alt="" loading="lazy" [style.left.px]="b.lx" [style.top.px]="b.ly" [style.width.px]="b.ls" [style.height.px]="b.ls" [style.z-index]="b.on ? 6 : 3" [style.border-radius.px]="b.ls * 0.08" [style.opacity]="b.dim ? 0.4 : 1">
           }
           @if (b.showNum) {
-            <span class="label num" aria-hidden="true" [style.left.px]="b.nx" [style.top.px]="b.ny" [style.z-index]="7">{{ b.num }}</span>
+            <span class="label num" aria-hidden="true" [class.sel]="b.on" [style.left.px]="b.nx" [style.top.px]="b.ny" [style.z-index]="7">{{ b.num }}</span>
           }
         }
         @for (m of markViews(); track $index) {
@@ -211,7 +213,12 @@ const tidy = (s: string) => s.toLowerCase().replace(/(^|[\s/(-])([a-zà-ü’'])
       </div>
 
       <div class="floor-name">{{ floor().name }}</div>
-      <div class="floors" role="radiogroup" aria-label="Floor" [style.bottom.px]="controlsBottom()">
+      <!--
+        Floor picker: left edge, centred in the part of the map above the card. Mid-edge is easier
+        to reach one-handed than a bottom corner (Hoober's thumb-zone research), stays clear of the
+        iPhone home bar and the card, and sits opposite the zoom buttons (Map UI Patterns).
+      -->
+      <div class="floors" role="radiogroup" aria-label="Floor" [style.top]="'calc((100% - ' + cardHeight() + 'px) / 2)'">
         @for (f of maps.floors; track f.id) {
           <button type="button" role="radio" [class.on]="f.id === floorId()" [attr.aria-checked]="f.id === floorId()" [attr.aria-label]="f.name + (floorsWithSelection().has(f.id) && f.id !== floorId() ? ', has a highlighted place' : '')" (click)="switchFloor(f.id)">
             {{ f.short }}
@@ -321,7 +328,7 @@ export class MapViewerComponent implements AfterViewInit, OnDestroy {
   floorsWithSelection = computed(() => new Set(this.selectedRooms().map(r => r.floor).concat(this.selectedBooths().length ? ['E' as FloorId] : [])));
   private selectedRooms = computed(() => { const ids = this.selection(); return this.maps.rooms.filter(r => ids.includes('room:' + r.id)); });
   private selectedBooths = computed(() => { const ids = this.selection(); return this.maps.booths.filter(b => ids.includes('booth:' + b.num)); });
-  private cardHeight = signal(0);
+  cardHeight = signal(0);
   controlsBottom = computed(() => this.cardHeight() + 14);
 
   roomViews = computed(() => {
@@ -344,7 +351,12 @@ export class MapViewerComponent implements AfterViewInit, OnDestroy {
 
   boothViews = computed(() => {
     if (!this.boothsVisible()) return [];
-    const P = this.P(); const sel = new Set(this.selection()); const scale = this.fitScale() * this.zoomStep(); const o = 2.5 / scale;
+    const P = this.P(); const sel = new Set(this.selection()); const scale = this.fitScale() * this.zoomStep();
+    // Selected booth: a 4px accent ring (5.2:1 against the white booths, past WCAG 1.4.11's 3:1 for
+    // selected states; the old pale fill was ~1.1:1) and every other booth dimmed, so it stands out
+    // at a glance (Apple: "distinct styling like an outline and color variation").
+    const o = 4 / scale;
+    const anyBooth = [...sel].some(k => k.startsWith('booth:'));
     return this.maps.booths.map(bt => {
       const pts = bt.poly.map(P); const b = bounds(pts); const [cx, cy] = center(pts); const on = sel.has('booth:' + bt.num);
       const side = Math.min(b.w, b.h); const screen = side * scale; const ls = side * 0.66;
@@ -353,8 +365,9 @@ export class MapViewerComponent implements AfterViewInit, OnDestroy {
       return {
         num: bt.num, x: b.x0, y: b.y0, w: b.w, h: b.h, on, clip: clipFor(pts, b),
         aria: `Booth ${bt.num}${bt.name ? ', ' + bt.name : ''}${on ? ', selected' : ''}`,
-        fill: on ? 'var(--bl-accent-soft)' : 'var(--bl-surface)',
-        outline: on ? `drop-shadow(${o}px 0 0 var(--bl-accent)) drop-shadow(-${o}px 0 0 var(--bl-accent)) drop-shadow(0 ${o}px 0 var(--bl-accent)) drop-shadow(0 -${o}px 0 var(--bl-accent))` : null,
+        fill: 'var(--bl-surface)',
+        dim: anyBooth && !on,
+        outline: on ? `drop-shadow(${o}px 0 0 var(--bl-accent)) drop-shadow(-${o}px 0 0 var(--bl-accent)) drop-shadow(0 ${o}px 0 var(--bl-accent)) drop-shadow(0 -${o}px 0 var(--bl-accent)) drop-shadow(0 ${o}px ${o * 2}px rgba(0, 0, 0, .35))` : null,
         logo, lx: cx - ls / 2, ly: cy - ls / 2 - side * 0.06, ls,
         showNum: screen >= 34 || (screen >= 14 && !logo), nx: cx, ny: cy + (logo ? side * 0.36 : 0),
       };
@@ -507,8 +520,12 @@ export class MapViewerComponent implements AfterViewInit, OnDestroy {
       };
       on('pointerdown', e => this.onDown(e));
       on('pointermove', e => this.onMove(e));
-      on('pointerup', e => this.onUp(e));
-      on('pointercancel', e => this.onUp(e));
+      // On window, not the map: a finger lifted over the top bar or outside the page would
+      // otherwise stay "down" and turn the next touch into a pinch.
+      const up = (e: PointerEvent) => this.onUp(e);
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', up);
+      this.cleanup.push(() => { window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); });
       on('wheel', e => { e.preventDefault(); const p = this.pt(e); this.zoomAt(e.deltaY < 0 ? 1.2 : 1 / 1.2, p.x, p.y); }, { passive: false });
       const resize = () => { this.measureFit(); this.apply(); };
       window.addEventListener('resize', resize);
@@ -736,7 +753,7 @@ export class MapViewerComponent implements AfterViewInit, OnDestroy {
     // No pointer capture: it would retarget the tap away from the room/booth button underneath.
     const p = this.pt(e);
     this.pointers.set(e.pointerId, p);
-    this.moved = false;
+    if (this.pointers.size === 1) { this.moved = false; this.downAt = p; }
     if (this.pointers.size === 1) {
       // Double-tap: zoom in where tapped (or back out when fully zoomed).
       const now = Date.now();
@@ -750,6 +767,8 @@ export class MapViewerComponent implements AfterViewInit, OnDestroy {
   }
 
   private moved = false;
+  /** Where the current one-finger touch started, to tell a tap from a drag. */
+  private downAt = { x: 0, y: 0 };
 
   private onMove(e: PointerEvent): void {
     const prev = this.pointers.get(e.pointerId);
@@ -757,7 +776,8 @@ export class MapViewerComponent implements AfterViewInit, OnDestroy {
     const p = this.pt(e);
     const pts = [...this.pointers.values()];
     if (this.pointers.size === 1) {
-      if (Math.hypot(p.x - prev.x, p.y - prev.y) > 3) this.moved = true;
+      // 8px: fingertips wobble a few pixels during a plain tap; only a real drag counts as moving.
+      if (Math.hypot(p.x - this.downAt.x, p.y - this.downAt.y) > 8) this.moved = true;
       this.x += p.x - prev.x;
       this.y += p.y - prev.y;
       this.pointers.set(e.pointerId, p);
@@ -773,12 +793,16 @@ export class MapViewerComponent implements AfterViewInit, OnDestroy {
   }
 
   private onUp(e: PointerEvent): void {
-    this.pointers.delete(e.pointerId);
+    // Only fingers that started on the map count. Taps on the floor picker, zoom buttons or
+    // card skip onDown, so they must be ignored here too: before, a finished drag left
+    // "moved" set and every later tap on a control was swallowed until the map was reopened.
+    if (!this.pointers.delete(e.pointerId)) return;
     // A drag that started on a room shouldn't also select it when the finger lifts.
-    if (this.moved) {
+    if (this.moved && e.type === 'pointerup') {
       const swallow = (ev: Event) => { ev.stopPropagation(); ev.preventDefault(); };
       window.addEventListener('click', swallow, { capture: true, once: true });
       setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 50);
     }
+    if (this.pointers.size === 0) this.moved = false;
   }
 }
