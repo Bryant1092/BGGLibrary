@@ -1,0 +1,60 @@
+/* Search, filters and counts: same spacing as the header, but not pinned. */
+.ev-controls { display: flex; flex-direction: column; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--bl-hair); }
+
+/* Day tabs: equal-width, 44px+ tall, today/selected filled orange. */
+.days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.days button { min-height: 50px; border-radius: 12px; border: 1.5px solid var(--bl-control-border); background: var(--bl-surface); color: var(--bl-text); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; padding: 0; }
+.days button span { font-size: 12px; font-weight: 600; color: var(--bl-muted); }
+.days button strong { font-size: 18px; }
+.days button.on { background: var(--bl-accent); border-color: var(--bl-accent); color: var(--bl-on-accent); }
+.days button.on span { color: var(--bl-on-accent); }
+.bl-link-btn.inline { margin: 0; padding: 0 2px; min-height: 0; font-size: inherit; }
+
+/* Opening hours for the day, collapsed to one line by default. */
+.hours { margin: 12px 16px 4px; border-radius: 12px; background: var(--bl-field); }
+.hours summary { list-style: none; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; font-size: 14px; cursor: pointer; }
+.hours summary::-webkit-details-marker { display: none; }
+.hours summary > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hours[open] .chev { transform: rotate(180deg); }
+.hours dl { margin: 0; padding: 0 12px 10px; font-size: 14px; }
+.hours dl div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--bl-hair); }
+.hours dt { font-weight: 600; }
+.hours dd { margin: 0; color: var(--bl-muted); text-align: right; }
+
+.earlier { display: flex; justify-content: center; padding: 8px 16px 0; }
+
+/* Start-time headers pin just under the page header while their events scroll by. */
+.time-head { position: sticky; top: var(--events-header-h, 0px); z-index: 5; margin: 0; padding: 10px 16px 6px; background: var(--bl-surface); font-size: 15px; font-weight: 800; border-bottom: 1px solid var(--bl-hair); display: flex; align-items: center; gap: 8px; }
+.time-head.now { color: var(--bl-avail-bg); }
+.live-dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+
+.ev-row { display: flex; align-items: flex-start; gap: 4px; padding: 10px 6px 10px 16px; border-bottom: 1px solid var(--bl-hair); }
+.ev-row.cancelled .bl-name { text-decoration: line-through; color: var(--bl-muted); }
+.ev-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; border: 0; background: transparent; padding: 0; text-align: left; color: inherit; }
+.ev-time { font-size: 13px; color: var(--bl-muted); }
+.ev-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--bl-muted); }
+.ev-type, .ev-room { display: inline-flex; align-items: center; gap: 5px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; display: inline-block; margin-right: 6px; }
+.ev-type .dot { margin-right: 0; }
+.ev-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+
+/* Seat status: green open, amber few left, grey full; text always says which. */
+.seats { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 11px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.seats.open { background: var(--bl-avail-bg); color: var(--bl-avail-fg); }
+.seats.few { background: var(--bl-late-bg); color: var(--bl-late-fg); box-shadow: inset 0 0 0 1px var(--bl-late-border); }
+.seats.full { background: var(--bl-out-bg); color: var(--bl-out-fg); }
+.seats.none { background: var(--bl-field); color: var(--bl-muted); box-shadow: inset 0 0 0 1px var(--bl-control-border); }
+
+.star { color: var(--bl-muted); }
+.star.on { color: var(--bl-accent-text); }
+
+/* Details sheet */
+.sheet-head { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; }
+.sheet-head h2 { margin-top: 6px; overflow-wrap: anywhere; }
+.sheet-head .ev-type { font-size: 13px; font-weight: 600; color: var(--bl-muted); }
+.facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
+.facts li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.facts bl-icon { color: var(--bl-muted); }
+.overlap { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--bl-late-bg); color: var(--bl-late-fg); font-size: 14px; }
+.desc { margin: 0; font-size: 15px; line-height: 21px; white-space: pre-line; overflow-wrap: anywhere; }
+.more { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; font-weight: 600; text-decoration: none; color: var(--bl-accent-text); }

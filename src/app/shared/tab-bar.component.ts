@@ -3,10 +3,10 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { IconComponent } from './icon.component';
 
 /**
- * Bottom navigation (Library / My Lists / Account), replacing the top navbar
- * and its hamburger menu. With only three places to go, tabs keep them one tap
+ * Bottom navigation (Library / My Lists / Events / Account), replacing the top navbar
+ * and its hamburger menu. With only four places to go, tabs keep them one tap
  * away and within thumb reach on a phone, which is how both iOS and Android
- * apps place top-level navigation.
+ * apps place top-level navigation (both allow up to 5 tabs).
  */
 @Component({
   selector: 'app-tab-bar',
@@ -20,6 +20,9 @@ import { IconComponent } from './icon.component';
       </a>
       <a routerLink="/library/user" routerLinkActive="active" ariaCurrentWhenActive="page">
         <bl-icon name="list" [size]="24" />My Lists
+      </a>
+      <a routerLink="/events" routerLinkActive="active" ariaCurrentWhenActive="page">
+        <bl-icon name="calendar" [size]="24" />Events
       </a>
       <a routerLink="/account" routerLinkActive="active" ariaCurrentWhenActive="page">
         <bl-icon name="user" [size]="24" />Account

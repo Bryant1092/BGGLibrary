@@ -29,11 +29,18 @@ export interface Convention {
    * punctuation and "(English edition)"-style text in brackets.
    */
   hotGames?: string[];
+  /**
+   * The convention's id on Tabletop.Events, used to load its event schedule
+   * (Events tab). Find it with
+   * https://tabletop.events/api/convention?query=<name> once the convention exists.
+   */
+  tteConventionId?: string;
 }
 
 export const CONVENTIONS: Convention[] = [
   {
     name: 'BGG.CON 2026',
+    tteConventionId: 'CC4FC78E-17EC-11F1-9082-3FD444321FD1',
     hasHotGames: true,
     // Not posted yet as of Nov 13; add titles here when the list is out.
     hotGames: [],
@@ -47,6 +54,7 @@ export const CONVENTIONS: Convention[] = [
   },
   {
     name: 'BGG.Spring 2027',
+    tteConventionId: '930C9118-A6FE-11F1-BA8A-B416C6434C85',
     hasHotGames: false,
     days: [
       { date: '2027-05-27', open: '09:00', close: '24:00' },
