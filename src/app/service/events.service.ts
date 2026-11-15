@@ -26,6 +26,12 @@ export interface ConEvent {
   seatsLeft: number;
   waitlist: number;
   ticketed: boolean;
+  /**
+   * Has tickets on Tabletop.Events, but the description says you don't need
+   * one to get in (they only add it to your schedule), e.g. the Board Game
+   * Bazaar and Virtual Flea Market. Shown as "No ticket needed" instead of seats.
+   */
+  ticketOptional: boolean;
   /** Library/Hot Games/Exhibit Hall/Registration hours etc.: shown as "Today's hours", not as events. */
   info: boolean;
   cancelled: boolean;
@@ -53,6 +59,15 @@ const PAGE_SIZE = 100;
 /** Seat counts change all the time during the con; anything older than this is reloaded. */
 const FRESH_MS = 5 * 60_000;
 const STAR_KEY = 'bgglibrary.starredEvents';
+/**
+ * Tabletop.Events has no "ticket optional" setting, so organizers write it in
+ * the description instead (Nov 2026: Board Game Bazaar and Virtual Flea Market,
+ * "BUYERS **DO NOT** need a ticket to enter this event. Tickets are available
+ * only as a reminder…"). Only clear phrasings match; "No ticket required for
+ * spectators" (Battling Tops) doesn't, because players there still need one.
+ */
+// [*\s]+ because descriptions use Markdown bold: "**DO NOT** need".
+const TICKET_OPTIONAL = /\b(do not|don't|no)[*\s]+need (a )?tickets? to (enter|attend)|\btickets? (are|is) not required|\btickets? (are |is )?(available )?only (as )?a reminder/i;
 
 /**
  * Loads a convention's event schedule from Tabletop.Events (public API, CORS
@@ -178,6 +193,8 @@ export class EventsService {
     if (!start || !end || e.private == 1 || e.published_to_schedule == 0 || e.trashed == 1) return null;
     const type = types.get(e.type_id) || 'Other';
     const seats = Number(e.max_quantity) || 0;
+    const description = [e.description, e.long_description].map((s: string) => (s || '').trim()).filter(Boolean).join('\n\n');
+    const ticketOptional = seats > 1 && TICKET_OPTIONAL.test(description);
     return {
       id: e.id,
       name: (e.name || '').trim(),
@@ -193,11 +210,12 @@ export class EventsService {
       seatsLeft: Math.max(0, Number(e.available_quantity) || 0),
       waitlist: Number(e.wait_count) || 0,
       // Hours entries (Library, Exhibit Hall…) and walk-up events have a single placeholder "seat".
-      ticketed: seats > 1,
+      ticketed: seats > 1 && !ticketOptional,
+      ticketOptional,
       info: type === 'General Information',
       cancelled: e.is_cancelled == 1,
       age: e.age_range === 'drinking_age' ? '21+' : e.age_range === 'adult' ? '18+' : '',
-      description: [e.description, e.long_description].map((s: string) => (s || '').trim()).filter(Boolean).join('\n\n'),
+      description,
       ticketUrl: e.view_uri ? `https://tabletop.events${e.view_uri}` : '',
       moreInfoUrl: /^https?:\/\//.test(e.more_info_uri || '') ? e.more_info_uri : '',
     };

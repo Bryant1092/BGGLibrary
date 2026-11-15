@@ -235,6 +235,11 @@
             {{ row.seatsTone === 'full' ? 'Join the waitlist' : 'Get a ticket' }} on Tabletop.Events <bl-icon name="external" [size]="16" />
           </a>
         }
+        <!-- Ticket-optional events (Bazaar…): a ticket only puts it on your Tabletop.Events schedule,
+             so it's a quiet link instead of the main button, and starring here does the same job. -->
+        @if (row.event.ticketUrl && row.event.ticketOptional && !row.event.cancelled) {
+          <a class="more" [href]="row.event.ticketUrl" target="_blank" rel="noopener">Add to my Tabletop.Events schedule (optional) <bl-icon name="external" [size]="16" /></a>
+        }
         <button type="button" class="bl-btn secondary" [attr.aria-pressed]="row.starred" (click)="toggleStar(row.event)">
           <bl-icon [name]="row.starred ? 'starFilled' : 'star'" [size]="20" />
           {{ row.starred ? 'Starred' : 'Star this event' }}
