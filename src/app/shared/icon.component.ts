@@ -37,6 +37,11 @@ const ICONS: Record<string, string> = {
   flask: '<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>',
   book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M8 7h7"/>',
   chevronRight: '<path d="m9 6 6 6-6 6"/>',
+  // Venue-map landmarks.
+  elevator: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="m9 9 3-3 3 3M9 15l3 3 3-3"/>',
+  escalator: '<path d="M3 19h4l10-12h4"/><path d="M14 7h4v4"/>',
+  restroom: '<circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M7 9v11M4 9h6M17 9l-3 7h6l-3-7M17 16v4"/>',
+  fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   // Filled bell = alert on; outlined bell with a slash = off. The shapes differ,
   // not just the color, so the state is clear to color-blind users too.
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" fill="currentColor"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',

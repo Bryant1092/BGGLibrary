@@ -1,32 +1,23 @@
 import { Injectable, signal } from '@angular/core';
-import { ConventionMaps, MapSpot, VENUE_MAPS, VenueMap } from '../config/venue-maps';
+import { ConventionMaps, FloorId, VENUE_MAPS } from '../config/venue-maps';
 import { currentOrNextConvention } from '../util/library-time';
 
-export interface MapRequest {
-  map: VenueMap['id'];
-  /** Place to circle and center on; omitted to just browse the map. */
-  spot?: MapSpot;
-  /** Shown in the viewer's top bar, e.g. "Gaston" or "Booth 204 · Brookspun Games". */
-  label?: string;
-  /**
-   * Several places at once, each circled with its name under it (e.g. every
-   * room HomeGrown playtesting uses). The map opens zoomed to fit them all.
-   */
-  spots?: { spot: MapSpot; label: string }[];
-}
-
 /**
- * Rooms used for HomeGrown (unpublished designers') playtesting at BGG.CON 2026,
- * from the schedule: Pegasus A is the HomeGrown Games Lab ("Pegagus A -
- * HomeGrown Playtesting", 10 events); Gaston tables, Bryan Beeman B and
- * McMillan host the rest. Room names as Tabletop.Events spells them.
+ * What the venue map should show when it opens.
+ *  - select: rooms ("room:gastonA") and/or booths ("booth:204") to highlight; the map opens on
+ *    the first one's floor, zoomed to fit them.
+ *  - point: a spot to circle for schedule rooms the floor plan doesn't outline (Trinity A…).
+ *  - hall: open zoomed into the exhibit hall's booths.
+ * With none of these it shows the whole floor (Lobby level by default: where people come in).
  */
-const HOMEGROWN_ROOMS: { room: string; label: string }[] = [
-  { room: 'Pegasus A', label: 'Pegasus A · HomeGrown Lab' },
-  { room: 'Gaston', label: 'Gaston' },
-  { room: 'Bryan Beeman', label: 'Bryan Beeman' },
-  { room: 'McMillan', label: 'McMillan' },
-];
+export interface MapRequest {
+  floor?: FloorId;
+  select?: string[];
+  point?: { floor: FloorId; x: number; y: number };
+  hall?: boolean;
+  /** Shown on the place card, e.g. "Gaston" or "HomeGrown playtesting rooms". */
+  label?: string;
+}
 
 /** Lowercase, no accents/punctuation/company suffixes, for matching names typed slightly differently. */
 function normalize(name: string): string {
@@ -36,12 +27,26 @@ function normalize(name: string): string {
 }
 
 /**
- * Opens the full-screen venue map (MapViewerComponent, in the app shell) and
- * finds where rooms and exhibitor booths are on it, using config/venue-maps.ts.
+ * Rooms used for HomeGrown (unpublished designers') playtesting at BGG.CON 2026, from the
+ * schedule: Pegasus A is the HomeGrown Games Lab; Gaston tables, Bryan-Beeman B and
+ * McMillan host the rest.
+ */
+const HOMEGROWN = ['room:pegasusA', 'room:gastonA', 'room:gastonB', 'room:bryanB', 'room:mcmillan'];
+
+/**
+ * Opens the full-screen venue map (MapViewerComponent, in the app shell) and finds where
+ * schedule rooms and exhibitor booths are on it, using config/venue-maps.ts.
  */
 @Injectable({ providedIn: 'root' })
 export class MapService {
   readonly request = signal<MapRequest | null>(null);
+
+  /**
+   * Set by the Events tab while it's open, so the map's place card can offer
+   * "Events here" / "Exhibitor details" and hand the choice back to it.
+   */
+  onEventsHere: ((tteRoom: string) => void) | null = null;
+  onExhibitor: ((booth: string) => void) | null = null;
 
   /** Maps for the current/next convention, or undefined if none were added. */
   maps(): ConventionMaps | undefined {
@@ -57,21 +62,15 @@ export class MapService {
     this.request.set(null);
   }
 
-  /** Where a schedule room is on the hotel map (room names as Tabletop.Events spells them). */
+  /** Where a schedule room is (room names as Tabletop.Events spells them). */
   roomRequest(roomName: string, label = roomName): MapRequest | null {
-    const rooms = this.maps()?.rooms;
-    if (!rooms || !roomName) return null;
-    const spot = rooms[roomName] ?? Object.entries(rooms).find(([key]) => normalize(key) === normalize(roomName))?.[1];
-    return spot ? { map: 'hotel', spot, label } : null;
-  }
-
-  /** All HomeGrown playtesting rooms circled on the hotel map (null if this convention has no map). */
-  homegrownRequest(): MapRequest | null {
-    const rooms = this.maps()?.rooms;
-    const spots = HOMEGROWN_ROOMS
-      .map(r => ({ spot: rooms?.[r.room], label: r.label }))
-      .filter((s): s is { spot: MapSpot; label: string } => !!s.spot);
-    return spots.length ? { map: 'hotel', spots, label: 'HomeGrown playtesting rooms' } : null;
+    const maps = this.maps();
+    if (!maps || !roomName) return null;
+    const key = normalize(roomName);
+    const rooms = maps.rooms.filter(r => r.tte.some(t => t === roomName || normalize(t) === key));
+    if (rooms.length) return { select: rooms.map(r => 'room:' + r.id), label };
+    const point = maps.points[roomName] ?? Object.entries(maps.points).find(([k]) => normalize(k) === key)?.[1];
+    return point ? { point, label } : null;
   }
 
   /**
@@ -84,16 +83,25 @@ export class MapService {
     const raw = exhibitorName.replace(/-[A-Z]$/, ''); // "Rock, Stone & Dice Games-A" = one of their tables
     const inBrackets = raw.match(/\(([^)]+)\)/)?.[1] || '';
     const candidates = [raw, raw.replace(/\([^)]*\)/g, ''), inBrackets].map(normalize).filter(c => c.length >= 3);
-    const entry = this.maps()?.directory.find(d => {
-      const name = normalize(d.name);
-      return candidates.some(t => name === t || (name.length >= 5 && t.startsWith(name)) || (t.length >= 5 && name.startsWith(t)));
+    const entry = this.maps()?.booths.find(b => {
+      const name = normalize(b.name);
+      return !!name && candidates.some(t => name === t || (name.length >= 5 && t.startsWith(name)) || (t.length >= 5 && name.startsWith(t)));
     });
-    return entry?.booth ?? null;
+    return entry?.num ?? null;
   }
 
   boothRequest(booth: string, exhibitorName?: string): MapRequest | null {
-    const spot = this.maps()?.booths[booth];
-    if (!spot) return null;
-    return { map: 'hall', spot, label: `Booth ${booth}${exhibitorName ? ' · ' + exhibitorName : ''}` };
+    const exists = this.maps()?.booths.some(b => b.num === booth);
+    return exists ? { select: ['booth:' + booth], label: `Booth ${booth}${exhibitorName ? ' · ' + exhibitorName : ''}` } : null;
+  }
+
+  /** All HomeGrown playtesting rooms highlighted (they're on two floors; the card lists them). */
+  homegrownRequest(): MapRequest | null {
+    return this.maps() ? { select: HOMEGROWN, label: 'HomeGrown playtesting rooms' } : null;
+  }
+
+  /** The exhibit hall, zoomed into its booths. */
+  hallRequest(): MapRequest | null {
+    return this.maps() ? { floor: 'E', hall: true } : null;
   }
 }

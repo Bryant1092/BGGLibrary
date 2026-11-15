@@ -1,172 +1,36 @@
 /**
- * Venue maps for the Events tab (BGG.CON 2026), from the PDFs in the attendee
- * email, rendered to high-resolution JPEGs in public/maps.
+ * Venue maps (generated; see scripts/venue-maps/README.md to rebuild).
  *
- * Spots are percentages of the image (x, y of the center; r = circle radius
- * as % of image width), so they don't depend on screen size. They were
- * generated from the PDFs' own text and logo positions, then every one was
- * checked by drawing it on the map:
- *  - rooms: keyed by Tabletop.Events room_name exactly as the schedule spells
- *    it (including its typos "Ariel Queen" and "Pegagus B");
- *  - booths: keyed by booth number; the directory (booth -> exhibitor name) is
- *    copied from the hall map, because Tabletop.Events only shares booth
- *    assignments with logged-in exhibitors/staff.
- * For a new convention, add an entry with its own maps and spots.
+ * Floors are the Hyatt Regency Dallas floor-plan PDF's own vector drawing, one SVG per
+ * level in public/maps/<convention>/. Coordinates below are that PDF's page units.
+ *  - rooms: the PDF's room shapes, cut along its own dashed dividers (Gaston A/B, Marsalis
+ *    A/B…), with BGG.CON's use of each (from the con's map). `tte` lists the Tabletop.Events
+ *    room names (exact spelling, typos included) that should circle the room.
+ *  - booths: the exhibit hall's booths from BGG.CON's hall-map PDF, placed into the Hyatt plan
+ *    with a perspective transform fitted on the hall's corners. Booth assignments come from that
+ *    map's directory because Tabletop.Events only shows them to logged-in staff.
+ *  - logos: extracted from the hall-map PDF and saved by exhibitor name in public/maps/logos,
+ *    so a later year can reuse a logo when the exhibitor's name matches (logos/index.json).
+ *  - marks: elevators, escalators, restrooms and place names from the PDF's labels.
+ *  - points: schedule rooms the plan doesn't outline, circled at a spot instead.
+ * For another convention, add an entry built the same way.
  */
-export interface MapSpot { x: number; y: number; r: number; }
+export type FloorId = '3' | 'A' | 'L' | 'E';
+export type PlaceKind = 'open' | 'sched' | 'special' | 'exhibit' | 'library' | 'hot' | 'quiet' | 'calm' | 'rpg' | 'war' | 'proto' | 'service' | 'other';
+export type Pt = [number, number];
 
-export interface VenueMap {
-  id: 'hotel' | 'hall';
-  title: string;
-  src: string;
-  /** Image size in pixels, used for the aspect ratio before it loads. */
-  width: number;
-  height: number;
-}
-
+export interface VenueFloor { id: FloorId; short: string; name: string; src: string; crop: [number, number, number, number]; }
+export interface VenueRoom { id: string; floor: FloorId; name: string; sub: string; kind: PlaceKind; poly: Pt[]; tte: string[]; }
+export interface VenueBooth { num: string; name: string; logo: string; poly: Pt[]; }
+export interface VenueMark { floor: FloorId; kind: 'elev' | 'esc' | 'wc' | 'text'; x: number; y: number; text?: string; }
 export interface ConventionMaps {
-  maps: VenueMap[];
-  rooms: Record<string, MapSpot>;
-  booths: Record<string, MapSpot>;
-  directory: { booth: string; name: string }[];
+  floors: VenueFloor[];
+  rooms: VenueRoom[];
+  booths: VenueBooth[];
+  marks: VenueMark[];
+  points: Record<string, { floor: FloorId; x: number; y: number }>;
 }
 
 export const VENUE_MAPS: Record<string, ConventionMaps> = {
-  'BGG.CON 2026': {
-    maps: [
-      { id: 'hotel', title: 'Hotel', src: 'maps/bggcon-2026-hotel.jpg', width: 5760, height: 3241 },
-      { id: 'hall', title: 'Exhibit hall', src: 'maps/bggcon-2026-exhibit-hall.jpg', width: 5760, height: 3240 },
-    ],
-    rooms: {
-    "Gaston": { x: 85.3, y: 40, r: 2.1 },
-    "Moreno": { x: 90.8, y: 35.3, r: 2.1 },
-    "Reverchon B - WarGamers HQ": { x: 95.6, y: 43.3, r: 2 },
-    "Reverchon A - RPG Room": { x: 93.8, y: 40.7, r: 1.4 },
-    "Sanger A - Quiet Games": { x: 89.1, y: 42.8, r: 1.9 },
-    "Cumberland EFGH": { x: 37, y: 86, r: 2.5 },
-    "Cumberland IJKL": { x: 38.2, y: 80.7, r: 2.5 },
-    "Reunion Ballroom": { x: 39.4, y: 35.8, r: 5.9 },
-    "Kessler": { x: 87, y: 30.9, r: 1.9 },
-    "Ariel Queen": { x: 79.3, y: 12.9, r: 1.6 },
-    "Dallas Belt": { x: 82.6, y: 12.4, r: 1.5 },
-    "The Central": { x: 85.5, y: 13.1, r: 1.4 },
-    "Shawnee Trail": { x: 88.9, y: 11.6, r: 1.5 },
-    "Cotton Bowl": { x: 75.4, y: 23.3, r: 1.9 },
-    "Trinity A": { x: 29.6, y: 40.9, r: 1.5 },
-    "McMillan": { x: 82.1, y: 35.8, r: 1.9 },
-    "Bryan Beeman": { x: 73.6, y: 34, r: 2.1 },
-    "Marsalis": { x: 19.4, y: 68, r: 5 },
-    "Centennial Restaurant": { x: 65.6, y: 17.2, r: 2.5 },
-    "Pegasus A": { x: 51.1, y: 45.9, r: 2.1 },
-    "Pegagus B": { x: 49.8, y: 48.9, r: 1.9 },
-    "Pryor-Crockett": { x: 83.1, y: 29.6, r: 1.9 },
-    "Reunion Lobby": { x: 40.3, y: 46.1, r: 3.1 },
-    },
-    booths: {
-    "100": { x: 65.4, y: 84.4, r: 2.1 },
-    "101": { x: 58.5, y: 73.7, r: 2.1 },
-    "103": { x: 58.1, y: 65.9, r: 2.1 },
-    "105": { x: 58.1, y: 59.3, r: 2.1 },
-    "107": { x: 58.1, y: 43.7, r: 2.1 },
-    "115": { x: 58.3, y: 26.1, r: 2.1 },
-    "117": { x: 58.3, y: 19.4, r: 2.1 },
-    "119": { x: 60.7, y: 12.3, r: 2.1 },
-    "201": { x: 72.1, y: 73.2, r: 2.1 },
-    "202": { x: 62.6, y: 66.3, r: 2.1 },
-    "203": { x: 70.2, y: 66.3, r: 2.1 },
-    "204": { x: 63, y: 59.4, r: 2.1 },
-    "205": { x: 70.2, y: 59.5, r: 2.1 },
-    "206": { x: 62.9, y: 52.7, r: 2.1 },
-    "207": { x: 70.2, y: 52.9, r: 2.1 },
-    "208": { x: 62.9, y: 45.9, r: 2.1 },
-    "209": { x: 70.1, y: 46.2, r: 2.1 },
-    "210": { x: 62.7, y: 39.4, r: 2.1 },
-    "211": { x: 70.1, y: 39.4, r: 2.1 },
-    "212": { x: 63, y: 32.9, r: 2.1 },
-    "213": { x: 70.2, y: 32.9, r: 2.1 },
-    "214": { x: 63, y: 26.1, r: 2.1 },
-    "215": { x: 69.9, y: 26.1, r: 2.1 },
-    "216": { x: 62.7, y: 19.4, r: 2.1 },
-    "217": { x: 70.1, y: 19.3, r: 2.1 },
-    "219": { x: 72.4, y: 12.2, r: 2.1 },
-    "301": { x: 81.9, y: 73.7, r: 2.1 },
-    "302": { x: 74.6, y: 62.3, r: 2.1 },
-    "303": { x: 81.5, y: 66, r: 2.1 },
-    "305": { x: 81.5, y: 59.4, r: 2.1 },
-    "306": { x: 74.3, y: 52.9, r: 2.1 },
-    "307": { x: 81.8, y: 52.5, r: 2.1 },
-    "308": { x: 74.3, y: 46.2, r: 2.1 },
-    "309": { x: 81.8, y: 46.2, r: 2.1 },
-    "310": { x: 74.3, y: 39.4, r: 2.1 },
-    "311": { x: 81.8, y: 36, r: 2.1 },
-    "312": { x: 74.6, y: 29, r: 2.1 },
-    "315": { x: 81.8, y: 26.1, r: 2.1 },
-    "316": { x: 74.5, y: 19, r: 2.1 },
-    "317": { x: 81.4, y: 19.3, r: 2.1 },
-    "319": { x: 83.8, y: 11.7, r: 2.5 },
-    "402": { x: 86.2, y: 62.7, r: 2.1 },
-    "406": { x: 86.1, y: 52.6, r: 2.1 },
-    "408": { x: 85.9, y: 45.7, r: 2.1 },
-    "409": { x: 93.3, y: 51.5, r: 2.1 },
-    "410": { x: 86.6, y: 29.4, r: 2.1 },
-    "411": { x: 93.1, y: 44.4, r: 2.1 },
-    "413": { x: 93.1, y: 33.1, r: 2.1 },
-    "417": { x: 92.9, y: 22.2, r: 2.1 },
-    "419": { x: 93.4, y: 11.9, r: 2.1 },
-    "099": { x: 39.1, y: 85.7, r: 1.9 },
-    },
-    directory: [
-      { booth: '100', name: "Allplay" },
-      { booth: '316', name: "Arcanum Ludi" },
-      { booth: '214', name: "Ardonis" },
-      { booth: '307', name: "Artful Creations" },
-      { booth: '210', name: "Average Dude Designs" },
-      { booth: '410', name: "BGG Store" },
-      { booth: '099', name: "BoxKing Gaming" },
-      { booth: '204', name: "Brookspun Games" },
-      { booth: '117', name: "Captain Games" },
-      { booth: '411', name: "Chain Assembly" },
-      { booth: '107', name: "Common Ground Games" },
-      { booth: '302', name: "Contention Games" },
-      { booth: '417', name: "Cornerstone Games" },
-      { booth: '216', name: "Craft the Crown" },
-      { booth: '201', name: "Czech Games Edition" },
-      { booth: '301', name: "Decision Games" },
-      { booth: '202', name: "DMDave's Books and Games" },
-      { booth: '215', name: "Fratala Games" },
-      { booth: '213', name: "Gameswell" },
-      { booth: '203', name: "Gaming at Joe's" },
-      { booth: '319', name: "Geek Out" },
-      { booth: '105', name: "Grey Fox Games" },
-      { booth: '205', name: "Hairebrained Design" },
-      { booth: '207', name: "Hearth and Token" },
-      { booth: '312', name: "House Rules Board Games" },
-      { booth: '101', name: "Indie Game Studios" },
-      { booth: '315', name: "Lab 380" },
-      { booth: '115', name: "Lucky Duck Games" },
-      { booth: '305', name: "Mildly Tolerable Games" },
-      { booth: '209', name: "Moon Crab Games" },
-      { booth: '308', name: "New Comet Games" },
-      { booth: '317', name: "Next Big Project" },
-      { booth: '402', name: "Nexus Workshop" },
-      { booth: '119', name: "Pegasus Publishing" },
-      { booth: '206', name: "Piece Keepers" },
-      { booth: '306', name: "Playful Otter Studios" },
-      { booth: '309', name: "Really Good Game Studio" },
-      { booth: '303', name: "Rock, Stone & Dice Games" },
-      { booth: '413', name: "Savagesparrow Studios" },
-      { booth: '310', name: "Scallywags International" },
-      { booth: '409', name: "Sea Cow Games" },
-      { booth: '406', name: "Speedrobo Games" },
-      { booth: '212', name: "Split Decision Games" },
-      { booth: '208', name: "Tabletop Gaymers" },
-      { booth: '408', name: "TCG Co" },
-      { booth: '211', name: "Teltaine Trading Company" },
-      { booth: '217', name: "TerreDice Games" },
-      { booth: '219', name: "The Op Games" },
-      { booth: '311', name: "Uniquely Geek" },
-      { booth: '103', name: "Wattsalpoag Games" },
-      { booth: '419', name: "Welcome Home Creations TN" },
-    ],
-  },
+  'BGG.CON 2026': {"floors":[{"id":"3","short":"3","name":"Third level","src":"maps/bggcon-2026/floor-third.svg","crop":[100,270,400,195]},{"id":"A","short":"A","name":"Atrium level (2nd floor)","src":"maps/bggcon-2026/floor-atrium.svg","crop":[70,560,490,195]},{"id":"L","short":"L","name":"Lobby level","src":"maps/bggcon-2026/floor-lobby.svg","crop":[85,225,485,235]},{"id":"E","short":"E","name":"Exhibition level","src":"maps/bggcon-2026/floor-exhibition.svg","crop":[80,420,545,215]}],"rooms":[{"id":"aerial","floor":"3","name":"Scheduled games","sub":"Aerial Queen · 353","kind":"sched","poly":[[148.4,337],[143.3,347.3],[161.2,350.8],[166.2,340.4]],"tte":["Ariel Queen"]},{"id":"dallasbelt","floor":"3","name":"Scheduled games","sub":"Dallas Belt · 355","kind":"sched","poly":[[166.2,340.4],[161.2,350.8],[179,354.3],[184.1,343.9]],"tte":["Dallas Belt"]},{"id":"central","floor":"3","name":"Scheduled games","sub":"The Central · 357","kind":"sched","poly":[[188.7,333.2],[183.7,343.6],[200.7,346.8],[205.7,336.4]],"tte":["The Central"]},{"id":"mccommas","floor":"3","name":"McCommas Bluff","sub":"359 · not used","kind":"other","poly":[[205.7,336.4],[200.7,346.8],[217.7,350],[222.7,339.5]],"tte":[]},{"id":"shawnee","floor":"3","name":"Open gaming","sub":"Shawnee Trail A/B · 362","kind":"open","poly":[[227.6,329.6],[222.5,339.4],[253.8,346],[258.9,335.7]],"tte":["Shawnee Trail"]},{"id":"suite0","floor":"3","name":"Hospitality suite","sub":"Magnolia · 388","kind":"other","poly":[[401.6,414.6],[419,414.3],[419.4,426.9],[401.9,427.3]],"tte":[]},{"id":"suite1","floor":"3","name":"Hospitality suite","sub":"Praetorian · 385","kind":"other","poly":[[423.3,399.7],[423.7,414.2],[442.4,413.8],[442.1,399.4]],"tte":[]},{"id":"suite2","floor":"3","name":"Hospitality suite","sub":"Sante Fe · 393","kind":"other","poly":[[422.7,377.6],[423,388.6],[441.9,388.2],[441.6,377]],"tte":[]},{"id":"suite3","floor":"3","name":"Hospitality suite","sub":"Mercantile · 396","kind":"other","poly":[[400.9,389.1],[401.2,400.2],[418.6,399.7],[418.3,388.7]],"tte":[]},{"id":"cotton","floor":"A","name":"Special events","sub":"Cotton Bowl","kind":"special","poly":[[305.8,584.5],[293.4,610.6],[328.4,617.2],[341.1,590.8]],"tte":["Cotton Bowl"]},{"id":"windsor","floor":"A","name":"Open gaming","sub":"Windsor","kind":"open","poly":[[167.5,659],[134.7,652.6],[126.4,670.2],[159.2,676.5]],"tte":[]},{"id":"cockrell","floor":"A","name":"Open gaming","sub":"Cockrell","kind":"open","poly":[[198.6,665],[167.5,659],[159.2,676.5],[190.4,682.5]],"tte":[]},{"id":"baker","floor":"A","name":"Open gaming","sub":"Baker","kind":"open","poly":[[198.6,665],[190.4,682.5],[221.2,688.3],[229.6,671]],"tte":[]},{"id":"bryanA","floor":"A","name":"Special events","sub":"Bryan-Beeman A","kind":"special","poly":[[277.8,643.1],[270.1,659.1],[299.7,664.9],[299.7,664.9],[307.6,648.8],[299.3,647.2],[298.6,648.8],[287.8,646.7],[288.5,645.1]],"tte":["Bryan Beeman"]},{"id":"bryanB","floor":"A","name":"HomeGrown playtests","sub":"Bryan-Beeman B","kind":"proto","poly":[[299.7,664.9],[299.7,664.9],[311.8,679.1],[331.9,671.1],[339.8,654.7],[330,653],[329,654.6],[318.2,652.5],[318.9,650.9],[307.7,648.8],[307.6,648.8]],"tte":["Bryan Beeman"]},{"id":"mcmillan","floor":"A","name":"Scheduled games","sub":"McMillan","kind":"sched","poly":[[380.7,641.9],[371.9,659.8],[402.4,665.8],[411.6,647.7]],"tte":["McMillan"]},{"id":"pryor","floor":"A","name":"Scheduled games","sub":"Pryor-Crockett","kind":"sched","poly":[[424.1,622.8],[392.2,616.7],[382.5,636.9],[413.9,643.1]],"tte":["Pryor-Crockett"]},{"id":"kessler","floor":"A","name":"Scheduled games","sub":"Kessler","kind":"sched","poly":[[424.1,622.8],[413.9,643.1],[414.2,643.2],[429.8,647.1],[451.4,632.7],[451.2,632.6],[447.7,634.7],[442.6,631.9],[443.5,630],[443.3,628.6],[442.4,627.4],[441,626.6],[439.5,626],[438.7,625.8],[437.1,625.4],[435.7,625.3],[433.2,625.6],[431.2,626.4],[429.6,627.6],[422.6,626.3],[424.3,622.9]],"tte":["Kessler"]},{"id":"morenoA","floor":"A","name":"Scheduled games","sub":"Moreno A","kind":"sched","poly":[[429.8,647.1],[430.2,647.2],[453.7,661.6],[476.4,648.2],[451.4,632.7]],"tte":["Moreno"]},{"id":"morenoB","floor":"A","name":"Scheduled games","sub":"Moreno B","kind":"sched","poly":[[453.7,661.6],[476.9,675.9],[499.6,662.4],[476.4,648.2]],"tte":["Moreno"]},{"id":"reverchonA","floor":"A","name":"RPGs","sub":"Reverchon A","kind":"rpg","poly":[[476.9,675.9],[500.2,690.1],[522.8,676.7],[499.6,662.4]],"tte":["Reverchon A - RPG Room"]},{"id":"reverchonB","floor":"A","name":"WarGamers HQ","sub":"Reverchon B","kind":"war","poly":[[500.2,690.1],[524,704.7],[545,690.4],[522.8,676.7]],"tte":["Reverchon B - WarGamers HQ"]},{"id":"gastonA","floor":"A","name":"Scheduled games","sub":"Gaston A","kind":"sched","poly":[[445.5,666.1],[422.7,652.2],[402.7,665.8],[424.4,678.7]],"tte":["Gaston"]},{"id":"gastonB","floor":"A","name":"Scheduled games","sub":"Gaston B","kind":"sched","poly":[[468.8,680.4],[445.5,666.1],[424.4,678.7],[448.1,692.7]],"tte":["Gaston"]},{"id":"sangerA","floor":"A","name":"Quiet games","sub":"Sanger A","kind":"quiet","poly":[[492.1,694.6],[468.8,680.4],[448.1,692.7],[471.7,706.7]],"tte":["Sanger A - Quiet Games"]},{"id":"sangerB","floor":"A","name":"The Sanctuary","sub":"Sanger B · sensory-friendly room","kind":"calm","poly":[[492.1,694.6],[471.7,706.7],[498.1,722.4],[516.8,709.7]],"tte":[]},{"id":"landmark","floor":"L","name":"Open gaming","sub":"Landmark Ballroom A–D","kind":"open","poly":[[125.6,285.4],[101.1,297.9],[113.1,330.9],[147.3,336.6],[251.5,320.7],[272.6,309.3],[260.1,276.8],[230.5,271.1]],"tte":[]},{"id":"reunionSE","floor":"L","name":"Special events","sub":"Reunion Ballroom E–H","kind":"special","poly":[[377.9,298.3],[358.5,338],[288.6,324.7],[308,285]],"tte":["Reunion Ballroom"]},{"id":"reunionOG","floor":"L","name":"Open gaming","sub":"Reunion Ballroom A–D","kind":"open","poly":[[377.9,298.3],[430.6,308.4],[411.2,348.1],[358.5,338]],"tte":["Reunion Ballroom"]},{"id":"pegasusB","floor":"L","name":"Special events","sub":"Pegasus B","kind":"special","poly":[[422.5,356],[449,347.5],[461.5,361.9],[458.3,368.6],[422.6,361.8],[423.5,359.9],[422.5,356]],"tte":["Pegagus B"]},{"id":"pegasusA","floor":"L","name":"Protoalley (HomeGrown)","sub":"Pegasus A","kind":"proto","poly":[[458.3,368.6],[452.1,381.1],[416.5,374.3],[422.6,361.8]],"tte":["Pegasus A"]},{"id":"hallB","floor":"E","name":"Open gaming","sub":"Marsalis Hall B · from Wed noon","kind":"open","poly":[[165.2,442.8],[99.3,453.3],[96.1,454.8],[92,457.3],[91,458.5],[90.9,459.8],[94.1,467.6],[89.8,468.2],[91.5,472.4],[89.7,472.8],[95.8,488.3],[101.6,487.5],[105.7,496.9],[107.2,498],[145.7,505.6],[154,511.1],[148.2,516.4],[175,528.5],[190.6,528.3],[192.2,520.6],[192.6,519.5]],"tte":[]},{"id":"hallA","floor":"E","name":"Exhibit hall","sub":"Marsalis Hall A · 51 booths","kind":"exhibit","poly":[[165.2,442.8],[192.6,519.5],[194.5,514.8],[198.4,508.8],[203.3,503.7],[210.8,498.6],[216.9,495.9],[224.8,493.4],[233.2,491.8],[243.6,490.8],[255.2,491.6],[256.9,489],[261,489.6],[255.9,474],[257.8,473.8],[242,430.5]],"tte":["Marsalis"]},{"id":"library","floor":"E","name":"Library","sub":"Cumberland I–L","kind":"library","poly":[[322.8,501.8],[390.3,514.9],[383.2,529],[315.8,516]],"tte":["Cumberland IJKL"]},{"id":"hot","floor":"E","name":"Hot Games","sub":"Cumberland E–H","kind":"hot","poly":[[312.9,522.1],[311.9,524.2],[314,523.9],[311.9,528.1],[309.7,528.4],[309.2,529.5],[311.1,529.3],[310.6,530.4],[312.5,530.8],[309.7,536.8],[373.8,548.9],[380.6,534.9]],"tte":["Cumberland EFGH"]},{"id":"exlounge","floor":"E","name":"Exhibitor lounge","sub":"Cumberland B–C","kind":"service","poly":[[338.1,545.1],[311.8,540.3],[304.2,555.9],[330.3,561]],"tte":[]},{"id":"teamgeek","floor":"E","name":"Team Geek lounge","sub":"Cumberland A","kind":"service","poly":[[338.1,545.1],[330.3,561],[345.5,564],[353.5,547.9]],"tte":[]}],"booths":[{"num":"119","name":"Pegasus Publishing","logo":"maps/logos/pegasus-publishing.webp","poly":[[172.7,445.9],[188.3,443.4],[190.4,448],[174.9,450.5]]},{"num":"219","name":"The Op Games","logo":"maps/logos/the-op-games.webp","poly":[[194.1,442.4],[209.4,439.9],[211.4,444.6],[196.2,447.1]]},{"num":"319","name":"Geek Out","logo":"maps/logos/geek-out.webp","poly":[[215.6,438.9],[230.6,436.5],[232.4,441.1],[217.5,443.5]]},{"num":"419","name":"Welcome Home Creations TN","logo":"maps/logos/welcome-home-creations-tn.webp","poly":[[236.2,435.6],[243.1,434.5],[244.9,439.1],[238,440.2]]},{"num":"117","name":"Captain Games","logo":"maps/logos/captain-games.webp","poly":[[174.9,450.5],[182.2,449.3],[184.4,454.1],[177.2,455.3]]},{"num":"115","name":"Lucky Duck Games","logo":"maps/logos/lucky-duck-games.webp","poly":[[177.2,455.3],[184.4,454.1],[186.7,458.9],[179.5,460.1]]},{"num":"107","name":"Common Ground Games","logo":"maps/logos/common-ground-games.webp","poly":[[181.6,464.5],[188.7,463.3],[195.1,476.9],[188.1,478.2]]},{"num":"105","name":"Grey Fox Games","logo":"maps/logos/grey-fox-games.webp","poly":[[188.1,478.3],[195.1,477],[197.1,481.4],[190.2,482.6]]},{"num":"103","name":"Wattsalpoag Games","logo":"maps/logos/wattsalpoag-games.webp","poly":[[190.2,482.8],[197.2,481.5],[199.2,485.8],[192.3,487]]},{"num":"216","name":"Craft the Crown","logo":"maps/logos/craft-the-crown.webp","poly":[[182.7,449.3],[190.4,448],[192.6,452.7],[184.9,454]]},{"num":"214","name":"Ardonis","logo":"maps/logos/ardonis.webp","poly":[[184.9,454],[192.6,452.7],[194.8,457.5],[187.1,458.8]]},{"num":"212","name":"Split Decision Games","logo":"maps/logos/split-decision-games.webp","poly":[[187.1,458.8],[194.8,457.5],[196.8,462.1],[189.3,463.4]]},{"num":"210","name":"Average Dude Designs","logo":"maps/logos/average-dude-designs.webp","poly":[[189.3,463.4],[196.8,462.1],[198.9,466.7],[191.4,468]]},{"num":"208","name":"Tabletop Gaymers","logo":"maps/logos/tabletop-gaymers.webp","poly":[[191.4,468],[198.9,466.7],[201,471.2],[193.5,472.5]]},{"num":"206","name":"Piece Keepers","logo":"maps/logos/piece-keepers.webp","poly":[[193.5,472.5],[201,471.2],[203,475.6],[195.6,477]]},{"num":"204","name":"Brookspun Games","logo":"maps/logos/brookspun-games.webp","poly":[[195.6,477],[203,475.6],[205,480.1],[197.7,481.4]]},{"num":"202","name":"DMDave's Books and Games","logo":"maps/logos/dmdave-s-books-and-games.webp","poly":[[197.7,481.4],[205,480.1],[207,484.3],[199.6,485.7]]},{"num":"217","name":"TerreDice Games","logo":"maps/logos/terredice-games.webp","poly":[[196.2,447.1],[203.8,445.8],[205.9,450.5],[198.3,451.8]]},{"num":"215","name":"Fratala Games","logo":"maps/logos/fratala-games.webp","poly":[[198.3,451.8],[205.9,450.5],[208,455.3],[200.4,456.6]]},{"num":"213","name":"Gameswell","logo":"maps/logos/gameswell.webp","poly":[[200.4,456.6],[208,455.3],[209.9,459.8],[202.5,461.1]]},{"num":"211","name":"Teltaine Trading Company","logo":"maps/logos/teltaine-trading-company.webp","poly":[[202.5,461.1],[209.9,459.8],[212,464.4],[204.5,465.7]]},{"num":"209","name":"Moon Crab Games","logo":"maps/logos/moon-crab-games.webp","poly":[[204.5,465.7],[212,464.4],[213.9,468.9],[206.5,470.2]]},{"num":"207","name":"Hearth and Token","logo":"maps/logos/hearth-and-token.webp","poly":[[206.5,470.2],[213.9,468.9],[215.9,473.4],[208.5,474.7]]},{"num":"205","name":"Hairbrained Design","logo":"maps/logos/hairbrained-design.webp","poly":[[208.5,474.7],[215.9,473.4],[217.8,477.8],[210.5,479.1]]},{"num":"203","name":"Gaming at Joe's","logo":"maps/logos/gaming-at-joe-s.webp","poly":[[210.5,479.1],[217.8,477.8],[219.7,482],[212.4,483.3]]},{"num":"316","name":"Arcanum Ludi","logo":"maps/logos/arcanum-ludi.webp","poly":[[204.3,445.7],[211.9,444.5],[213.9,449.2],[206.3,450.4]]},{"num":"312","name":"House Rules Board Games","logo":"maps/logos/house-rules-board-games.webp","poly":[[206.3,450.4],[213.9,449.2],[217.8,458.5],[210.4,459.7]]},{"num":"310","name":"Scallywags International","logo":"maps/logos/scallywags-international.webp","poly":[[210.4,459.7],[217.8,458.5],[219.8,463.1],[212.4,464.3]]},{"num":"308","name":"New Comet Games","logo":"maps/logos/new-comet-games.webp","poly":[[212.4,464.3],[219.8,463.1],[221.7,467.5],[214.4,468.8]]},{"num":"306","name":"Playful Otter Studios","logo":"maps/logos/playful-otter-studios.webp","poly":[[214.4,468.8],[221.7,467.5],[223.6,472],[216.3,473.3]]},{"num":"302","name":"Contention Games","logo":"maps/logos/contention-games.webp","poly":[[216.3,473.3],[223.6,472],[227.3,480.6],[220.1,481.9]]},{"num":"317","name":"Next Big Project","logo":"maps/logos/next-big-project.webp","poly":[[217,443.6],[224.5,442.4],[226.5,447.1],[219,448.3]]},{"num":"315","name":"Lab 380","logo":"maps/logos/lab-380.webp","poly":[[219,448.3],[226.5,447.1],[228.4,451.8],[221,453.1]]},{"num":"311","name":"Uniquely Geek","logo":"maps/logos/uniquely-geek.webp","poly":[[221,453.1],[228.4,451.8],[232.1,460.9],[224.8,462.2]]},{"num":"309","name":"Really Good Game Studio","logo":"maps/logos/really-good-game-studio.webp","poly":[[224.8,462.2],[232.1,460.9],[234,465.4],[226.7,466.7]]},{"num":"307","name":"Artful Creations","logo":"maps/logos/artful-creations.webp","poly":[[226.7,466.7],[234,465.4],[235.8,469.8],[228.6,471.1]]},{"num":"305","name":"Mildly Tolerable Games","logo":"maps/logos/mildly-tolerable-games.webp","poly":[[228.6,471.1],[235.8,469.8],[237.6,474.2],[230.4,475.5]]},{"num":"303","name":"Rock, Stone & Dice Games","logo":"maps/logos/rock-stone-and-dice-games.webp","poly":[[230.4,475.5],[237.6,474.2],[239.3,478.4],[232.2,479.7]]},{"num":"410","name":"BGG Store","logo":"maps/logos/bgg-store.webp","poly":[[225.5,442.2],[232.9,441],[240.3,459.5],[233,460.8]]},{"num":"408","name":"TCG Co","logo":"maps/logos/tcg-co.webp","poly":[[233,460.8],[240.3,459.5],[242.1,464],[234.9,465.2]]},{"num":"406","name":"Speedrobo Games","logo":"maps/logos/speedrobo-games.webp","poly":[[234.9,465.2],[242.1,464],[243.8,468.4],[236.7,469.7]]},{"num":"402","name":"Nexus Workshop","logo":"maps/logos/nexus-workshop.webp","poly":[[236.7,469.7],[243.8,468.4],[247.3,477],[240.2,478.3]]},{"num":"417","name":"Cornerstone Games","logo":"maps/logos/cornerstone-games.webp","poly":[[238.4,442.5],[245.7,441.3],[247.5,445.8],[240.2,447]]},{"num":"413","name":"Savagesparrow Studios","logo":"maps/logos/savagesparrow-studios.webp","poly":[[241.7,450.9],[248.9,449.6],[250.6,454.1],[243.4,455.3]]},{"num":"411","name":"Chain Assembly","logo":"maps/logos/chain-assembly.webp","poly":[[244.7,458.4],[251.8,457.2],[253.5,461.5],[246.4,462.8]]},{"num":"409","name":"Sea Cow Games","logo":"maps/logos/sea-cow-games.webp","poly":[[246.4,462.8],[253.5,461.5],[255.4,466.4],[248.3,467.7]]},{"num":"101","name":"Indie Game Studios","logo":"maps/logos/indie-game-studios.webp","poly":[[192.5,487.5],[207.2,484.8],[209.4,489.6],[194.8,492.3]]},{"num":"201","name":"Czech Games Edition","logo":"maps/logos/czech-games-edition.webp","poly":[[212.6,483.8],[227.1,481.2],[229.1,486],[214.8,488.6]]},{"num":"301","name":"Decision Games","logo":"maps/logos/decision-games.webp","poly":[[232.9,480.1],[247,477.6],[248.9,482.3],[234.9,484.9]]},{"num":"100","name":"Allplay","logo":"maps/logos/allplay.webp","poly":[[201.7,494.2],[223.7,490.1],[226.9,497.4],[205.1,501.5]]},{"num":"099","name":"BoxKing Gaming","logo":"maps/logos/boxking-gaming.webp","poly":[[161.4,502.7],[170.3,501],[172.9,506],[164,507.7]]}],"marks":[{"floor":"3","kind":"text","x":168.8,"y":321.3,"text":"THE OVERLOOK"},{"floor":"3","kind":"text","x":423.2,"y":445.3,"text":"HOSPITALITY SUITES"},{"floor":"3","kind":"text","x":348.1,"y":288.8,"text":"BROWDER SPRINGS, SUNDECK, POOL"},{"floor":"3","kind":"text","x":350.3,"y":359.4,"text":"STAY FIT GYM"},{"floor":"A","kind":"elev","x":272.2,"y":633.6},{"floor":"A","kind":"text","x":272.2,"y":640.6,"text":"ELEVATORS"},{"floor":"A","kind":"text","x":245.1,"y":663.5,"text":"POINT OF VIEW"},{"floor":"A","kind":"text","x":125.5,"y":627.6,"text":"MONDUEL’S"},{"floor":"A","kind":"text","x":137.1,"y":547.6,"text":"THORNTON’S CORNER"},{"floor":"A","kind":"text","x":113.5,"y":650.4,"text":"BOGEL’S BILLIARDS"},{"floor":"A","kind":"text","x":83.3,"y":664.2,"text":"CRUTCHFIELD’S"},{"floor":"A","kind":"text","x":272.4,"y":585.6,"text":"PARRINO’S OVEN"},{"floor":"A","kind":"text","x":216.4,"y":579,"text":"CENTENNIAL CAFÉ"},{"floor":"A","kind":"wc","x":361.9,"y":642.6},{"floor":"A","kind":"wc","x":356.3,"y":652.4},{"floor":"L","kind":"text","x":224.9,"y":349.1,"text":"LANDMARK CIRCLE"},{"floor":"L","kind":"text","x":305.4,"y":381.4,"text":"TRINITY CROSSING"},{"floor":"L","kind":"esc","x":355.7,"y":376.2},{"floor":"L","kind":"text","x":355.7,"y":384.2,"text":"ESCALATOR TO ATRIUM"},{"floor":"L","kind":"esc","x":386.7,"y":360.3},{"floor":"L","kind":"text","x":386.7,"y":368.3,"text":"ESCALATOR TO EXHIBIT HALL"},{"floor":"L","kind":"text","x":441.3,"y":388.7,"text":"VALET PARKING"},{"floor":"L","kind":"text","x":496.5,"y":412.1,"text":"SKYLINE CORRIDOR"},{"floor":"L","kind":"text","x":539.5,"y":450.9,"text":"SKYLINE ELEVATOR"},{"floor":"L","kind":"text","x":424.2,"y":438.9,"text":"HOTEL ENTRANCE"},{"floor":"L","kind":"text","x":349.1,"y":395.5,"text":"REGISTRATION"},{"floor":"L","kind":"esc","x":272.8,"y":390.4},{"floor":"L","kind":"text","x":272.8,"y":398.4,"text":"ESCALATORS TO EXHIBIT HALL, REUNION TOWER, UNION STATION AND DART"},{"floor":"L","kind":"wc","x":284.6,"y":320.8},{"floor":"L","kind":"wc","x":274.9,"y":320.2},{"floor":"L","kind":"elev","x":401.3,"y":386.4},{"floor":"L","kind":"text","x":401.3,"y":393.4,"text":"ELEVATORS"},{"floor":"L","kind":"text","x":346,"y":357.4,"text":"COFFEE’S POST"},{"floor":"L","kind":"text","x":343.8,"y":420.2,"text":"GUEST SERVICES CONCIERGE"},{"floor":"E","kind":"text","x":220.2,"y":509.3,"text":"MARSALIS FOYER"},{"floor":"E","kind":"wc","x":310.6,"y":502.5},{"floor":"E","kind":"wc","x":287.7,"y":498.3},{"floor":"E","kind":"wc","x":400.7,"y":526.4},{"floor":"E","kind":"wc","x":392,"y":544.9},{"floor":"E","kind":"elev","x":245.2,"y":533.5},{"floor":"E","kind":"text","x":245.2,"y":540.5,"text":"REUNION TOWER ELEVATORS"},{"floor":"E","kind":"text","x":271.8,"y":509.3,"text":"THE CONNECTION"},{"floor":"E","kind":"esc","x":299.4,"y":511.9},{"floor":"E","kind":"text","x":299.4,"y":519.9,"text":"ESCALATORS TO LOBBY"},{"floor":"E","kind":"text","x":283.7,"y":553.4,"text":"REUNION TOWER GIFT SHOP"},{"floor":"E","kind":"esc","x":294.5,"y":441.4},{"floor":"E","kind":"text","x":294.5,"y":449.4,"text":"ESCALATORS TO TOWER PARKING & MOTOR LOBBY"},{"floor":"E","kind":"text","x":173.7,"y":605.4,"text":"UNION STATION DART CONCOURSE"},{"floor":"E","kind":"text","x":202.1,"y":617.9,"text":"DART"},{"floor":"E","kind":"esc","x":443.5,"y":510},{"floor":"E","kind":"text","x":443.5,"y":518,"text":"ESCALATORS TO LOBBY"},{"floor":"E","kind":"text","x":446.6,"y":545.5,"text":"BUSINESS CENTER"},{"floor":"E","kind":"text","x":343.7,"y":486.8,"text":"EXECUTIVE, SALES, CATERING AND CONVENTION SERVICES OFFICE"}],"points":{"Trinity A":{"floor":"L","x":264,"y":341},"Reunion Lobby":{"floor":"L","x":352,"y":352},"Centennial Restaurant":{"floor":"A","x":216,"y":579}}} as ConventionMaps,
 };

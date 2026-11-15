@@ -260,16 +260,16 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
   });
 
   /**
-   * Where an event is on the venue maps: an exhibitor's demo table goes to their
-   * booth on the hall map; the Exhibit Hall itself opens the hall map; other
-   * rooms are circled on the hotel map. Null when the room isn't on a map.
+   * Where an event is on the venue map: an exhibitor's demo table highlights their
+   * booth; anything else in the exhibit hall zooms into its booths; other rooms are
+   * highlighted on their floor. Null when the room isn't on the map.
    */
   placeFor(e: ConEvent, label?: string): MapRequest | null {
     if (!this.hasMaps()) return null;
     if (e.roomName === 'Marsalis') {
       const booth = this.mapService.boothFor(e.spaceName);
       if (booth) return this.mapService.boothRequest(booth, e.spaceName.replace(/-[A-Z]$/, ''));
-      return { map: 'hall', label: label || 'Exhibit hall' };
+      return this.mapService.hallRequest();
     }
     return this.mapService.roomRequest(e.roomName, label || e.room);
   }
@@ -278,12 +278,14 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (place) this.mapService.show(place);
   }
 
+  /** The title-row map button: the exhibit hall from Exhibitors, the HomeGrown rooms from Playtest, else the Lobby level. */
   openMaps(): void {
     if (this.view() === 'exhibitors' && this.exhibitorMode() === 'playtest') this.showHomegrown();
-    else this.mapService.show({ map: this.view() === 'exhibitors' ? 'hall' : 'hotel' });
+    else if (this.view() === 'exhibitors') this.showPlace(this.mapService.hallRequest());
+    else this.mapService.show({});
   }
 
-  /** Every HomeGrown playtesting room circled on the hotel map. */
+  /** Every HomeGrown playtesting room highlighted on the map. */
   showHomegrown(): void {
     this.showPlace(this.mapService.homegrownRequest());
   }
@@ -386,7 +388,28 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     const convention = this.convention();
     if (convention) this.service.load(convention);
     this.loadForView();
+    // The venue map's place card hands its buttons back here while this tab is open:
+    // "Events here" filters the schedule to that room; "Exhibitor details" opens their sheet.
+    this.mapService.onEventsHere = room => {
+      this.sheet.set(null);
+      this.query.set(room);
+      this.setView('schedule');
+    };
+    this.mapService.onExhibitor = booth => {
+      this.exhibitorMode.set('exhibitors');
+      this.setView('exhibitors');
+      this.pendingBooth.set(booth);
+    };
   }
+
+  /** A booth picked on the map, opened once the exhibitor list has loaded. */
+  private pendingBooth = signal<string | null>(null);
+  private openPendingBooth = effect(() => {
+    const booth = this.pendingBooth(); const list = this.service.exhibitors();
+    if (!booth || !list) return;
+    const x = list.find(e => this.mapService.boothFor(e.name) === booth);
+    untracked(() => { this.pendingBooth.set(null); if (x) this.openExhibitor(x); });
+  });
 
   ngAfterViewInit(): void {
     // Time headers pin just below the page header, whose height changes with
@@ -397,6 +420,8 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.mapService.onEventsHere = null;
+    this.mapService.onExhibitor = null;
     clearInterval(this.clock);
     clearInterval(this.refresher);
     this.resize?.disconnect();

@@ -26,6 +26,10 @@ Run it before building whenever the library's collection changes (new games get 
 during each convention). Whether a game is checked out is never stored there: the app fetches that
 live as each row comes on screen. See `scripts/build-shelf-index.mjs` for details.
 
+## Venue maps
+
+The Events tab's venue map is built from the Hyatt Regency Dallas floor-plan PDF and BGG.CON's hall map (floors, rooms, booths and exhibitor logos). See [scripts/venue-maps/README.md](scripts/venue-maps/README.md) to rebuild it for a new year or convention.
+
 ## Code scaffolding
 
 Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
