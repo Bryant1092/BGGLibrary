@@ -23,9 +23,11 @@
 
 .earlier { display: flex; justify-content: center; padding: 8px 16px 0; }
 
-/* Start-time headers pin just under the page header while their events scroll by. */
-.time-head { position: sticky; top: var(--events-header-h, 0px); z-index: 5; margin: 0; padding: 10px 16px 6px; background: var(--bl-surface); font-size: 15px; font-weight: 800; border-bottom: 1px solid var(--bl-hair); display: flex; align-items: center; gap: 8px; }
-.time-head.now { color: var(--bl-avail-bg); }
+/* Start-time headers pin just under the page header while their events scroll by.
+   Tinted (the same soft grey as the search box) rather than white, so each hour
+   reads as a band that separates groups instead of looking like another event row. */
+.time-head { position: sticky; top: var(--events-header-h, 0px); z-index: 5; margin: 0; padding: 10px 16px 8px; background: var(--bl-field); font-size: 15px; font-weight: 800; border-bottom: 1px solid var(--bl-hair); display: flex; align-items: center; gap: 8px; }
+.time-head.now { color: var(--bl-avail-text); }
 .live-dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
 
 .ev-row { display: flex; align-items: flex-start; gap: 4px; padding: 10px 6px 10px 16px; border-bottom: 1px solid var(--bl-hair); }

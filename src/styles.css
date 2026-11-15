@@ -33,6 +33,8 @@
    */
   --bl-avail-bg: #15803d;
   --bl-avail-fg: #ffffff;
+  /* Green for text on light grey (e.g. the "now" hour band): --bl-avail-bg is only 4.37:1 there. */
+  --bl-avail-text: #166534;
   --bl-out-bg: #eceae7;
   --bl-out-fg: #4f4a45;
   --bl-due-bg: #eaf1ff;
@@ -68,6 +70,7 @@
     --bl-accent-soft: #482414;
     --bl-avail-bg: #4ade80;
     --bl-avail-fg: #0b2414;
+    --bl-avail-text: #4ade80;
     --bl-out-bg: #33302c;
     --bl-out-fg: #d4cec7;
     --bl-due-bg: #16203a;
