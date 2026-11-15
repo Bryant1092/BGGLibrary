@@ -45,6 +45,8 @@ export class AppComponent implements OnInit {
       e.preventDefault();
     }, { passive: false });
 
+    this.hideTabBarWhileTyping();
+
     this.hideNavService.checkHideNav()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(value => {
@@ -55,5 +57,39 @@ export class AppComponent implements OnInit {
     this.watch.start(this.destroyRef);
     // Also here, so new BGG posts are noticed (badge + message) whichever tab is open.
     this.conInfo.start(this.destroyRef);
+  }
+
+  /**
+   * Hides the tab bar while the on-screen keyboard is up (class on <html>, styles.css).
+   *
+   * iPhone Safari keeps position: fixed elements pinned to where the bottom of the
+   * screen was before the keyboard opened, so the tab bar floated mid-screen with
+   * games scrolling past underneath it (reported with screenshots, Nov 2026).
+   * Native iPhone apps let the keyboard cover the tab bar; hiding it matches that.
+   *
+   * "Keyboard up" = a text field has focus on a touchscreen. Phones don't report the
+   * keyboard directly, and desktop browsers (fine pointer) have no on-screen
+   * keyboard, so they keep the tab bar. The short delay on focusout avoids a flicker
+   * when moving straight from one field to another.
+   */
+  private hideTabBarWhileTyping(): void {
+    if (!window.matchMedia?.('(pointer: coarse)').matches) return;
+    const root = document.documentElement;
+    const isTextField = (el: EventTarget | null) => el instanceof HTMLTextAreaElement
+      || (el instanceof HTMLInputElement && !/^(checkbox|radio|button|submit|range|color|file)$/.test(el.type))
+      || (el instanceof HTMLElement && el.isContentEditable);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onIn = (e: FocusEvent) => { if (isTextField(e.target)) { clearTimeout(timer); root.classList.add('bl-typing'); } };
+    const onOut = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { if (!isTextField(document.activeElement)) root.classList.remove('bl-typing'); }, 150);
+    };
+    document.addEventListener('focusin', onIn);
+    document.addEventListener('focusout', onOut);
+    this.destroyRef.onDestroy(() => {
+      clearTimeout(timer);
+      document.removeEventListener('focusin', onIn);
+      document.removeEventListener('focusout', onOut);
+    });
   }
 }

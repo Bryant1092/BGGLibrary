@@ -333,6 +333,9 @@ body {
   padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing: border-box; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
   border-top: 1px solid var(--bl-hair); background: var(--bl-surface);
 }
+/* Hidden while typing on a phone (AppComponent.hideTabBarWhileTyping): the keyboard covers
+   that spot anyway, and iPhone Safari otherwise leaves the bar floating mid-screen. */
+.bl-typing .bl-tabbar { visibility: hidden; }
 .bl-tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; font-size: 12px; font-weight: 500; color: var(--bl-muted); }
 .bl-tabbar a.active { color: var(--bl-accent-text); font-weight: 700; }
 
