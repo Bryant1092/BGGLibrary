@@ -106,6 +106,8 @@ export class SheetComponent implements AfterViewInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    // The full-screen map sits above sheets; Escape closes it first, not the sheet underneath.
+    if (document.querySelector('app-map-viewer')) return;
     if (openSheets[openSheets.length - 1] === this) {
       this.closed.emit();
     }

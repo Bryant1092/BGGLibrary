@@ -2,147 +2,200 @@
   <header #header class="bl-header">
     <div class="bl-title-row">
       <img src="icons/icon-72x72.png" alt="" width="30" height="30">
-      <h1>Events</h1>
+      <h1 class="visually-hidden">Events</h1>
+      <!-- Schedule and exhibitor list share the tab; both come from Tabletop.Events. -->
+      <div class="view-switch" role="tablist" aria-label="Events view">
+        <button type="button" role="tab" [attr.aria-selected]="view() === 'schedule'" [class.on]="view() === 'schedule'" (click)="setView('schedule')">Schedule</button>
+        <button type="button" role="tab" [attr.aria-selected]="view() === 'exhibitors'" [class.on]="view() === 'exhibitors'" (click)="setView('exhibitors')">Exhibitors</button>
+      </div>
+      @if (hasMaps()) {
+        <button type="button" class="bl-icon-btn accent" aria-label="Open venue maps" (click)="openMaps()"><bl-icon name="map" [size]="22" /></button>
+      }
       <!-- Seat counts change constantly at the con; this re-downloads them. -->
       <button type="button" class="bl-icon-btn accent" aria-label="Refresh events" [disabled]="service.loading()" (click)="refresh()" style="margin-right: -8px">
         <bl-icon name="refresh" [size]="22" />
       </button>
     </div>
 
-    <!-- Day tabs: opens on today during the convention. -->
-    <div class="days" role="tablist" aria-label="Convention day">
-      @for (d of days(); track d.key) {
-        <button type="button" role="tab" [attr.aria-selected]="d.key === day()" [class.on]="d.key === day()" (click)="selectDay(d.key)">
-          <span>{{ d.label }}</span><strong>{{ d.date }}</strong>
-        </button>
-      }
-    </div>
+    @if (view() === 'schedule') {
+      <!-- Day tabs: opens on today during the convention. -->
+      <div class="days" role="tablist" aria-label="Convention day">
+        @for (d of days(); track d.key) {
+          <button type="button" role="tab" [attr.aria-selected]="d.key === day()" [class.on]="d.key === day()" (click)="selectDay(d.key)">
+            <span>{{ d.label }}</span><strong>{{ d.date }}</strong>
+          </button>
+        }
+      </div>
+    }
 
     <app-offline-bar />
   </header>
 
-  <!--
-    Search and filters scroll with the list; only the title and day tabs stay
-    pinned, so most of the screen is left for events while scrolling.
-  -->
-  <div class="ev-controls">
-    <div class="bl-search" role="search">
-      <label class="visually-hidden" for="events-search">Search events</label>
-      <bl-icon name="search" />
-      <input #searchInput id="events-search" type="search" placeholder="Search events, rooms, types" autocomplete="off"
-             enterkeyhint="search" [value]="query()" (input)="query.set(searchInput.value)" (keydown.enter)="searchInput.blur()">
-      @if (query()) {
-        <button type="button" class="bl-icon-btn" aria-label="Clear search" (click)="query.set(''); searchInput.focus()"><bl-icon name="close" [size]="18" /></button>
-      }
-    </div>
-
-    <div class="bl-chips">
-      <button type="button" class="bl-chip" [class.on]="hasSeats()" [attr.aria-pressed]="hasSeats()" (click)="hasSeats.set(!hasSeats())">
-        @if (hasSeats()) { <bl-icon name="check" [size]="16" [stroke]="2.6" /> }
-        Has seats
-      </button>
-      <button type="button" class="bl-chip" [class.on]="starredOnly()" [attr.aria-pressed]="starredOnly()" (click)="starredOnly.set(!starredOnly())">
-        <bl-icon [name]="starredOnly() ? 'starFilled' : 'star'" [size]="16" /> Starred
-      </button>
-      <button type="button" class="bl-chip" [class.on]="types().size > 0" (click)="sheet.set('types')">
-        {{ typeChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
-      </button>
-    </div>
-
-    <div class="bl-subrow">
-      <span>
-        {{ visibleCount() }} {{ visibleCount() === 1 ? 'event' : 'events' }}
-        @if (hiddenFull()) { · <button type="button" class="bl-link-btn inline" (click)="hasSeats.set(false)">{{ hiddenFull() }} full hidden</button> }
-      </span>
-      <span>{{ service.loading() ? 'Checking seats…' : updatedText() }}</span>
-    </div>
-  </div>
-
-  <main>
-    <!-- Opening hours for the day, from the schedule's "General Information" entries. -->
-    @if (hours().length) {
-      <details class="hours">
-        <summary>
-          <bl-icon name="clock" [size]="18" />
-          <span><strong>Hours</strong> · {{ hours()[0].name }} {{ hours()[0].text }}</span>
-          <bl-icon name="chevronDown" [size]="16" [stroke]="2.4" class="chev" />
-        </summary>
-        <dl>
-          @for (h of hours(); track h.name) {
-            <div><dt>{{ h.name }}</dt><dd>{{ h.text }}</dd></div>
-          }
-        </dl>
-      </details>
-    }
-
-    @if (service.events() === null && service.loading()) {
-      @for (n of [1, 2, 3, 4, 5]; track n) {
-        <div class="ev-row" aria-hidden="true">
-          <div class="ev-main">
-            <div class="bl-skel" style="height: 13px; width: 40%"></div>
-            <div class="bl-skel" style="height: 17px; width: 75%"></div>
-            <div class="bl-skel" style="height: 14px; width: 55%"></div>
-          </div>
-        </div>
-      }
-    } @else if (service.error() && !service.events()) {
-      <div class="bl-empty">
-        <p class="title">Couldn't load the schedule</p>
-        <p class="body">Check your connection and try again.</p>
-        <button type="button" class="bl-btn outline" (click)="refresh()">Try again</button>
+  @if (view() === 'schedule') {
+    <!--
+      Search and filters scroll with the list; only the title and day tabs stay
+      pinned, so most of the screen is left for events while scrolling.
+    -->
+    <div class="ev-controls">
+      <div class="bl-search" role="search">
+        <label class="visually-hidden" for="events-search">Search events</label>
+        <bl-icon name="search" />
+        <input #searchInput id="events-search" type="search" placeholder="Search events, rooms, types" autocomplete="off"
+               enterkeyhint="search" [value]="query()" (input)="query.set(searchInput.value)" (keydown.enter)="searchInput.blur()">
+        @if (query()) {
+          <button type="button" class="bl-icon-btn" aria-label="Clear search" (click)="query.set(''); searchInput.focus()"><bl-icon name="close" [size]="18" /></button>
+        }
       </div>
-    } @else if (!convention()?.tteConventionId) {
-      <div class="bl-empty">
-        <p class="title">No schedule yet</p>
-        <p class="body">The event schedule appears here once it's posted.</p>
+
+      <div class="bl-chips">
+        <button type="button" class="bl-chip" [class.on]="hasSeats()" [attr.aria-pressed]="hasSeats()" (click)="hasSeats.set(!hasSeats())">
+          @if (hasSeats()) { <bl-icon name="check" [size]="16" [stroke]="2.6" /> }
+          Has seats
+        </button>
+        <button type="button" class="bl-chip" [class.on]="starredOnly()" [attr.aria-pressed]="starredOnly()" (click)="starredOnly.set(!starredOnly())">
+          <bl-icon [name]="starredOnly() ? 'starFilled' : 'star'" [size]="16" /> Starred
+        </button>
+        <button type="button" class="bl-chip" [class.on]="types().size > 0" (click)="sheet.set('types')">
+          {{ typeChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+        </button>
       </div>
-    } @else {
-      @if (earlierCount() && !showEarlier()) {
-        <div class="earlier">
-          <button type="button" class="bl-link-btn" (click)="showEarlier.set(true)">Show {{ earlierCount() }} earlier {{ earlierCount() === 1 ? 'event' : 'events' }}</button>
-        </div>
+
+      <div class="bl-subrow">
+        <span>
+          {{ visibleCount() }} {{ visibleCount() === 1 ? 'event' : 'events' }}
+          @if (hiddenFull()) { · <button type="button" class="bl-link-btn inline" (click)="hasSeats.set(false)">{{ hiddenFull() }} full hidden</button> }
+        </span>
+        <span>{{ service.loading() ? 'Checking seats…' : updatedText() }}</span>
+      </div>
+    </div>
+
+    <main>
+      <!-- Opening hours for the day, from the schedule's "General Information" entries. Each opens its spot on the map. -->
+      @if (hours().length) {
+        <details class="hours">
+          <summary>
+            <bl-icon name="clock" [size]="18" />
+            <span><strong>Hours</strong> · {{ hours()[0].name }} {{ hours()[0].text }}</span>
+            <bl-icon name="chevronDown" [size]="16" [stroke]="2.4" class="chev" />
+          </summary>
+          <dl>
+            @for (h of hours(); track h.name) {
+              <div>
+                <dt>{{ h.name }}</dt>
+                <dd>{{ h.text }}</dd>
+                @if (h.place) {
+                  <button type="button" class="bl-icon-btn accent map-btn" [attr.aria-label]="'Show ' + h.name + ' on the map'" (click)="showPlace(h.place)">
+                    <bl-icon name="pin" [size]="18" />
+                  </button>
+                }
+              </div>
+            }
+          </dl>
+        </details>
       }
-      @for (group of groups(); track group.title) {
-        <h2 class="time-head" [class.now]="group.now">
-          @if (group.now) { <span class="live-dot" aria-hidden="true"></span> }
-          {{ group.title }}
-        </h2>
-        @for (row of group.rows; track row.event.id) {
-          <div class="ev-row" [class.cancelled]="row.event.cancelled">
-            <button type="button" class="ev-main" (click)="open(row.event)">
-              <span class="ev-time">{{ row.timeText }}</span>
-              <span class="bl-name">{{ row.event.name }}</span>
-              <span class="ev-meta">
-                <span class="ev-type"><span class="dot" [style.background]="row.color"></span>{{ row.event.type }}</span>
-                <span class="ev-room"><bl-icon name="pin" [size]="13" [stroke]="2.2" />{{ row.event.room }}</span>
-              </span>
-              <span class="ev-badges">
-                <span class="seats" [class]="row.seatsTone">{{ row.seatsText }}</span>
-                @if (row.event.age) { <span class="seats none">{{ row.event.age }}</span> }
-                @if (row.overlaps.length) { <span class="seats few">Overlaps a starred event</span> }
-              </span>
-            </button>
-            <button type="button" class="bl-icon-btn star" [class.on]="row.starred" [attr.aria-pressed]="row.starred"
-                    [attr.aria-label]="(row.starred ? 'Unstar ' : 'Star ') + row.event.name" (click)="toggleStar(row.event)">
-              <bl-icon [name]="row.starred ? 'starFilled' : 'star'" [size]="22" />
-            </button>
+
+      @if (service.events() === null && service.loading()) {
+        @for (n of [1, 2, 3, 4, 5]; track n) {
+          <div class="ev-row" aria-hidden="true">
+            <div class="ev-main">
+              <div class="bl-skel" style="height: 13px; width: 40%"></div>
+              <div class="bl-skel" style="height: 17px; width: 75%"></div>
+              <div class="bl-skel" style="height: 14px; width: 55%"></div>
+            </div>
           </div>
         }
-      } @empty {
+      } @else if (service.error() && !service.events()) {
         <div class="bl-empty">
-          <p class="title">{{ starredOnly() ? 'No starred events this day' : 'No events match' }}</p>
-          <p class="body">
-            @if (hiddenFull()) { {{ hiddenFull() }} full {{ hiddenFull() === 1 ? 'event is' : 'events are' }} hidden. }
-            @else if (starredOnly()) { Tap ☆ on an event to add it to your schedule. }
-            @else { Try another day, type or search. }
-          </p>
-          @if (hiddenFull()) {
-            <button type="button" class="bl-btn outline" (click)="hasSeats.set(false)">Show full events</button>
-          }
+          <p class="title">Couldn't load the schedule</p>
+          <p class="body">Check your connection and try again.</p>
+          <button type="button" class="bl-btn outline" (click)="refresh()">Try again</button>
         </div>
+      } @else if (!convention()?.tteConventionId) {
+        <div class="bl-empty">
+          <p class="title">No schedule yet</p>
+          <p class="body">The event schedule appears here once it's posted.</p>
+        </div>
+      } @else {
+        @if (earlierCount() && !showEarlier()) {
+          <div class="earlier">
+            <button type="button" class="bl-link-btn" (click)="showEarlier.set(true)">Show {{ earlierCount() }} earlier {{ earlierCount() === 1 ? 'event' : 'events' }}</button>
+          </div>
+        }
+        @for (group of groups(); track group.title) {
+          <h2 class="time-head" [class.now]="group.now">
+            @if (group.now) { <span class="live-dot" aria-hidden="true"></span> }
+            {{ group.title }}
+          </h2>
+          @for (row of group.rows; track row.event.id) {
+            <div class="ev-row" [class.cancelled]="row.event.cancelled">
+              <button type="button" class="ev-main" (click)="open(row.event)">
+                <span class="ev-time">{{ row.timeText }}</span>
+                <span class="bl-name">{{ row.event.name }}</span>
+                <span class="ev-meta">
+                  <span class="ev-type"><span class="dot" [style.background]="row.color"></span>{{ row.event.type }}</span>
+                  <span class="ev-room"><bl-icon name="pin" [size]="13" [stroke]="2.2" />{{ row.event.room }}</span>
+                </span>
+                <span class="ev-badges">
+                  <span class="seats" [class]="row.seatsTone">{{ row.seatsText }}</span>
+                  @if (row.event.age) { <span class="seats none">{{ row.event.age }}</span> }
+                  @if (row.overlaps.length) { <span class="seats few">Overlaps a starred event</span> }
+                </span>
+              </button>
+              <button type="button" class="bl-icon-btn star" [class.on]="row.starred" [attr.aria-pressed]="row.starred"
+                      [attr.aria-label]="(row.starred ? 'Unstar ' : 'Star ') + row.event.name" (click)="toggleStar(row.event)">
+                <bl-icon [name]="row.starred ? 'starFilled' : 'star'" [size]="22" />
+              </button>
+            </div>
+          }
+        } @empty {
+          <div class="bl-empty">
+            <p class="title">{{ starredOnly() ? 'No starred events this day' : 'No events match' }}</p>
+            <p class="body">
+              @if (hiddenFull()) { {{ hiddenFull() }} full {{ hiddenFull() === 1 ? 'event is' : 'events are' }} hidden. }
+              @else if (starredOnly()) { Tap ☆ on an event to add it to your schedule. }
+              @else { Try another day, type or search. }
+            </p>
+            @if (hiddenFull()) {
+              <button type="button" class="bl-btn outline" (click)="hasSeats.set(false)">Show full events</button>
+            }
+          </div>
+        }
       }
-    }
-  </main>
+    </main>
+  } @else {
+    <!-- Exhibitors: who's in the exhibit hall and where (booth numbers from the hall map's directory). -->
+    <div class="ev-controls">
+      <div class="bl-search" role="search">
+        <label class="visually-hidden" for="exhibitor-search">Search exhibitors</label>
+        <bl-icon name="search" />
+        <input #exSearch id="exhibitor-search" type="search" placeholder="Search exhibitors" autocomplete="off"
+               enterkeyhint="search" [value]="exhibitorQuery()" (input)="exhibitorQuery.set(exSearch.value)" (keydown.enter)="exSearch.blur()">
+        @if (exhibitorQuery()) {
+          <button type="button" class="bl-icon-btn" aria-label="Clear search" (click)="exhibitorQuery.set(''); exSearch.focus()"><bl-icon name="close" [size]="18" /></button>
+        }
+      </div>
+      <div class="bl-subrow"><span>{{ exhibitorRows().length }} exhibitors and sponsors</span><span>Exhibit hall: Marsalis</span></div>
+    </div>
+    <main>
+      @if (service.exhibitors() === null) {
+        @for (n of [1, 2, 3, 4]; track n) {
+          <div class="ev-row" aria-hidden="true"><div class="ev-main"><div class="bl-skel" style="height: 17px; width: 60%"></div><div class="bl-skel" style="height: 14px; width: 85%"></div></div></div>
+        }
+      } @else {
+        @for (r of exhibitorRows(); track r.exhibitor.id) {
+          <button type="button" class="ex-row" (click)="openExhibitor(r.exhibitor)">
+            <span class="booth" [class.none]="!r.booth"><small>{{ r.booth ? 'Booth' : 'Sponsor' }}</small>@if (r.booth) { <strong>{{ r.booth }}</strong> }</span>
+            <span class="ex-text">
+              <span class="bl-name" style="-webkit-line-clamp: 1">{{ r.exhibitor.name }}</span>
+              @if (r.exhibitor.description) { <span class="ex-desc">{{ r.exhibitor.description }}</span> }
+            </span>
+          </button>
+        } @empty {
+          <div class="bl-empty"><p class="title">No exhibitors match</p></div>
+        }
+      }
+    </main>
+  }
 </div>
 
 @switch (sheet()) {
@@ -158,7 +211,15 @@
         </div>
         <ul class="facts">
           <li><bl-icon name="clock" [size]="18" /><span>{{ whenText(row.event) }}</span></li>
-          <li><bl-icon name="pin" [size]="18" /><span>{{ row.event.room }}</span></li>
+          <li>
+            <bl-icon name="pin" [size]="18" />
+            @if (placeFor(row.event); as place) {
+              <!-- Opens the venue map with this room (or exhibitor booth) circled. -->
+              <button type="button" class="bl-link-btn room-link" (click)="showPlace(place)">{{ row.event.room }} · Show on map</button>
+            } @else {
+              <span>{{ row.event.room }}</span>
+            }
+          </li>
           <li><bl-icon name="users" [size]="18" /><span class="seats" [class]="row.seatsTone">{{ row.seatsText }}</span>
             @if (row.event.age) { <span class="seats none">{{ row.event.age }}</span> }</li>
         </ul>
@@ -180,6 +241,38 @@
         </button>
         @if (row.event.moreInfoUrl) {
           <a class="more" [href]="row.event.moreInfoUrl" target="_blank" rel="noopener">More info <bl-icon name="external" [size]="16" /></a>
+        }
+      </app-sheet>
+    }
+  }
+  @case ('exhibitor') {
+    @if (exhibitorDetail(); as d) {
+      <app-sheet [label]="d.exhibitor.name" (closed)="sheet.set(null)">
+        <div class="sheet-head">
+          <div>
+            <span class="ev-type">{{ d.booth ? 'Booth ' + d.booth + ' · Exhibit hall' : 'Sponsor' }}</span>
+            <h2>{{ d.exhibitor.name }}</h2>
+          </div>
+          <button type="button" class="bl-icon-btn" aria-label="Close" (click)="sheet.set(null)" style="margin: -6px -10px 0 0"><bl-icon name="close" /></button>
+        </div>
+        @if (d.exhibitor.description) { <p class="desc">{{ d.exhibitor.description }}</p> }
+        @if (d.booth) {
+          <button type="button" class="bl-btn" (click)="showPlace(mapService.boothRequest(d.booth, d.exhibitor.name))">
+            <bl-icon name="pin" [size]="20" /> Show booth {{ d.booth }} on the map
+          </button>
+        }
+        @if (d.events.length) {
+          <div>
+            <h3 class="sub">At their booth</h3>
+            @for (e of d.events; track e.name) {
+              <button type="button" class="bl-choice" (click)="openEventFromExhibitor(e.event)">
+                <span class="text"><strong>{{ e.name }}</strong><small>{{ e.when }}</small></span>
+              </button>
+            }
+          </div>
+        }
+        @if (d.exhibitor.website) {
+          <a class="more" [href]="d.exhibitor.website" target="_blank" rel="noopener">Website <bl-icon name="external" [size]="16" /></a>
         }
       </app-sheet>
     }

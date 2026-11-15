@@ -24,3 +24,16 @@
     <button type="button" class="bl-btn secondary" (click)="watch.declinePermission()">Not now</button>
   </app-sheet>
 }
+
+<!--
+  Full-screen venue map with a circled room or booth (opened from the Events tab).
+  @defer keeps the viewer's code out of the first download; it loads the first
+  time a map is opened.
+-->
+@if (map.request()) {
+  @defer {
+    <app-map-viewer />
+  } @loading {
+    <div class="bl-scrim" style="background: #1c1b1a"></div>
+  }
+}

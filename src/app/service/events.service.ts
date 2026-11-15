@@ -16,7 +16,11 @@ export interface ConEvent {
   /** YYYY-MM-DD in Dallas time, for the day tabs. */
   day: string;
   durationMin: number;
+  /** Display text, e.g. "Reunion Ballroom · Reunion EFGH". */
   room: string;
+  /** Raw Tabletop.Events names, used to find the room (or exhibitor booth) on the venue map. */
+  roomName: string;
+  spaceName: string;
   /** Seats in total (0 when no ticket is needed). */
   seats: number;
   seatsLeft: number;
@@ -32,6 +36,16 @@ export interface ConEvent {
   ticketUrl: string;
   /** Usually a BGG forum thread about the event. */
   moreInfoUrl: string;
+}
+
+/** An exhibitor or sponsor from Tabletop.Events. */
+export interface Exhibitor {
+  id: string;
+  name: string;
+  description: string;
+  website: string;
+  /** True for sponsors without a booth in the hall. */
+  sponsorOnly: boolean;
 }
 
 const API = 'https://tabletop.events/api';
@@ -58,6 +72,8 @@ export class EventsService {
   readonly error = signal(false);
   readonly loadedAt = signal<number | null>(null);
   readonly starred = signal<Set<string>>(this.readStars());
+  readonly exhibitors = signal<Exhibitor[] | null>(null);
+  private exhibitorsFor = '';
   private loadedFor = '';
 
   /** Loads the schedule unless a recent copy is already here (force = refresh button). */
@@ -84,6 +100,36 @@ export class EventsService {
     });
   }
 
+  /**
+   * Exhibitors and sponsors (public; 56 for BGG.CON 2026, one request). Their
+   * booth numbers come from the hall map's directory instead (MapService),
+   * because Tabletop.Events only shows booth assignments to logged-in staff.
+   */
+  loadExhibitors(convention: Convention): void {
+    const id = convention.tteConventionId;
+    if (!id || this.exhibitorsFor === id) return;
+    this.exhibitorsFor = id;
+    // Same paging as events: 100 per page is Tabletop.Events' maximum (asking for
+    // more silently returns its default of 25).
+    this.fetchAllPages(`${API}/convention/${id}/exhibitors`, new HttpParams()).pipe(
+      map(items => items
+        .filter((x: any) => (x.status || 'approved') === 'approved')
+        .map((x: any): Exhibitor => ({
+          id: x.id,
+          name: (x.name || '').trim(),
+          description: (x.description || '').trim(),
+          website: /^https?:\/\//.test(x.website_uri || '') ? x.website_uri : '',
+          sponsorOnly: x.sponsor_only == 1,
+        }))
+        .sort((a: Exhibitor, b: Exhibitor) => a.name.localeCompare(b.name))),
+      catchError(err => {
+        console.error('Failed to load exhibitors', err);
+        this.exhibitorsFor = ''; // allow a retry next time
+        return of(null);
+      })
+    ).subscribe(list => { if (list) this.exhibitors.set(list); });
+  }
+
   isStarred(id: string): boolean {
     return this.starred().has(id);
   }
@@ -99,11 +145,13 @@ export class EventsService {
     return on;
   }
 
-  /** Page 1 tells us how many pages there are; the rest load in parallel. */
   private fetchAllEvents(conventionId: string): Observable<any[]> {
-    const page = (n: number) => this.http.get<any>(`${API}/convention/${conventionId}/events`, {
-      params: new HttpParams().set('_items_per_page', PAGE_SIZE).set('_page_number', n).set('_order_by', 'start_date'),
-    });
+    return this.fetchAllPages(`${API}/convention/${conventionId}/events`, new HttpParams().set('_order_by', 'start_date'));
+  }
+
+  /** Loads every page of a list endpoint: page 1 says how many pages there are; the rest load in parallel. */
+  private fetchAllPages(url: string, params: HttpParams): Observable<any[]> {
+    const page = (n: number) => this.http.get<any>(url, { params: params.set('_items_per_page', PAGE_SIZE).set('_page_number', n) });
     return page(1).pipe(
       switchMap(first => {
         const pages = Number(first?.result?.paging?.total_pages) || 1;
@@ -139,6 +187,8 @@ export class EventsService {
       day: dallasDateKey(start),
       durationMin: Number(e.duration) || Math.round((end - start) / 60_000),
       room: this.roomText(e.room_name, e.space_name),
+      roomName: (e.room_name || '').trim(),
+      spaceName: (e.space_name || '').trim(),
       seats: seats > 1 ? seats : 0,
       seatsLeft: Math.max(0, Number(e.available_quantity) || 0),
       waitlist: Number(e.wait_count) || 0,

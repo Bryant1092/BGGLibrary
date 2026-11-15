@@ -1,6 +1,7 @@
 import { AfterViewInit, ChangeDetectionStrategy, Component, computed, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { CONVENTIONS, Convention } from '../config/conventions';
-import { ConEvent, EventsService } from '../service/events.service';
+import { ConEvent, EventsService, Exhibitor } from '../service/events.service';
+import { MapRequest, MapService } from '../service/map.service';
 import { ToastService } from '../service/toast.service';
 import { IconComponent } from '../shared/icon.component';
 import { OfflineBarComponent } from '../shared/offline-bar.component';
@@ -23,7 +24,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 /** Page choices kept while the app is open, so switching tabs doesn't reset them. */
-const pageState = { day: '', query: '', hasSeats: true, starredOnly: false, types: [] as string[], showEarlier: false };
+const pageState = { view: 'schedule' as 'schedule' | 'exhibitors', exhibitorQuery: '', day: '', query: '', hasSeats: true, starredOnly: false, types: [] as string[], showEarlier: false };
 
 interface EventRow {
   event: ConEvent;
@@ -58,6 +59,7 @@ interface EventRow {
 })
 export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
   service = inject(EventsService);
+  mapService = inject(MapService);
   private toast = inject(ToastService);
   private header = viewChild.required<ElementRef<HTMLElement>>('header');
   private resize?: ResizeObserver;
@@ -76,8 +78,14 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
   starredOnly = signal(pageState.starredOnly);
   types = signal<Set<string>>(new Set(pageState.types));
   showEarlier = signal(pageState.showEarlier);
-  sheet = signal<'event' | 'types' | null>(null);
+  sheet = signal<'event' | 'types' | 'exhibitor' | null>(null);
   selected = signal<ConEvent | null>(null);
+  /** Schedule or the exhibitor list (both come from Tabletop.Events). */
+  view = signal(pageState.view);
+  exhibitorQuery = signal(pageState.exhibitorQuery);
+  selectedExhibitor = signal<Exhibitor | null>(null);
+  /** The convention has venue maps (config/venue-maps.ts). */
+  hasMaps = computed(() => !!this.mapService.maps());
 
   /** Day tabs from the convention's dates, e.g. { key: '2026-11-20', label: 'Fri', date: '20' }. */
   days = computed(() => (this.convention()?.days || []).map(d => {
@@ -96,12 +104,14 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** "Hours" panel: Library, Hot Games, Exhibit Hall, Registration and the prize drawing for the selected day. */
   hours = computed(() => {
-    const byName = new Map<string, string[]>();
+    const byName = new Map<string, { spans: string[]; place: MapRequest | null }>();
     for (const e of this.dayEvents().filter(ev => ev.info)) {
       const span = e.durationMin <= 60 ? this.clockText(e.start) : `${this.clockText(e.start)} – ${this.clockText(e.end)}`;
-      byName.set(e.name, [...(byName.get(e.name) || []), span]);
+      const entry = byName.get(e.name) || { spans: [], place: this.placeFor(e, e.name) };
+      entry.spans.push(span);
+      byName.set(e.name, entry);
     }
-    return [...byName].map(([name, spans]) => ({ name, text: spans.join(', ') }));
+    return [...byName].map(([name, { spans, place }]) => ({ name, text: spans.join(', '), place }));
   });
 
   /** Starred events (all days), for overlap checks. */
@@ -164,6 +174,76 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     return e ? this.toRow(e, this.now(), this.service.starred()) : null;
   });
 
+  /** Exhibitors with their booth from the hall map's directory, filtered by search. */
+  exhibitorRows = computed(() => {
+    const q = this.exhibitorQuery().trim().toLowerCase();
+    return (this.service.exhibitors() || [])
+      .filter(x => !q || x.name.toLowerCase().includes(q) || x.description.toLowerCase().includes(q))
+      .map(x => ({ exhibitor: x, booth: this.mapService.boothFor(x.name) }))
+      // Booths first (A–Z), then sponsors without a booth.
+      .sort((a, b) => Number(!a.booth) - Number(!b.booth) || a.exhibitor.name.localeCompare(b.exhibitor.name));
+  });
+
+  /** For the exhibitor sheet: their booth and their events at the booth (room Marsalis, space = exhibitor). */
+  exhibitorDetail = computed(() => {
+    const x = this.selectedExhibitor();
+    if (!x) return null;
+    const booth = this.mapService.boothFor(x.name);
+    // Demos usually repeat all day (one booth had 15 "Clandestine - Demo" sessions),
+    // so sessions with the same name become one line pointing at the next one.
+    const now = this.now();
+    const sessions = (this.service.events() || [])
+      .filter(e => !e.info && e.roomName === 'Marsalis' && !!booth && this.mapService.boothFor(e.spaceName) === booth);
+    const byName = new Map<string, ConEvent[]>();
+    for (const e of sessions) byName.set(e.name, [...(byName.get(e.name) || []), e]);
+    const events = [...byName].map(([name, all]) => {
+      const next = all.find(e => e.end > now) || all[all.length - 1];
+      const count = all.length > 1 ? `${all.length} sessions · ` : '';
+      return { name, event: next, when: count + (next.end > now ? 'next ' : 'last ') + this.whenText(next) };
+    });
+    return { exhibitor: x, booth, events };
+  });
+
+  /**
+   * Where an event is on the venue maps: an exhibitor's demo table goes to their
+   * booth on the hall map; the Exhibit Hall itself opens the hall map; other
+   * rooms are circled on the hotel map. Null when the room isn't on a map.
+   */
+  placeFor(e: ConEvent, label?: string): MapRequest | null {
+    if (!this.hasMaps()) return null;
+    if (e.roomName === 'Marsalis') {
+      const booth = this.mapService.boothFor(e.spaceName);
+      if (booth) return this.mapService.boothRequest(booth, e.spaceName.replace(/-[A-Z]$/, ''));
+      return { map: 'hall', label: label || 'Exhibit hall' };
+    }
+    return this.mapService.roomRequest(e.roomName, label || e.room);
+  }
+
+  showPlace(place: MapRequest | null): void {
+    if (place) this.mapService.show(place);
+  }
+
+  openMaps(): void {
+    this.mapService.show({ map: this.view() === 'exhibitors' ? 'hall' : 'hotel' });
+  }
+
+  setView(view: 'schedule' | 'exhibitors'): void {
+    this.view.set(view);
+    window.scrollTo(0, 0);
+    const convention = this.convention();
+    if (view === 'exhibitors' && convention) this.service.loadExhibitors(convention);
+  }
+
+  openExhibitor(x: Exhibitor): void {
+    this.selectedExhibitor.set(x);
+    this.sheet.set('exhibitor');
+  }
+
+  openEventFromExhibitor(e: ConEvent): void {
+    this.selected.set(e);
+    this.sheet.set('event');
+  }
+
   ngOnInit(): void {
     // Open on today during the con; otherwise the first day (or the day last viewed).
     const today = dallasDateKey(Date.now());
@@ -172,6 +252,7 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     else if (!keys.includes(this.day())) this.day.set(keys[0] || '');
     const convention = this.convention();
     if (convention) this.service.load(convention);
+    if (convention && this.view() === 'exhibitors') this.service.loadExhibitors(convention);
   }
 
   ngAfterViewInit(): void {
@@ -187,6 +268,7 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     clearInterval(this.refresher);
     this.resize?.disconnect();
     Object.assign(pageState, {
+      view: this.view(), exhibitorQuery: this.exhibitorQuery(),
       day: this.day(), query: this.query(), hasSeats: this.hasSeats(), starredOnly: this.starredOnly(),
       types: [...this.types()], showEarlier: this.showEarlier(),
     });
