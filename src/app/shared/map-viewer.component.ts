@@ -113,7 +113,8 @@ const tidy = (s: string) => s.toLowerCase().replace(/(^|[\s/(-])([a-zà-ü’'])
     @keyframes pulse { to { transform: scale(1.8); opacity: 0; } }
     @media (prefers-reduced-motion: reduce) { .pin::after { animation: none; } }
     .floor-name { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); padding: 5px 12px; border-radius: 14px; font-size: 13px; font-weight: 700; white-space: nowrap; background: var(--bl-toast-bg); color: var(--bl-toast-fg); box-shadow: 0 1px 6px rgba(0, 0, 0, .2); z-index: 2; pointer-events: none; }
-    .floors { position: absolute; left: 12px; transform: translateY(-50%); display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); background: var(--bl-surface); z-index: 2; }
+    /* Fixed spot just under the floor-name pill: high enough that the card never covers it. */
+    .floors { position: absolute; left: 12px; top: 56px; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); background: var(--bl-surface); z-index: 2; }
     .floors button { position: relative; width: 48px; height: 48px; border: 0; font-size: 17px; font-weight: 800; background: var(--bl-surface); color: var(--bl-text); }
     .floors button.on { background: var(--bl-accent); color: #fff; }
     /* A selected place on another floor: a dot on that floor's button. */
@@ -214,11 +215,12 @@ const tidy = (s: string) => s.toLowerCase().replace(/(^|[\s/(-])([a-zà-ü’'])
 
       <div class="floor-name">{{ floor().name }}</div>
       <!--
-        Floor picker: left edge, centred in the part of the map above the card. Mid-edge is easier
-        to reach one-handed than a bottom corner (Hoober's thumb-zone research), stays clear of the
-        iPhone home bar and the card, and sits opposite the zoom buttons (Map UI Patterns).
+        Floor picker: fixed on the left edge, in the upper half of the map. It used to re-centre
+        whenever the card opened or closed, so it jumped up and down under the user's thumb.
+        Navigation controls should stay put (muscle memory); higher than a bottom corner is also
+        easier to reach one-handed (Hoober's thumb zone), and it sits opposite the zoom buttons.
       -->
-      <div class="floors" role="radiogroup" aria-label="Floor" [style.top]="'calc((100% - ' + cardHeight() + 'px) / 2)'">
+      <div class="floors" role="radiogroup" aria-label="Floor">
         @for (f of maps.floors; track f.id) {
           <button type="button" role="radio" [class.on]="f.id === floorId()" [attr.aria-checked]="f.id === floorId()" [attr.aria-label]="f.name + (floorsWithSelection().has(f.id) && f.id !== floorId() ? ', has a highlighted place' : '')" (click)="switchFloor(f.id)">
             {{ f.short }}
