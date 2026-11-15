@@ -324,7 +324,8 @@ body {
 /* Pin button on Hours rows that opens the map. */
 .hours dl div { align-items: center; }
 .hours dl .map-btn { width: 36px; height: 36px; margin: -6px -6px -6px 0; }
-.room-link { padding: 0; margin: 0; min-height: 0; text-align: left; font-size: 15px; text-decoration: underline; text-underline-offset: 2px; }
+/* flex: 1 + min-width: 0 keeps a long room name wrapping beside its pin icon instead of dropping below it. */
+.room-link { flex: 1; min-width: 0; padding: 0; margin: 0; min-height: 0; text-align: left; font-size: 15px; text-decoration: underline; text-underline-offset: 2px; }
 .ex-row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 16px; border: 0; border-bottom: 1px solid var(--bl-hair); background: transparent; color: inherit; text-align: left; }
 .ex-row .booth { flex: none; width: 56px; height: 52px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bl-accent-soft); color: var(--bl-accent-text); }
 .ex-row .booth.none { background: var(--bl-field); color: var(--bl-muted); }
@@ -333,3 +334,8 @@ body {
 .ex-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .ex-desc { font-size: 13px; color: var(--bl-muted); line-height: 17px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .bl-sheet h3.sub { margin: 0 0 4px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-muted); }
+
+/* Links inside event/exhibitor descriptions (bl-rich-text). Underlined so they
+   read as links without relying on color alone; long URLs may break anywhere. */
+.bl-text-link { color: var(--bl-accent-text, var(--bl-accent)); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.bl-text-link.bold { font-weight: 700; }

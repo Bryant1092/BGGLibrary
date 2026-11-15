@@ -187,7 +187,7 @@
             <span class="booth" [class.none]="!r.booth"><small>{{ r.booth ? 'Booth' : 'Sponsor' }}</small>@if (r.booth) { <strong>{{ r.booth }}</strong> }</span>
             <span class="ex-text">
               <span class="bl-name" style="-webkit-line-clamp: 1">{{ r.exhibitor.name }}</span>
-              @if (r.exhibitor.description) { <span class="ex-desc">{{ r.exhibitor.description }}</span> }
+              @if (r.exhibitor.description) { <span class="ex-desc">{{ r.preview }}</span> }
             </span>
           </button>
         } @empty {
@@ -227,7 +227,7 @@
           <p class="overlap">Overlaps your starred {{ row.overlaps.length === 1 ? 'event' : 'events' }}: {{ row.overlaps.join(', ') }}</p>
         }
         @if (row.event.description) {
-          <p class="desc">{{ row.event.description }}</p>
+          <!-- Links in the description open in a new tab; **bold** shows bold. --><p class="desc"><bl-rich-text [text]="row.event.description" /></p>
         }
         <!-- Tickets are claimed on Tabletop.Events (it needs your badge/account there). -->
         @if (row.event.ticketUrl && row.event.ticketed && !row.event.cancelled) {
@@ -260,7 +260,7 @@
           </div>
           <button type="button" class="bl-icon-btn" aria-label="Close" (click)="sheet.set(null)" style="margin: -6px -10px 0 0"><bl-icon name="close" /></button>
         </div>
-        @if (d.exhibitor.description) { <p class="desc">{{ d.exhibitor.description }}</p> }
+        @if (d.exhibitor.description) { <p class="desc"><bl-rich-text [text]="d.exhibitor.description" /></p> }
         @if (d.booth) {
           <button type="button" class="bl-btn" (click)="showPlace(mapService.boothRequest(d.booth, d.exhibitor.name))">
             <bl-icon name="pin" [size]="20" /> Show booth {{ d.booth }} on the map

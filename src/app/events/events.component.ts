@@ -1,3 +1,5 @@
+import { RichTextComponent } from '../shared/rich-text.component';
+import { plainText } from '../util/rich-text';
 import { AfterViewInit, ChangeDetectionStrategy, Component, computed, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { CONVENTIONS, Convention } from '../config/conventions';
 import { ConEvent, EventsService, Exhibitor } from '../service/events.service';
@@ -52,7 +54,7 @@ interface EventRow {
 @Component({
   selector: 'app-events',
   standalone: true,
-  imports: [IconComponent, SheetComponent, OfflineBarComponent],
+  imports: [IconComponent, SheetComponent, OfflineBarComponent, RichTextComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './events.component.html',
   styleUrl: './events.component.css',
@@ -179,7 +181,8 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     const q = this.exhibitorQuery().trim().toLowerCase();
     return (this.service.exhibitors() || [])
       .filter(x => !q || x.name.toLowerCase().includes(q) || x.description.toLowerCase().includes(q))
-      .map(x => ({ exhibitor: x, booth: this.mapService.boothFor(x.name) }))
+      // preview: one-line text for the list, without the Markdown asterisks/brackets.
+      .map(x => ({ exhibitor: x, booth: this.mapService.boothFor(x.name), preview: plainText(x.description) }))
       // Booths first (A–Z), then sponsors without a booth.
       .sort((a, b) => Number(!a.booth) - Number(!b.booth) || a.exhibitor.name.localeCompare(b.exhibitor.name));
   });
