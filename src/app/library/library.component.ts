@@ -119,6 +119,8 @@ export class LibraryComponent implements OnInit, OnDestroy {
   uid = signal<string | undefined>(undefined);
   lists = signal<UserGameListRef[]>([]);
   currentList = signal<UserGameListRef | undefined>(undefined);
+  /** False until the account's lists arrive, so the switcher says "Loading…" instead of flashing "Choose a list". */
+  listsLoaded = signal(false);
   private currentListId$ = new BehaviorSubject<string | undefined>(undefined);
   /** Ids of games in the current list, kept live so friends' changes show up. */
   listGameIds = signal<Set<string>>(new Set());
@@ -288,6 +290,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(lists => {
       this.lists.set(lists || []);
+      this.listsLoaded.set(true);
       this.setCurrentList(this.userService.getCurrentGameList());
     });
 

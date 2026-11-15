@@ -50,7 +50,7 @@
         <button type="button" class="bl-list-switch" (click)="sheet.set('lists')"
                 [attr.aria-label]="'Adding to ' + (currentList()?.name || 'no list') + '. Change list'">
           <span class="label">Adding to</span>
-          <strong>{{ currentList()?.name || 'Choose a list' }}</strong>
+          <strong>{{ currentList()?.name || (listsLoaded() ? 'Choose a list' : 'Loading…') }}</strong>
           <bl-icon name="chevronDown" [size]="18" [stroke]="2.4" />
         </button>
       } @else {

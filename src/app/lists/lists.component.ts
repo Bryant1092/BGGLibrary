@@ -232,6 +232,10 @@ export class ListsComponent implements OnInit, OnDestroy {
 
     this.selectedId$.pipe(
       switchMap(id => id ? this.gameService.watchGameList(id).pipe(catchError(err => {
+        // permission-denied = the list was just deleted, or its owner removed you
+        // (firestore.rules only lets holders read a list). Not a connection problem:
+        // the lists stream drops it and picks another list, so stay quiet.
+        if (err?.code === 'permission-denied') return of(undefined);
         console.error('Failed to load game list', err);
         this.toast.error("Couldn't load this list. Check your connection.");
         return of(undefined);
