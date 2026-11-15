@@ -4,7 +4,8 @@ import { provideRouter } from '@angular/router';
 import { REMOVE_STYLES_ON_COMPONENT_DESTROY } from '@angular/platform-browser';
 
 import { routes } from './app.routes';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { tteResilience } from './service/network-health';
 import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
 import { initializeFirestore, provideFirestore } from '@angular/fire/firestore';
 // AngularFire doesn't re-export the cache settings helpers, so they come from
@@ -47,7 +48,8 @@ export const appConfig: ApplicationConfig = {
     // sheet leaves a copy of itself sliding away (SheetComponent), and without
     // this the copy lost its styles mid-animation. The styles are small.
     { provide: REMOVE_STYLES_ON_COMPONENT_DESTROY, useValue: false },
-    provideHttpClient(),
+    // Timeouts and spaced-out retries for Tabletop.Events on crowded con Wi-Fi (service/network-health.ts).
+    provideHttpClient(withInterceptors([tteResilience])),
     // Finds the current/next BGG.CON or BGG.Spring on Tabletop.Events before the first screen
     // (instant when a copy is saved on the phone; see service/convention-sync.ts).
     provideAppInitializer(syncConventions),
