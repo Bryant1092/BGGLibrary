@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1794718889868,
+  "timestamp": 1794719498400,
   "index": "/BGGLibrary/index.html",
   "assetGroups": [
     {
@@ -12,7 +12,6 @@
       },
       "urls": [
         "/BGGLibrary/chunk-222DC3MN.js",
-        "/BGGLibrary/chunk-5JFA7OUL.js",
         "/BGGLibrary/chunk-5NC3M3TC.js",
         "/BGGLibrary/chunk-65ERAQF2.js",
         "/BGGLibrary/chunk-6RHGRRQZ.js",
@@ -33,9 +32,10 @@
         "/BGGLibrary/chunk-TAFHYWZK.js",
         "/BGGLibrary/chunk-U4AJ3X7O.js",
         "/BGGLibrary/chunk-Y7XSR2FA.js",
+        "/BGGLibrary/chunk-Z5MWAZYC.js",
         "/BGGLibrary/favicon.ico",
         "/BGGLibrary/index.html",
-        "/BGGLibrary/main-UFMR7ANR.js",
+        "/BGGLibrary/main-G4ZXWDBF.js",
         "/BGGLibrary/manifest.webmanifest",
         "/BGGLibrary/polyfills-RP2QB4T4.js",
         "/BGGLibrary/styles-FRXHMQCZ.css"
@@ -84,7 +84,6 @@
   ],
   "hashTable": {
     "/BGGLibrary/chunk-222DC3MN.js": "6f79dbfbdc77a0e77c253b69f8f709b22de7df40",
-    "/BGGLibrary/chunk-5JFA7OUL.js": "5992a22ad4c77bed15e39729d2cdaa51b2893df8",
     "/BGGLibrary/chunk-5NC3M3TC.js": "0d493a9b3f2842fb9ea020094eb373c0492bd981",
     "/BGGLibrary/chunk-65ERAQF2.js": "3328c79854572373b2cf85c44c49018f03257db0",
     "/BGGLibrary/chunk-6RHGRRQZ.js": "f22a8f6c16062e2f0955751bd5f23f2b1352faae",
@@ -105,6 +104,7 @@
     "/BGGLibrary/chunk-TAFHYWZK.js": "aec17bcc13fbbed4bd3b89bc6674463bfdb10b04",
     "/BGGLibrary/chunk-U4AJ3X7O.js": "e70ecfc858b58df3420c98ab96bdd3945ebe0064",
     "/BGGLibrary/chunk-Y7XSR2FA.js": "1f4dd7bb5faeefb42e69e1447095e46a519b0b2c",
+    "/BGGLibrary/chunk-Z5MWAZYC.js": "c43778d05ccaa88f647f3d739df15cccee00c25b",
     "/BGGLibrary/favicon.ico": "6603ccb19430f0aa1aaa57fcac7b6fbd21441556",
     "/BGGLibrary/icons/icon-128x128.png": "55d65cf0cced2791ab981e41bbf75b4acec7c707",
     "/BGGLibrary/icons/icon-144x144.png": "f92e7fddd8f68c1143a04dc0da6d01277fa18164",
@@ -114,8 +114,8 @@
     "/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
     "/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
     "/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
-    "/BGGLibrary/index.html": "34479ac6b9c0b77ac545f1fb5d8ab3b67e96ea06",
-    "/BGGLibrary/main-UFMR7ANR.js": "882962950fd7915b63bff55b8eadd0f3b5453232",
+    "/BGGLibrary/index.html": "b02a929dad6ceefde39c8572455db7c632d293cd",
+    "/BGGLibrary/main-G4ZXWDBF.js": "b3ea486acb5efd9de3d99dc3ad8e376785085d85",
     "/BGGLibrary/manifest.webmanifest": "02fd681aa859fb7e11b7fcdf99d3a14607b751db",
     "/BGGLibrary/maps/bggcon-2026-exhibit-hall.jpg": "f782d59013b122362e9a9bfb1dc0023694611e6e",
     "/BGGLibrary/maps/bggcon-2026-hotel.jpg": "9db26e8a7c112505cbcabc3a1867fccb4908aa4e",
