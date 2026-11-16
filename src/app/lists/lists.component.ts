@@ -348,8 +348,12 @@ export class ListsComponent implements OnInit, OnDestroy {
   }
 
   private refreshCheckedOut(): void {
+    // Only games on the list being viewed. details() also holds games saved on the phone
+    // from other lists and Friends' picks (GameDetailsCache), up to a few hundred; re-checking
+    // all of those every 30 s would flood Tabletop.Events.
+    const onList = new Set((this.games() || []).map(g => g.id));
     const ids = [...this.details().values()]
-      .filter(item => item.is_checked_out && !this.pendingIds.has(item.id))
+      .filter(item => onList.has(item.id) && item.is_checked_out && !this.pendingIds.has(item.id))
       .map(item => item.id);
     if (ids.length) {
       ids.forEach(id => this.pendingIds.add(id));
