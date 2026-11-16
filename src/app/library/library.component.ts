@@ -22,6 +22,7 @@ import { currentOrNextConvention, libraryStatus, shortDuration } from '../util/l
 import { isNewArrival, minutesText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
 import { matchHotGames } from '../util/hot-games';
 import { InViewDirective } from '../shared/in-view.directive';
+import { RatingControlsComponent } from '../shared/rating-controls.component';
 
 /**
  * 12 per page. Tabletop.Events' response time grows with page size (measured
@@ -77,7 +78,7 @@ export class LibraryPageState {
 @Component({
   selector: 'app-library',
   standalone: true,
-  imports: [InViewDirective, IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent],
+  imports: [InViewDirective, RatingControlsComponent, IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './library.component.html',
 })
@@ -129,6 +130,11 @@ export class LibraryComponent implements OnInit, OnDestroy {
 
   sheet = signal<'details' | 'players' | 'time' | 'sort' | 'lists' | 'shelf' | null>(null);
   selected = signal<BggItem | null>(null);
+  /** The open game in the shape lists and ratings store (same fields as adding it to a list). */
+  selectedGame = computed(() => {
+    const item = this.selected();
+    return item ? { bgg_id: item.bgg_id, name: item.name, photo: item.bgg_icon_uri, id: item.id } : null;
+  });
   /** A game the user tried to add before choosing/creating a list; added once they do. */
   private pendingAdd: BggItem | null = null;
 

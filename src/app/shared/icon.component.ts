@@ -42,6 +42,10 @@ const ICONS: Record<string, string> = {
   escalator: '<path d="M3 19h4l10-12h4"/><path d="M14 7h4v4"/>',
   restroom: '<circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M7 9v11M4 9h6M17 9l-3 7h6l-3-7M17 16v4"/>',
   fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  // Ratings after playing (My Lists): liked it / not for me / want to buy.
+  thumbUp: '<path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M7 10l4-7a2.5 2.5 0 0 1 2.5 3L13 10h5.6a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.4 21H7"/>',
+  thumbDown: '<path d="M7 14V3H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1z"/><path d="M7 14l4 7a2.5 2.5 0 0 0 2.5-3L13 14h5.6a2 2 0 0 0 2-2.3l-1.2-7A2 2 0 0 0 17.4 3H7"/>',
+  bag: '<path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
   // Filled bell = alert on; outlined bell with a slash = off. The shapes differ,
   // not just the color, so the state is clear to color-blind users too.
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" fill="currentColor"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',

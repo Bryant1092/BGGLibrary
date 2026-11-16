@@ -7,6 +7,7 @@ import { InstallService } from './service/install.service';
 import { MapService } from './service/map.service';
 import { ConInfoService } from './service/con-info.service';
 import { FriendsService } from './service/friends.service';
+import { ReactionsService } from './service/reactions.service';
 import { NewsPromptComponent } from './shared/news-prompt.component';
 import { MapViewerComponent } from './shared/map-viewer.component';
 import { IconComponent } from './shared/icon.component';
@@ -23,6 +24,7 @@ import { ToastComponent } from './shared/toast.component';
 export class AppComponent implements OnInit {
   private hideNavService = inject(HideNavService);
   private friends = inject(FriendsService);
+  private reactions = inject(ReactionsService);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
   watch = inject(WatchService);
@@ -61,6 +63,8 @@ export class AppComponent implements OnInit {
     this.conInfo.start(this.destroyRef);
     // Friends and requests, live, so a new request shows on the Account tab from any tab.
     this.friends.start(this.destroyRef);
+    // Your Liked / Want to buy marks, live (shown on every list a game is on).
+    this.reactions.start(this.destroyRef);
   }
 
   /**

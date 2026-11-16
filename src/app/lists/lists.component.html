@@ -37,6 +37,16 @@
         <span>{{ summary() }}</span>
         <span>{{ refreshing() ? 'Checking…' : updatedText() }}</span>
       </div>
+      @if (games()?.length) {
+        <!-- Liked / Want to buy are your own ratings; To play hides what the group already played. -->
+        <div class="bl-chips" role="radiogroup" aria-label="Show">
+          @for (c of [{ v: 'all', l: 'All' }, { v: 'toplay', l: 'To play' }, { v: 'liked', l: 'Liked' }, { v: 'buy', l: 'Want to buy' }]; track c.v) {
+            <button type="button" class="bl-chip" role="radio" [class.on]="filter() === c.v" [attr.aria-checked]="filter() === c.v" (click)="filter.set($any(c.v))">
+              {{ c.l }} · {{ $any(filterCounts())[c.v] }}
+            </button>
+          }
+        </div>
+      }
     }
     <app-offline-bar />
   </header>
@@ -91,6 +101,14 @@
                     <span>Tap refresh to try again</span>
                   }
                 </span>
+                @if (row.liked !== null || row.buy) {
+                  <!-- Your rating at a glance; change it in the game's details. -->
+                  <span class="bl-rated">
+                    @if (row.liked === true) { <span class="up"><bl-icon name="thumbUp" [size]="15" /> Liked</span> }
+                    @if (row.liked === false) { <span class="down"><bl-icon name="thumbDown" [size]="15" /> Not for me</span> }
+                    @if (row.buy) { <span class="buy"><bl-icon name="bag" [size]="15" /> Want to buy</span> }
+                  </span>
+                }
               </span>
               @if (row.item) {
                 <span class="bl-shelf-badge" [class.out]="section.out" [class.long]="row.longShelf">
@@ -116,6 +134,13 @@
             </button>
           </div>
         }
+      } @empty {
+        <!-- A filter with no matches (e.g. nothing marked Want to buy yet). -->
+        <div class="bl-empty">
+          <p class="title">{{ filter() === 'toplay' ? 'You\'ve played everything here' : filter() === 'liked' ? 'No liked games yet' : 'Nothing to buy yet' }}</p>
+          <p class="body">Tick Played after a game to rate it, or open a game to mark Liked or Want to buy.</p>
+          <button type="button" class="bl-btn outline" (click)="filter.set('all')">Show all games</button>
+        </div>
       }
     }
   </main>
@@ -126,11 +151,23 @@
     <app-list-picker-sheet [lists]="lists() || []" [currentId]="selectedId()" [uid]="uid()"
                            (pick)="pickList($event)" (create)="createList($event)" (closed)="sheet.set(null)" />
   }
+  @case ('rate') {
+    @if (rating(); as g) {
+      <app-sheet [label]="'How was ' + g.name + '?'" (closed)="sheet.set(null)">
+        <h2>How was {{ g.name }}?</h2>
+        <p class="bl-sheet-note">Just for you. Change it any time in the game's details.</p>
+        <app-rating-controls [game]="g" />
+        <button type="button" class="bl-btn secondary" (click)="sheet.set(null)">Done</button>
+      </app-sheet>
+    }
+  }
   @case ('details') {
     @if (selectedGame(); as selected) {
       <app-game-sheet [game]="selected.item" [now]="now()" [listName]="selectedList()?.name" [inList]="true" [busy]="busy()"
                       [watched]="watch.isWatched(selected.item.id)" (watchToggle)="toggleWatchItem(selected.item)"
-                      (toggle)="removeSelected()" (closed)="sheet.set(null)" />
+                      (toggle)="removeSelected()" (closed)="sheet.set(null)">
+        <app-rating-controls [game]="selected.game" />
+      </app-game-sheet>
     }
   }
   @case ('actions') {

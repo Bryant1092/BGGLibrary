@@ -18,6 +18,8 @@ import { SheetComponent } from '../shared/sheet.component';
 import { OfflineBarComponent } from '../shared/offline-bar.component';
 import { ListPickerSheetComponent } from '../shared/list-picker-sheet.component';
 import { FriendsPicksComponent } from '../shared/friends-picks.component';
+import { RatingControlsComponent } from '../shared/rating-controls.component';
+import { ReactionsService } from '../service/reactions.service';
 import { Friend, FriendsService } from '../service/friends.service';
 import { ThumbComponent } from '../shared/thumb.component';
 import { dueInfo, shortDuration } from '../util/library-time';
@@ -58,7 +60,7 @@ export class ListDetailsCache {
   }
 }
 
-type ListSheet = 'lists' | 'details' | 'actions' | 'create' | 'rename' | 'share' | 'delete' | null;
+type ListSheet = 'lists' | 'rate' | 'details' | 'actions' | 'create' | 'rename' | 'share' | 'delete' | null;
 
 interface ListRow {
   game: Game;
@@ -69,12 +71,18 @@ interface ListRow {
   status: string;
   meta: string;
   dueAt: number;
+  /** Your own rating (ReactionsService): true liked, false not for me, null none. */
+  liked: boolean | null;
+  buy: boolean;
 }
+
+/** My Lists filter chips. "To play" is the one used most during the con. */
+type ListFilter = 'all' | 'toplay' | 'liked' | 'buy';
 
 @Component({
   selector: 'app-lists',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent, FriendsPicksComponent],
+  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent, FriendsPicksComponent, RatingControlsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './lists.component.html',
 })
@@ -88,6 +96,10 @@ export class ListsComponent implements OnInit, OnDestroy {
   private cache = inject(ListDetailsCache);
   private recent = inject(RecentService);
   friends = inject(FriendsService);
+  private reactions = inject(ReactionsService);
+  filter = signal<ListFilter>('all');
+  /** The game the "How was it?" prompt is about (after ticking Played). */
+  rating = signal<Game | null>(null);
 
   /** "My lists" or "Friends' picks" (switch under the title). */
   view = signal<'lists' | 'picks'>('lists');
@@ -138,11 +150,14 @@ export class ListsComponent implements OnInit, OnDestroy {
     const now = this.now();
     const details = this.details();
     const failed = this.failedIds();
+    const reactions = this.reactions.byGame();
     return (this.games() || []).map(game => {
+      const reaction = reactions.get(game.id!) || {};
       const item = details.get(game.id!);
       const shelf = item ? shelfText(item) : '';
       return {
         game, item, failed: failed.has(game.id!), shelf, longShelf: shelf.length > 3,
+        liked: reaction.liked ?? null, buy: !!reaction.buy,
         status: item ? statusText(item, now) : '',
         meta: item ? `${playersText(item)} players · ${minutesText(item)} min` : '',
         // Sort key for "Checked out": soonest due first; stale checkouts (likely
@@ -158,7 +173,8 @@ export class ListsComponent implements OnInit, OnDestroy {
   /** Available games first (what you can grab now), then checked-out ones by soonest due back. */
   sections = computed(() => {
     const byName = (a: ListRow, b: ListRow) => (a.game.name || '').localeCompare(b.game.name || '');
-    const rows = this.rows();
+    const f = this.filter();
+    const rows = this.rows().filter(r => f === 'all' || (f === 'toplay' && !r.game.played) || (f === 'liked' && r.liked === true) || (f === 'buy' && r.buy));
     const available = rows.filter(r => r.item && !r.item.is_checked_out).sort(byName);
     const out = rows.filter(r => r.item?.is_checked_out).sort((a, b) => a.dueAt - b.dueAt || byName(a, b));
     const unknown = rows.filter(r => !r.item).sort(byName);
@@ -391,9 +407,17 @@ export class ListsComponent implements OnInit, OnDestroy {
     this.watch.toggle({ id: item.id, name: item.name, shelf: shelfText(item) });
   }
 
+  /** Counts for the filter chips. */
+  filterCounts = computed(() => {
+    const rows = this.rows();
+    return { all: rows.length, toplay: rows.filter(r => !r.game.played).length, liked: rows.filter(r => r.liked === true).length, buy: rows.filter(r => r.buy).length };
+  });
+
   togglePlayed(game: Game): void {
     const list = this.selectedList();
     if (!list) return;
+    // Right after playing is when the group says whether they liked it, so ask then.
+    if (!game.played) { this.rating.set(game); this.sheet.set('rate'); }
     this.gameService.setPlayed(list.id, game.id!, !game.played).catch(err => {
       console.error('Failed to update played', err);
       this.toast.error(navigator.onLine ? "Couldn't save that. Try again." : "You're offline. Changes to lists need a connection.");

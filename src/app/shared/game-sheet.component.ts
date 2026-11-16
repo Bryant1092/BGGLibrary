@@ -126,6 +126,8 @@ import { ThumbComponent } from './thumb.component';
           {{ watched() ? "We'll tell you when it's back" : "Notify me when it's back" }}
         </button>
       }
+      <!-- Extra controls from the page that opened the sheet (e.g. Liked / Want to buy). -->
+      <ng-content />
       <button type="button" class="bl-btn" [class.secondary]="inList()" [disabled]="busy()" (click)="toggle.emit()">{{ actionLabel() }}</button>
       <!-- Learning the rules before checking a game out saves table time. -->
       <a class="bl-btn secondary" style="text-decoration: none" [href]="howToPlay()" target="_blank" rel="noopener"

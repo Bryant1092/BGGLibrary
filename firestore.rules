@@ -75,6 +75,18 @@ service cloud.firestore {
         allow delete: if signedIn() && (request.auth.uid == uid || owns(listId));
       }
 
+      // ---------- Your own ratings ----------
+      // users/{uid}/reactions/{gameId}: liked (true = liked it, false = not for me),
+      // buy (want to buy). Personal, unlike Played, which is on the shared list:
+      // one person's thumbs-down mustn't overwrite everyone else's. Only you see them.
+      match /reactions/{gameId} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['liked', 'buy', 'name', 'photo', 'at'])
+          && (!('liked' in request.resource.data) || request.resource.data.liked == null || request.resource.data.liked is bool)
+          && (!('buy' in request.resource.data) || request.resource.data.buy is bool);
+      }
+
       // ---------- Friends (Meeple codes) ----------
       // users/{uid}/friends/{other}: uid's side of a friendship with `other`.
       //   status: 'outgoing' (uid asked), 'incoming' (other asked uid), 'friends'.

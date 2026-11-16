@@ -219,7 +219,10 @@
       <app-game-sheet [game]="game" [now]="now()" [listName]="signedIn() ? currentList()?.name : undefined"
                       [inList]="isInList(game)" [busy]="busyIds().has(game.id)"
                       [watched]="watch.isWatched(game.id)" (watchToggle)="toggleWatch(game)"
-                      (toggle)="toggleGame(game)" (closed)="closeSheet()" />
+                      (toggle)="toggleGame(game)" (closed)="closeSheet()">
+        <!-- Liked / Want to buy work from the Library too (e.g. a game played at a friend's). -->
+        @if (signedIn() && selectedGame(); as g) { <app-rating-controls [game]="g" /> }
+      </app-game-sheet>
     }
   }
   @case ('players') {
