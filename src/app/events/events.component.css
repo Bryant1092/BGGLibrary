@@ -94,3 +94,9 @@
    and refresh buttons on a 360px-wide phone, and the Info count stays on the same line. */
 .view-switch { max-width: 300px; gap: 2px; }
 .view-switch button { font-size: 13.5px; padding: 0 4px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; }
+
+/* Phone held sideways: the header isn't pinned there (styles.css), so the hour labels
+   stick to the top of the screen instead of below where the header used to be. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .time-head { top: env(safe-area-inset-top); }
+}

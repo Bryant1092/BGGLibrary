@@ -481,3 +481,25 @@ app-shelf-list.has-index :is(.bl-row, .shelf-head) { padding-right: 36px; }
 }
 /* "CARD RACK NEW"-length names in the shelf picker grid. */
 .bl-option.small-text { font-size: 13px; }
+
+/* ---------- Phone held sideways ----------
+   iPhones can't be locked to portrait from a web app (iOS ignores the manifest's
+   "orientation" and screen.orientation.lock()), so landscape has to work. Sideways the
+   screen is only ~393pt tall: the pinned header plus the tab bar covered ~85% of it and
+   not one whole game fit. Matches only a short, wide screen (a phone on its side), so
+   portrait phones, tablets and desktops are unchanged.
+   Follows Apple's iPhone landscape pattern: same layout, tab bar stays at the bottom
+   with each icon beside its label (HIG > Tab bars). */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root { --bl-tabbar-h: 44px; }
+  /* The header scrolls away with the list instead of staying pinned. Tapping the top
+     edge of the screen (iOS scroll-to-top) brings search back. */
+  .bl-header { position: static; padding-top: calc(8px + env(safe-area-inset-top)); gap: 8px; }
+  .bl-title-row { min-height: 30px; }
+  .bl-title-row h1 { font-size: 19px; }
+  /* One slim row: icon beside label, as iOS draws its own tab bars sideways. */
+  .bl-tabbar a { flex-direction: row; gap: 8px; font-size: 14px; }
+  .bl-tabbar a svg { width: 22px; height: 22px; }
+  /* Shelf A-Z strip: the header it sat under has scrolled away, so use the full height. */
+  .shelf-index { top: calc(env(safe-area-inset-top) + 6px); }
+}

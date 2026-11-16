@@ -314,7 +314,9 @@ export class ShelfListComponent {
       const target = document.getElementById('shelf-letter-' + letter);
       if (!target) return null;
       const header = document.querySelector('.bl-header') as HTMLElement | null;
-      const top = Math.round(target.getBoundingClientRect().top + window.scrollY - (header?.offsetHeight || 0));
+      // Only a pinned header covers the letter; sideways it scrolls away (styles.css, landscape).
+      const pinned = header && getComputedStyle(header).position === 'sticky' ? header.offsetHeight : 0;
+      const top = Math.round(target.getBoundingClientRect().top + window.scrollY - pinned);
       // 'instant', not 'auto': Bootstrap's base styles set scroll-behavior: smooth on the page, which 'auto' would follow.
       window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
       return window.scrollY;

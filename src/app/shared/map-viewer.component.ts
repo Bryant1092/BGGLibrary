@@ -117,6 +117,11 @@ const tidy = (s: string) => s.toLowerCase().replace(/(^|[\s/(-])([a-zà-ü’'])
     .floors { position: absolute; left: 12px; top: 56px; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); background: var(--bl-surface); z-index: 2; }
     .floors button { position: relative; width: 48px; height: 48px; border: 0; font-size: 17px; font-weight: 800; background: var(--bl-surface); color: var(--bl-text); }
     .floors button.on { background: var(--bl-accent); color: #fff; }
+    /* Phone held sideways (~393pt tall): smaller floor buttons so all four fit, E included. */
+    @media (orientation: landscape) and (max-height: 500px) {
+      .floors { top: 48px; }
+      .floors button { width: 40px; height: 38px; font-size: 15px; }
+    }
     /* A selected place on another floor: a dot on that floor's button. */
     .floors button .has { position: absolute; top: 7px; right: 7px; width: 8px; height: 8px; border-radius: 4px; background: var(--bl-accent); box-shadow: 0 0 0 2px var(--bl-surface); }
     .zoom { position: absolute; right: 12px; display: flex; flex-direction: column; gap: 8px; z-index: 2; }
