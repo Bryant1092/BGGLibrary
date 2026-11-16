@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1794792973710,
+  "timestamp": 1794793129268,
   "index": "/BGGLibrary/index.html",
   "assetGroups": [
     {
@@ -42,7 +42,7 @@
         "/BGGLibrary/main-OKAQUCZA.js",
         "/BGGLibrary/manifest.webmanifest",
         "/BGGLibrary/polyfills-RP2QB4T4.js",
-        "/BGGLibrary/styles-TXU6LTPI.css"
+        "/BGGLibrary/styles-UCEYE4UR.css"
       ],
       "patterns": []
     },
@@ -219,7 +219,7 @@
     "/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
     "/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
     "/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
-    "/BGGLibrary/index.html": "323073f71e4205df1a21de6afb76a0d7bac2ecb1",
+    "/BGGLibrary/index.html": "16ab07d5c3d643f3ce7fb281d83ac26165fa1fc8",
     "/BGGLibrary/main-OKAQUCZA.js": "a417023cee934f2464c2fb7bce86a83d826bb5e2",
     "/BGGLibrary/manifest.webmanifest": "02fd681aa859fb7e11b7fcdf99d3a14607b751db",
     "/BGGLibrary/maps/bggcon-2026/floor-atrium.svg": "262ac9a949ed9a1c472dce0b630ad01745057a90",
@@ -313,7 +313,7 @@
     "/BGGLibrary/shelves/x.json": "a7315a749e19afb22d53fb6239518a5cda9da4c4",
     "/BGGLibrary/shelves/y.json": "61016ff9534e0f018302297fe54951237872429f",
     "/BGGLibrary/shelves/z.json": "97efa570d3b28893828c8c8f61d57fec717a9aab",
-    "/BGGLibrary/styles-TXU6LTPI.css": "f3d3daac80e7e694e224e9b65dc44fd000bd06fa"
+    "/BGGLibrary/styles-UCEYE4UR.css": "34a8f13edc2385ef0d2158888927e45eee945be8"
   },
   "navigationUrls": [
     {
