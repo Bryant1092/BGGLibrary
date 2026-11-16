@@ -55,7 +55,6 @@ type Filter = 'all' | 'most' | 'any';
     .people .up, .people .down { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
     .people .up { color: var(--bl-avail-text); }
     .people .down { color: var(--bl-muted); font-weight: 500; }
-    .line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--bl-muted); }
   `,
   template: `
     @if (data() === null) {
@@ -73,7 +72,7 @@ type Filter = 'all' | 'most' | 'any';
         }
       </div>
       @for (p of shown(); track p.game.id) {
-        <div class="bl-row" (blInView)="want(p.game.id!)">
+        <div class="bl-row" (blInView)="wantCopies(p)">
           <!-- Tapping opens the same details sheet as Library / My Lists (players, BGG link, add to a list, who wants it). -->
           <button type="button" class="bl-row-main" style="align-items: center" (click)="open(p)">
             <app-thumb [src]="p.game.photo" [name]="p.game.name || ''" [size]="52" />
@@ -93,16 +92,19 @@ type Filter = 'all' | 'most' | 'any';
                   @if (p.dislikedBy.length) { <span class="down"><bl-icon name="thumbDown" [size]="14" /> {{ p.dislikedBy.length }} not for them</span> }
                 </span>
               }
-              <span class="line">
-                @if (details().get(p.game.id!); as item) {
+              <!-- Same status line and icons as the Library's rows, so a game reads the same everywhere. -->
+              @if (best(p); as item) {
+                <span class="bl-status-line">
                   <span class="bl-pill" [class.out]="item.is_checked_out">{{ status(item) }}</span>
-                  <span>Shelf {{ shelf(item) }}</span>
-                  <!-- Players and time, as in My Lists: deciding what to grab depends on group size. -->
-                  <span>{{ meta(item) }}</span>
-                } @else {
-                  <span class="bl-pill checking">Checking…</span>
-                }
-              </span>
+                  <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ shelf(item) }}</span>
+                </span>
+                <span class="bl-meta">
+                  <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ players(item) }}</span>
+                  <span><bl-icon name="clock" [size]="15" />{{ minutes(item) }} min</span>
+                </span>
+              } @else {
+                <span class="bl-status-line"><span class="bl-pill checking">Checking…</span></span>
+              }
             </span>
           </button>
           @if (!wantedByMe(p)) {
@@ -160,7 +162,7 @@ export class FriendsPicksComponent implements OnInit {
   /** The open game: its pick (who wants it) and its library record (players, shelf, status). */
   selected = computed(() => {
     const id = this.selectedId();
-    const pick = this.data()?.games.find(p => p.game.id === id);
+    const pick = this.data()?.games.find(p => p.copies.some(c => c.id === id));
     const item = id ? this.details().get(id) : undefined;
     return pick && item ? { pick, item } : null;
   });
@@ -210,8 +212,9 @@ export class FriendsPicksComponent implements OnInit {
    * into view; if not yet (or that lookup failed on con Wi-Fi), it's fetched now.
    */
   open(p: GamePick): void {
+    const shown = this.best(p);
+    if (shown) { this.selectedId.set(shown.id); this.sheet.set('details'); return; }
     const id = p.game.id!;
-    if (this.details().has(id)) { this.selectedId.set(id); this.sheet.set('details'); return; }
     this.bgg.getBggGameInfo(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (r: any) => {
         const item = r?.result as BggItem | undefined;
@@ -257,9 +260,27 @@ export class FriendsPicksComponent implements OnInit {
     this.watch.toggle({ id: item.id, name: item.name, shelf: shelfText(item) });
   }
 
-  /** "2–4 players · 30–60 min", the same wording as My Lists. */
-  meta(item: BggItem): string {
-    return `${playersText(item)} players · ${minutesText(item)} min`;
+  players(item: BggItem): string {
+    return playersText(item);
+  }
+
+  minutes(item: BggItem): string {
+    return minutesText(item);
+  }
+
+  /** Looks up every library copy of the game (most games have one; some have 2+). */
+  wantCopies(p: GamePick): void {
+    p.copies.forEach(c => this.want(c.id!));
+  }
+
+  /**
+   * The copy to show: an available one if any copy is on the shelf (that's the one to
+   * go get), otherwise the first copy once all have been checked. Undefined = still
+   * checking, so a row doesn't flash "Checked out" while another copy is loading.
+   */
+  best(p: GamePick): BggItem | undefined {
+    const loaded = p.copies.map(c => this.details().get(c.id!)).filter((i): i is BggItem => !!i);
+    return loaded.find(i => !i.is_checked_out) ?? (loaded.length === p.copies.length ? loaded[0] : undefined);
   }
 
   /** Full list of who wants it, you first: "You, Sam K., Maria L." */

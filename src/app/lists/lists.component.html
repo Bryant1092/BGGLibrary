@@ -125,7 +125,9 @@
                     <span class="bl-pill out">{{ row.status }}</span>
                   }
                   @if (row.item) {
-                    <span>{{ row.meta }}</span>
+                    <!-- Same players / time icons as the Library and Friends' picks rows. -->
+                    <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ row.players }}</span>
+                    <span><bl-icon name="clock" [size]="15" />{{ row.minutes }} min</span>
                   } @else if (row.failed) {
                     <span>Tap refresh to try again</span>
                   }

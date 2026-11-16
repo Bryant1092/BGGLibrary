@@ -71,7 +71,9 @@ interface ListRow {
   shelf: string;
   longShelf: boolean;
   status: string;
-  meta: string;
+  /** "2–4" and "30–60" (shown with the players / clock icons). */
+  players: string;
+  minutes: string;
   dueAt: number;
   /** Your own rating (ReactionsService): true liked, false not for me, null none. */
   liked: boolean | null;
@@ -183,7 +185,8 @@ export class ListsComponent implements OnInit, OnDestroy {
         liked: reaction.liked ?? null, buy: !!reaction.buy,
         checkedIn: item ? checkedInText(item, now) : '',
         status: item ? statusText(item, now) : '',
-        meta: item ? `${playersText(item)} players · ${minutesText(item)} min` : '',
+        players: item ? playersText(item) : '',
+        minutes: item ? minutesText(item) : '',
         // Sort key for "Checked out": soonest due first; stale checkouts (likely
         // never checked back in) go last since they say nothing about when it's back.
         dueAt: (() => {

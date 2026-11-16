@@ -40,6 +40,12 @@ export interface Friend {
 /** A game and who wants it (me shown as "You"). */
 export interface GamePick {
   game: Game;
+  /**
+   * Every library copy of this game someone listed (same BoardGameGeek id). The library
+   * owns two or more copies of some games (e.g. Drillers); each copy is a separate
+   * library entry, but "we want to play Drillers" is about the game, not the copy.
+   */
+  copies: Game[];
   wantedBy: { uid: string; name: string }[];
   /** People who played it and gave a thumbs up / thumbs down (only those sharing ratings). */
   likedBy: string[];
@@ -316,23 +322,30 @@ export class FriendsService {
           .pipe(map(([lists, ratings]) => ({ uid: f.uid, name: f.name, games: lists.flatMap(l => l.gameList || []), ratings })))),
       ])),
       map(people => {
+        // One row per game: copies share a BoardGameGeek id (or, without one, a name).
+        const keyOf = (game: Game) => game.bgg_id ? 'bgg:' + game.bgg_id : 'name:' + (game.name || game.id || '').trim().toLowerCase();
         const byGame = new Map<string, GamePick>();
+        const keyById = new Map<string, string>();
         for (const person of people) {
           for (const game of person.games) {
             if (!game?.id) continue;
-            const pick = byGame.get(game.id) ?? { game, wantedBy: [], likedBy: [], dislikedBy: [] };
+            const key = keyOf(game);
+            const pick = byGame.get(key) ?? { game, copies: [], wantedBy: [], likedBy: [], dislikedBy: [] };
+            if (!pick.copies.some(c => c.id === game.id)) pick.copies.push(game);
             if (!pick.wantedBy.some(p => p.uid === person.uid)) pick.wantedBy.push({ uid: person.uid, name: person.name });
-            byGame.set(game.id, pick);
+            byGame.set(key, pick);
+            keyById.set(game.id, key);
           }
         }
         // Ratings count for any game in the picks, even if that person didn't list it
         // (e.g. they played it with the group from someone else's list).
         for (const person of people) {
           for (const [gameId, r] of person.ratings) {
-            const pick = byGame.get(gameId);
+            const pick = byGame.get(keyById.get(gameId) || '');
             if (!pick) continue;
-            if (r.liked === true) pick.likedBy.push(person.name);
-            if (r.liked === false) pick.dislikedBy.push(person.name);
+            // Once per person, even if they rated more than one copy.
+            if (r.liked === true && !pick.likedBy.includes(person.name)) pick.likedBy.push(person.name);
+            if (r.liked === false && !pick.dislikedBy.includes(person.name)) pick.dislikedBy.push(person.name);
           }
         }
         const games = [...byGame.values()].sort((a, b) => b.wantedBy.length - a.wantedBy.length || (a.game.name || '').localeCompare(b.game.name || ''));
