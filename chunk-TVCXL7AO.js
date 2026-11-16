@@ -1,1 +1,0 @@
-import{Z as r,g as o}from"./chunk-F42QERM7.js";var t=class e{hideNav=new o(!1);hideNavObservable=this.hideNav.asObservable();checkHideNav(){return this.hideNavObservable}setHideNav(a){this.hideNav.next(a)}static \u0275fac=function(i){return new(i||e)};static \u0275prov=r({token:e,factory:e.\u0275fac,providedIn:"root"})};export{t as a};
