@@ -229,8 +229,13 @@ export class ListsComponent implements OnInit, OnDestroy {
   summary = computed(() => {
     const games = this.games() || [];
     const available = this.rows().filter(r => r.item && !r.item.is_checked_out).length;
+    // Checked out too, so the line adds up at a glance ("12 games · 9 available · 3 out").
+    // "out", like the rows' "Out 1d" pills: "checked out" wrapped onto a second line
+    // next to "Updated just now" on smaller iPhones. Games still being checked aren't
+    // counted in either.
+    const out = this.rows().filter(r => r.item?.is_checked_out).length;
     const count = games.length === 1 ? '1 game' : `${games.length} games`;
-    return this.details().size ? `${count} · ${available} available` : count;
+    return this.details().size ? `${count} · ${available} available · ${out} out` : count;
   });
 
   updatedText = computed(() => {
