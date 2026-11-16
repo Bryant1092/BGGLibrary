@@ -53,6 +53,21 @@
   </header>
 
   <main>
+    @if (showNotifyCard() && view() === 'lists') {
+      <!--
+        Asked here, in context, after a bell exists: never on page load (web.dev / Apple
+        permission guidance). On iPhone, notifications need the app on the Home Screen.
+      -->
+      <div class="bl-notify-card" role="region" aria-label="Notifications">
+        <bl-icon name="bell" [size]="22" />
+        <div><strong>Get a notification when your games come back?</strong>
+          <small>Games on your lists that are checked out have bells on. Works while the app is open.</small></div>
+        <div class="actions">
+          <button type="button" class="bl-btn" (click)="watch.enableNotifications()">Turn on</button>
+          <button type="button" class="bl-link-btn" (click)="watch.dismissAsk()">Not now</button>
+        </div>
+      </div>
+    }
     @if (view() === 'picks') {
       <app-friends-picks />
     } @else if (view() === 'buy') {
@@ -104,6 +119,7 @@
                     <span>Tap refresh to try again</span>
                   }
                 </span>
+                @if (row.checkedIn) { <span class="bl-checked-in">{{ row.checkedIn }}</span> }
 
               </span>
               @if (row.item) {

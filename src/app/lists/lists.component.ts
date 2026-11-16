@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, Injectable, OnDestroy, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, Injectable, OnDestroy, OnInit, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -24,7 +24,7 @@ import { ReactionsService } from '../service/reactions.service';
 import { Friend, FriendsService } from '../service/friends.service';
 import { ThumbComponent } from '../shared/thumb.component';
 import { dueInfo, shortDuration } from '../util/library-time';
-import { minutesText, playersText, shelfText, statusText } from '../util/game-format';
+import { checkedInText, minutesText, playersText, shelfText, statusText } from '../util/game-format';
 
 /**
  * How many game-detail requests to send to Tabletop.Events at once.
@@ -75,6 +75,8 @@ interface ListRow {
   /** Your own rating (ReactionsService): true liked, false not for me, null none. */
   liked: boolean | null;
   buy: boolean;
+  /** "Checked in 2:14 PM · 12m ago" for games returned in the last 48 h. */
+  checkedIn: string;
 }
 
 /** My Lists filter chips. "To play" is the one used most during the con. */
@@ -104,6 +106,18 @@ export class ListsComponent implements OnInit, OnDestroy {
 
   /** "My lists" or "Friends' picks" (switch under the title). */
   view = signal<'lists' | 'picks' | 'buy'>('lists');
+  /**
+   * Automatic bells: every checked-out game on the open list gets one (unless you
+   * turned its bell off), so you're told when it's back. WatchService does the checking.
+   */
+  private autoWatch = effect(() => {
+    const out = this.rows().filter(r => r.item?.is_checked_out);
+    untracked(() => out.forEach(r => this.watch.autoWatch({ id: r.game.id!, name: r.game.name || '', shelf: r.shelf })));
+  });
+  /** One-time card asking to allow phone notifications, once there's a bell to alert about. */
+  showNotifyCard = computed(() => this.watch.canNotify && this.watch.permission() === 'default'
+    && !this.watch.askDismissed() && this.watch.watched().size > 0);
+
   /** "Friends can see" for the open list (missing on old lists = on, the default). */
   listVisible = signal(true);
 
@@ -159,6 +173,7 @@ export class ListsComponent implements OnInit, OnDestroy {
       return {
         game, item, failed: failed.has(game.id!), shelf, longShelf: shelf.length > 3,
         liked: reaction.liked ?? null, buy: !!reaction.buy,
+        checkedIn: item ? checkedInText(item, now) : '',
         status: item ? statusText(item, now) : '',
         meta: item ? `${playersText(item)} players · ${minutesText(item)} min` : '',
         // Sort key for "Checked out": soonest due first; stale checkouts (likely

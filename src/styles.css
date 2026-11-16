@@ -332,6 +332,15 @@ body {
 .bl-rated .up { color: var(--bl-avail-text); }
 .bl-rated .down { color: var(--bl-muted); }
 .bl-rated .buy { color: var(--bl-accent-text); }
+/* "Checked in 2:14 PM · 12m ago" under a just-returned game. */
+.bl-checked-in { font-size: 13px; color: var(--bl-avail-text); font-weight: 600; }
+/* One-time "allow notifications?" card on My Lists. */
+.bl-notify-card { margin: 12px 16px 0; padding: 14px; border-radius: 14px; background: var(--bl-accent-soft); color: var(--bl-text);
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: start; }
+.bl-notify-card > bl-icon { color: var(--bl-accent-text); margin-top: 2px; }
+.bl-notify-card small { display: block; color: var(--bl-muted); font-size: 13px; margin-top: 2px; }
+.bl-notify-card .actions { grid-column: 2; display: flex; align-items: center; gap: 12px; }
+.bl-notify-card .bl-btn { width: auto; min-height: 40px; padding: 0 18px; border-radius: 20px; font-size: 15px; }
 /* "My lists | Friends' picks" switch on My Lists. */
 .bl-view-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 12px; background: var(--bl-field); }
 .bl-view-switch button { min-height: 38px; border: 0; border-radius: 9px; background: transparent; color: var(--bl-muted); font-size: 15px; font-weight: 600; }

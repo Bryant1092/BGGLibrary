@@ -1,6 +1,6 @@
 import { BggItem } from '../model/bgg.model';
 import { parseTteDate } from './time-ago';
-import { formatLibraryDate, shortDuration, STALE_CHECKOUT_MS } from './library-time';
+import { formatLibraryDate, formatLibraryTime, shortDuration, STALE_CHECKOUT_MS } from './library-time';
 
 /** Shared wording for game details, so the Library, My Lists and details sheet all match. */
 
@@ -59,6 +59,19 @@ export function returnedText(game: Pick<BggItem, 'last_checkin_date'>, now: numb
   const checkin = parseTteDate(game.last_checkin_date);
   if (!checkin || now - checkin.getTime() > STALE_CHECKOUT_MS) return 'Available';
   return `Back ${shortDuration(now - checkin.getTime())} ago`;
+}
+
+/**
+ * "Checked in 2:14 PM · 12m ago" for an available game that came back in the last
+ * 48 hours, so people know it was just returned (and roughly how fresh the shelf
+ * spot is). '' for new arrivals (their "check-in" is just when they were added),
+ * older returns, and checked-out games.
+ */
+export function checkedInText(game: Pick<BggItem, 'is_checked_out' | 'last_checkin_date' | 'date_created'>, now: number = Date.now()): string {
+  if (game.is_checked_out || isNewArrival(game)) return '';
+  const checkin = parseTteDate(game.last_checkin_date)?.getTime();
+  if (!checkin || now - checkin > STALE_CHECKOUT_MS || checkin > now + 60_000) return '';
+  return `Checked in ${formatLibraryTime(checkin, now)} · ${shortDuration(Math.max(60_000, now - checkin))} ago`;
 }
 
 /** Link for "View on BoardGameGeek". */

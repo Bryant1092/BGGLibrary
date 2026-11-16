@@ -6,6 +6,8 @@ import { BggItem } from '../model/bgg.model';
 import { BggService } from './bgg.service';
 import { ToastService } from './toast.service';
 import { UserService } from './user.service';
+import { parseTteDate } from '../util/time-ago';
+import { formatLibraryTime } from '../util/library-time';
 
 /** A game someone tapped the bell on, waiting for it to come back. */
 export interface WatchedGame {
@@ -17,6 +19,10 @@ export interface WatchedGame {
 /** How often to check watched games while the app is open. */
 const CHECK_EVERY_MS = 2 * 60_000;
 const STORAGE_PREFIX = 'bgglibrary.watches.';
+/** Per account: automatic bells for list games on/off, and games whose bell you turned off. */
+const AUTO_PREFIX = 'bgglibrary.autoAlerts.';
+const MUTED_PREFIX = 'bgglibrary.mutedAlerts.';
+const ASK_DISMISSED_KEY = 'bgglibrary.notifyAskDismissed';
 
 /**
  * "Notify me when it's back" bells, without a server.
@@ -48,6 +54,19 @@ export class WatchService {
   readonly askPermissionFor = signal<WatchedGame | null>(null);
 
   private storageKey = STORAGE_PREFIX + 'guest';
+  private account = 'guest';
+  /**
+   * Automatic bells: a checked-out game on your lists gets a bell by itself, so you
+   * hear when it's back without catching it while it's out (reported Nov 2026: list
+   * games never showed a bell because they were all available). On by default;
+   * Account has a switch. Games whose bell you turn off stay off (muted).
+   */
+  readonly autoAlerts = signal(true);
+  private muted = new Set<string>();
+  /** "Get notifications?" card on My Lists: shown once there's something to alert about. */
+  readonly askDismissed = signal(this.readFlag(ASK_DISMISSED_KEY));
+  readonly canNotify = typeof Notification !== 'undefined';
+  readonly permission = signal(typeof Notification !== 'undefined' ? Notification.permission : 'denied');
   private timer?: ReturnType<typeof setInterval>;
   private checking = false;
 
@@ -55,7 +74,10 @@ export class WatchService {
   start(destroyRef: DestroyRef): void {
     this.userService.checkAuth().pipe(takeUntilDestroyed(destroyRef)).subscribe((user: any) => {
       this.storageKey = STORAGE_PREFIX + (user?.uid || 'guest');
+      this.account = user?.uid || 'guest';
       this.watched.set(this.load());
+      this.autoAlerts.set(localStorage.getItem(AUTO_PREFIX + this.account) !== 'off');
+      this.muted = new Set(this.readJson<string[]>(MUTED_PREFIX + this.account, []));
       this.check();
     });
     this.timer = setInterval(() => this.check(), CHECK_EVERY_MS);
@@ -75,10 +97,13 @@ export class WatchService {
   toggle(game: WatchedGame): void {
     if (this.isWatched(game.id)) {
       this.update(map => map.delete(game.id));
+      // Remember it, so the automatic bell doesn't switch itself back on.
+      this.muted.add(game.id); this.saveMuted();
       this.toast.show({ text: `Alert off for ${game.name}` });
       return;
     }
     this.update(map => map.set(game.id, game));
+    if (this.muted.delete(game.id)) this.saveMuted();
     // Ask only in response to this tap, never on page load (web.dev permission UX
     // guidance; Safari also requires a tap). One explanation sheet first, so the
     // browser's own prompt isn't a surprise.
@@ -87,6 +112,43 @@ export class WatchService {
     } else {
       this.confirmOn(game);
     }
+  }
+
+  /**
+   * Automatic bell for a checked-out game on one of your lists (My Lists calls this
+   * as it loads availability). Quiet: no message, no permission prompt.
+   */
+  autoWatch(game: WatchedGame): void {
+    if (!this.autoAlerts() || this.muted.has(game.id) || this.isWatched(game.id)) return;
+    this.update(map => map.set(game.id, game));
+  }
+
+  setAutoAlerts(on: boolean): void {
+    this.autoAlerts.set(on);
+    try { localStorage.setItem(AUTO_PREFIX + this.account, on ? 'on' : 'off'); } catch { /* not remembered */ }
+  }
+
+  /** The My Lists card's "Turn on" (must run from that tap; iPhone needs the app on the Home Screen). */
+  async enableNotifications(): Promise<void> {
+    try { this.permission.set(await Notification.requestPermission()); } catch { /* unsupported */ }
+    this.dismissAsk();
+  }
+
+  dismissAsk(): void {
+    this.askDismissed.set(true);
+    try { localStorage.setItem(ASK_DISMISSED_KEY, '1'); } catch { /* shown again next time */ }
+  }
+
+  private saveMuted(): void {
+    try { localStorage.setItem(MUTED_PREFIX + this.account, JSON.stringify([...this.muted])); } catch { /* not remembered */ }
+  }
+
+  private readFlag(key: string): boolean {
+    try { return localStorage.getItem(key) === '1'; } catch { return false; }
+  }
+
+  private readJson<T>(key: string, fallback: T): T {
+    try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; }
   }
 
   /** "Turn on notifications" in the explanation sheet. Must run from that button's tap. */
@@ -127,7 +189,7 @@ export class WatchService {
         const item = response?.result as BggItem | undefined;
         if (item && !item.is_checked_out && this.isWatched(game.id)) {
           this.update(map => map.delete(game.id));
-          this.alert({ ...game, shelf: item.custom_fields?.Location || game.shelf });
+          this.alert({ ...game, shelf: item.custom_fields?.Location || game.shelf }, item.last_checkin_date);
         }
       }
     } finally {
@@ -135,10 +197,13 @@ export class WatchService {
     }
   }
 
-  private alert(game: WatchedGame): void {
-    const text = `${game.name} is back on shelf ${game.shelf}`;
+  private alert(game: WatchedGame, checkedIn?: string): void {
+    // When it was checked in, so you know how long it's been sitting there (someone may grab it).
+    const t = parseTteDate(checkedIn)?.getTime();
+    const when = t ? `checked in ${formatLibraryTime(t)}` : '';
+    const text = `${game.name} is back${when ? ' (' + when + ')' : ''}, shelf ${game.shelf}`;
     this.toast.show({ text, actionLabel: 'My Lists', action: () => this.router.navigate(['/library/user']) }, 10_000);
-    this.showPhoneNotification(`${game.name} is back`, `Available now on shelf ${game.shelf}.`, game.id);
+    this.showPhoneNotification(`${game.name} is back`, `Available on shelf ${game.shelf}${when ? ', ' + when : ''}.`, game.id);
   }
 
   /**

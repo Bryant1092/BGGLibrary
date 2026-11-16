@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output } f
 import { ToastService } from '../service/toast.service';
 import { BggItem } from '../model/bgg.model';
 import { dueInfo, formatLibraryDate, formatLibraryTime, shortDuration } from '../util/library-time';
-import { bggUrl, howToPlayUrl, minutesText, playersText, shelfText } from '../util/game-format';
+import { bggUrl, checkedInText, howToPlayUrl, minutesText, playersText, shelfText } from '../util/game-format';
 import { isHotGame } from '../util/hot-games';
 import { IconComponent } from './icon.component';
 import { SheetComponent } from './sheet.component';
@@ -19,6 +19,7 @@ import { ThumbComponent } from './thumb.component';
   imports: [IconComponent, SheetComponent, ThumbComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
+    .checked-in { display: block; margin-top: 6px; font-size: 14px; color: var(--bl-muted); }
     .head { display: flex; gap: 14px; align-items: flex-start; }
     .head .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
     .head h2 { overflow-wrap: anywhere; }
@@ -58,6 +59,8 @@ import { ThumbComponent } from './thumb.component';
         <div class="text">
           <h2>{{ game().name }}</h2>
           <span class="bl-pill" [class.out]="game().is_checked_out">{{ game().is_checked_out ? 'Checked out' : 'Available now' }}</span>
+          <!-- When it came back, so you know it was just returned. -->
+          @if (checkedIn()) { <span class="checked-in">{{ checkedIn() }}</span> }
         </div>
         <div class="head-actions">
           <button type="button" class="bl-icon-btn" aria-label="Close" (click)="closed.emit()"><bl-icon name="close" /></button>
@@ -151,6 +154,7 @@ export class GameSheetComponent {
   busy = input(false);
   /** Current time, passed in so the page's one-minute clock keeps every time on screen in sync. */
   now = input(Date.now());
+  checkedIn = computed(() => checkedInText(this.game(), this.now()));
   closed = output<void>();
   /** The page decides what this means: add, remove, sign in, or pick a list first. */
   toggle = output<void>();

@@ -6,6 +6,7 @@ import { EMPTY, switchMap } from 'rxjs';
 import { CONVENTIONS, LibraryDay } from '../config/conventions';
 import { ThemeChoice, ThemeService } from '../service/theme.service';
 import { InstallService } from '../service/install.service';
+import { WatchService } from '../service/watch.service';
 import { UserService } from '../service/user.service';
 import { currentOrNextConvention } from '../util/library-time';
 
@@ -36,6 +37,10 @@ import { currentOrNextConvention } from '../util/library-time';
     .install li { display: flex; gap: 10px; align-items: center; }
     .step { width: 26px; height: 26px; border-radius: 13px; background: var(--bl-accent); color: var(--bl-on-accent); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: none; }
     .why { font-size: 13px; line-height: 18px; }
+    .alerts { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: transparent; padding: 0; text-align: left; color: inherit; font: inherit; }
+    .alerts > span:first-child { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .alerts strong { font-size: 16px; }
+    .alerts small { color: var(--bl-muted); font-size: 13px; line-height: 18px; }
     .segmented { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--bl-surface); border: 1.5px solid var(--bl-control-border); }
     .segmented button { min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--bl-text); font-size: 15px; font-weight: 600; }
     .segmented button[aria-checked="true"] { background: var(--bl-accent); color: var(--bl-on-accent); }
@@ -104,6 +109,17 @@ import { currentOrNextConvention } from '../util/library-time';
           <app-friends-card />
         }
 
+        @if (signedIn()) {
+          <!-- Automatic bells for list games (WatchService.autoWatch); on by default. -->
+          <div class="card">
+            <button type="button" class="alerts" role="switch" [attr.aria-checked]="watch.autoAlerts()" (click)="watch.setAutoAlerts(!watch.autoAlerts())">
+              <span><strong>Alerts for games on my lists</strong>
+                <small>When a game on your lists is checked out, we'll tell you when it's back. Tap a game's bell to skip just that one.</small></span>
+              <span class="bl-switch" aria-hidden="true"></span>
+            </button>
+          </div>
+        }
+
         <!-- Appearance lives here, not on the Library screen: it's set once and rarely changed. -->
         <div class="card">
           <h2 id="appearance-label">Appearance</h2>
@@ -140,6 +156,7 @@ export class AccountComponent implements OnInit {
   readonly sharedCode = inject(ActivatedRoute).snapshot.queryParamMap.get('meeple');
   theme = inject(ThemeService);
   install = inject(InstallService);
+  watch = inject(WatchService);
 
   readonly themeOptions: { value: ThemeChoice; label: string }[] = [
     // "Auto" rather than "Match phone", which wrapped onto two lines at phone width.
