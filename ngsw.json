@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1794810175782,
+  "timestamp": 1794810706226,
   "index": "/BGGLibrary/index.html",
   "assetGroups": [
     {
@@ -12,6 +12,7 @@
       },
       "urls": [
         "/BGGLibrary/chunk-22BFDSQS.js",
+        "/BGGLibrary/chunk-2XKMABU6.js",
         "/BGGLibrary/chunk-65ERAQF2.js",
         "/BGGLibrary/chunk-65GMF2TH.js",
         "/BGGLibrary/chunk-CMCIPZVV.js",
@@ -25,7 +26,6 @@
         "/BGGLibrary/chunk-IBJQWJ3M.js",
         "/BGGLibrary/chunk-LC532ESN.js",
         "/BGGLibrary/chunk-O73MRVEJ.js",
-        "/BGGLibrary/chunk-OMLVKCFJ.js",
         "/BGGLibrary/chunk-ORFDSAEY.js",
         "/BGGLibrary/chunk-RYM6NHQZ.js",
         "/BGGLibrary/chunk-S2V2HIVH.js",
@@ -39,7 +39,7 @@
         "/BGGLibrary/chunk-ZG3TFPNH.js",
         "/BGGLibrary/favicon.ico",
         "/BGGLibrary/index.html",
-        "/BGGLibrary/main-7BSIM77C.js",
+        "/BGGLibrary/main-I6S3TTFA.js",
         "/BGGLibrary/manifest.webmanifest",
         "/BGGLibrary/polyfills-RP2QB4T4.js",
         "/BGGLibrary/styles-DQFKEWEJ.css"
@@ -185,6 +185,7 @@
   ],
   "hashTable": {
     "/BGGLibrary/chunk-22BFDSQS.js": "217efe399603ad56f44ec94cd29c26da3f78153a",
+    "/BGGLibrary/chunk-2XKMABU6.js": "c3f1de9fe3cb891873c9e702b2fc68b4a10e4635",
     "/BGGLibrary/chunk-65ERAQF2.js": "3328c79854572373b2cf85c44c49018f03257db0",
     "/BGGLibrary/chunk-65GMF2TH.js": "578b195b1eefa76d7aaa9cd9f22c14254a5b4cd7",
     "/BGGLibrary/chunk-CMCIPZVV.js": "c06e4e7c64deaf15d185e9bce6cd9f593551a444",
@@ -198,7 +199,6 @@
     "/BGGLibrary/chunk-IBJQWJ3M.js": "f454a31b36af891dd14f6709acc90508f96997a5",
     "/BGGLibrary/chunk-LC532ESN.js": "e06c2e5285665116701e50d9995cf23bc474beea",
     "/BGGLibrary/chunk-O73MRVEJ.js": "257c9942780749d1e3862d46ac601844e9070fc8",
-    "/BGGLibrary/chunk-OMLVKCFJ.js": "a88b8c5c447bb884684c400ac9e6473abf52a826",
     "/BGGLibrary/chunk-ORFDSAEY.js": "31d8d9f8f9616d46d898d11097058da77cf4bd2b",
     "/BGGLibrary/chunk-RYM6NHQZ.js": "135176b310f01907cbb1821a146d041104bc0e19",
     "/BGGLibrary/chunk-S2V2HIVH.js": "03e51094511842ba26351728da427be2a7c1b0b1",
@@ -219,8 +219,8 @@
     "/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
     "/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
     "/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
-    "/BGGLibrary/index.html": "56de86b9b6b15938c78205052a7c2311f429ec20",
-    "/BGGLibrary/main-7BSIM77C.js": "05783b12588291cff2c3bf90cad73488fa7d4349",
+    "/BGGLibrary/index.html": "0b966abf720146dfddbea8711822d5c4eb566536",
+    "/BGGLibrary/main-I6S3TTFA.js": "b5ebea9c7c31246309f116ed038c236f21b0c3e0",
     "/BGGLibrary/manifest.webmanifest": "02fd681aa859fb7e11b7fcdf99d3a14607b751db",
     "/BGGLibrary/maps/bggcon-2026/floor-atrium.svg": "262ac9a949ed9a1c472dce0b630ad01745057a90",
     "/BGGLibrary/maps/bggcon-2026/floor-exhibition.svg": "e22a76e06b91fb3ee2e76e7868ee486b036018c2",
