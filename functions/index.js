@@ -161,9 +161,24 @@ exports.checkPrizeDrawings = onSchedule({
   maxInstances: 1,
   retryCount: 0,
 }, async () => {
-  const con = await activeConvention();
-  if (!con) return;
+  const { active: con, lastEnd } = await conventionWindow();
   const db = admin.firestore();
+  if (!con) {
+    // Between conventions: badge numbers change every convention, so 14 days after
+    // the last one ended, numbers saved before its end are deleted. This catches
+    // people who never open the app again (the app clears its own copy on open,
+    // PrizeService.start). Usually an empty query: one read per run.
+    if (lastEnd && Date.now() >= lastEnd + BADGE_KEEP_MS) {
+      const old = await db.collection('prizeBadges').where('at', '<=', new Date(lastEnd)).limit(400).get();
+      if (!old.empty) {
+        const batch = db.batch();
+        old.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        logger.info(`prize badges cleared after the convention: ${old.size}`);
+      }
+    }
+    return;
+  }
   const people = await db.collection('prizeBadges').get();
   if (people.empty) return;
   const updates = await tteJson(`https://tabletop.events/api/convention/${con.id}/updates?_items_per_page=100`);
@@ -207,19 +222,29 @@ exports.checkPrizeDrawings = onSchedule({
   logger.info(`prize check: ${con.name}, ${posts.length} posts, ${people.size} badges, ${sent} notifications`);
 });
 
-/** The BGG convention happening now (or within 2 days), or null. */
-async function activeConvention() {
+/** Saved badge numbers are kept this long after a convention's last day. */
+const BADGE_KEEP_MS = 14 * 24 * 3600 * 1000;
+
+/**
+ * active: the BGG convention happening now (or within 2 days), or null.
+ * lastEnd: when the most recent finished one ended (ms), for clearing old badges.
+ */
+async function conventionWindow() {
   const now = Date.now(), slack = 2 * 24 * 3600 * 1000;
+  let lastEnd = 0;
   for (const q of ['BGG.CON', 'BGG.Spring']) {
     const res = await tteJson(`https://tabletop.events/api/convention?query=${encodeURIComponent(q)}&_items_per_page=50`);
     for (const c of res?.items || []) {
       if (c.library_id !== BGG_LIBRARY_ID || Number(c.cancelled) === 1) continue;
       const start = new Date(c.start_date.replace(' ', 'T') + 'Z').getTime();
       const end = new Date(c.end_date.replace(' ', 'T') + 'Z').getTime();
-      if (now >= start - slack && now <= end + slack) return c;
+      if (now >= start - slack && now <= end + slack) return { active: c, lastEnd };
+      // end_date is the last day at 00:00; +1 day covers that whole day.
+      const lastDayOver = end + 24 * 3600 * 1000;
+      if (lastDayOver < now) lastEnd = Math.max(lastEnd, lastDayOver);
     }
   }
-  return null;
+  return { active: null, lastEnd };
 }
 
 async function tteJson(url) {

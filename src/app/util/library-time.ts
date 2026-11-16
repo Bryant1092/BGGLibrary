@@ -118,6 +118,24 @@ export function currentOrNextConvention(now: number = Date.now()): Convention | 
   return CONVENTIONS.find(c => dayInstant(c.days[c.days.length - 1], c.days[c.days.length - 1].close) > now);
 }
 
+/** How long after a convention's last library day a saved badge number is kept. */
+export const BADGE_KEEP_MS = 14 * 24 * HOUR;
+
+/**
+ * Whether a badge number saved at `savedAt` belongs to a convention that ended more
+ * than 14 days ago, so it should be cleared and the Account card starts blank for
+ * the next convention (badge numbers change every convention).
+ * Only the latest ended convention needs checking: CONVENTIONS always keeps it, and
+ * a badge saved before an older one was also saved before it.
+ * A number typed after a convention ended (for the next one) is kept.
+ */
+export function badgeExpired(savedAt: number, now: number = Date.now()): boolean {
+  const ended = CONVENTIONS
+    .map(c => dayInstant(c.days[c.days.length - 1], c.days[c.days.length - 1].close))
+    .filter(end => end + BADGE_KEEP_MS <= now);
+  return ended.length > 0 && savedAt <= Math.max(...ended);
+}
+
 /** The convention whose library days include this instant (Dallas date). */
 function conventionOn(ms: number): Convention | undefined {
   const key = dallasDateKey(ms);

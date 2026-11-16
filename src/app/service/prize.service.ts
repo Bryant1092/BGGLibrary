@@ -3,10 +3,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { doc, Firestore, getDoc, serverTimestamp, setDoc, deleteDoc } from '@angular/fire/firestore';
 import { ConInfoService } from './con-info.service';
 import { UserService } from './user.service';
+import { badgeExpired } from '../util/library-time';
 import { findPrizeBooth, findPrizeWins, normalizeBadge, PrizeBoothPlace, PrizeWin } from '../util/prize-drawing';
 
 const BADGE_PREFIX = 'bgglibrary.badge.';
 const SEEN_KEY = 'bgglibrary.prizeSeen';
+/** bgglibrary.badge.<uid>.savedAt: when the number was typed (ms). */
+const SAVED_AT_SUFFIX = '.savedAt';
 
 /**
  * "Did I win the prize drawing?"
@@ -48,13 +51,37 @@ export class PrizeService {
   start(destroyRef: DestroyRef): void {
     this.userService.checkAuth().pipe(takeUntilDestroyed(destroyRef)).subscribe(async (user: any) => {
       this.account = user?.uid || 'guest';
-      let badge = this.read(BADGE_PREFIX + this.account) || '';
+      const key = BADGE_PREFIX + this.account;
+      let badge = this.read(key) || '';
+      let savedAt = Number(this.read(key + SAVED_AT_SUFFIX)) || 0;
+      // Numbers saved before the date was recorded (first version of this feature)
+      // count as saved now, i.e. for this convention. A missing date can't be treated
+      // as "old": it would wipe numbers people typed for BGG.CON 2026.
+      if (badge && !savedAt) this.write(key + SAVED_AT_SUFFIX, String(savedAt = Date.now()));
+
       // A badge typed on another phone (same account) comes back from the account.
-      if (user && !badge) {
+      // Also asked when this phone's copy is out of date: another phone may already
+      // hold a number for the next convention, which must not be deleted.
+      if (user && (!badge || badgeExpired(savedAt))) {
         try {
-          badge = (await getDoc(doc(this.firestore, 'prizeBadges', user.uid))).data()?.['badge'] || '';
-          if (badge) this.write(BADGE_PREFIX + this.account, badge);
+          const data = (await getDoc(doc(this.firestore, 'prizeBadges', user.uid))).data();
+          if (data?.['badge']) {
+            badge = data['badge'];
+            savedAt = data['at']?.toMillis?.() || Date.now();
+            this.write(key, badge);
+            this.write(key + SAVED_AT_SUFFIX, String(savedAt));
+          }
         } catch { /* offline: just this phone's copy */ }
+      }
+
+      // Badge numbers change every convention. 14 days after the last library day the
+      // old number is removed from this phone and the account, so the Account card is
+      // blank for the next convention and nothing personal is kept longer than needed.
+      if (badge && badgeExpired(savedAt)) {
+        this.write(key, '');
+        this.write(key + SAVED_AT_SUFFIX, '');
+        badge = '';
+        if (user) deleteDoc(doc(this.firestore, 'prizeBadges', user.uid)).catch(() => { /* offline: tried again next open */ });
       }
       this.badge.set(badge);
     });
@@ -65,6 +92,8 @@ export class PrizeService {
     const badge = normalizeBadge(value).slice(0, 6);
     this.badge.set(badge);
     this.write(BADGE_PREFIX + this.account, badge);
+    // When it was typed, so it can be cleared 14 days after that convention (start()).
+    this.write(BADGE_PREFIX + this.account + SAVED_AT_SUFFIX, badge ? String(Date.now()) : '');
     const uid = this.userService.getCurrentUid();
     if (!uid) return;
     const ref = doc(this.firestore, 'prizeBadges', uid);
