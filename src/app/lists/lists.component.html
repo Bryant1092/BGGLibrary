@@ -5,7 +5,7 @@
       <h1>My Lists</h1>
       @if (selectedList() && view() === 'lists') {
         <!-- Re-downloads availability for every game in the list. -->
-        <button type="button" class="bl-icon-btn accent" aria-label="Refresh availability" [disabled]="refreshing()" (click)="refresh()">
+        <button type="button" class="bl-icon-btn accent" aria-label="Refresh availability" [class.bl-spinning]="refreshing()" [disabled]="refreshing()" (click)="refresh()">
           <bl-icon name="refresh" [size]="22" />
         </button>
         <button type="button" class="bl-icon-btn accent" aria-label="List options" style="margin-right: -8px" (click)="sheet.set('actions')">

@@ -332,6 +332,10 @@ body {
 .bl-rated .up { color: var(--bl-avail-text); }
 .bl-rated .down { color: var(--bl-muted); }
 .bl-rated .buy { color: var(--bl-accent-text); }
+/* Refresh buttons spin while they check (Events, My Lists). */
+.bl-spinning bl-icon { animation: bl-spin .8s linear infinite; }
+@keyframes bl-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .bl-spinning bl-icon { animation: none; opacity: .5; } }
 /* "Checked in 2:14 PM · 12m ago" under a just-returned game. */
 .bl-checked-in { font-size: 13px; color: var(--bl-avail-text); font-weight: 600; }
 /* One-time "allow notifications?" card on My Lists. */

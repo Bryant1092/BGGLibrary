@@ -116,14 +116,16 @@ export class ConInfoService {
   }
 
   /** Fetches the news posts (one small request). */
-  checkNews(): void {
-    if (!this.conId || this.checking) return;
+  /** Resolves true when posts came back, false if the check failed (for the refresh button's message). */
+  checkNews(): Promise<boolean> {
+    if (!this.conId || this.checking) return Promise.resolve(false);
     this.checking = true;
     this.lastCheck = Date.now();
-    this.fetchPosts().subscribe(posts => {
+    return new Promise(resolve => this.fetchPosts().subscribe(posts => {
       this.checking = false;
       if (!posts) {
         this.postsError.set(!this.posts());
+        resolve(false);
         return;
       }
       this.postsError.set(false);
@@ -138,7 +140,8 @@ export class ConInfoService {
       // BGG posts the final Hot Games list in the news; pick it up without an app update.
       setNewsHotGames(hotGamesFromPosts(posts));
       this.saveCache({ posts, postsAt: Date.now() });
-    });
+      resolve(true);
+    }));
   }
 
   /** Loads the info pages unless a recent copy is saved (force = pull again). */

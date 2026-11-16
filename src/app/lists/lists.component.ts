@@ -239,6 +239,8 @@ export class ListsComponent implements OnInit, OnDestroy {
           if (this.pendingIds.size === 0) {
             this.refreshing.set(false);
             this.updatedAt.set(Date.now());
+            this.afterRefresh?.();
+            this.afterRefresh = undefined;
           }
         })
       ), DETAIL_REQUEST_CONCURRENCY),
@@ -406,7 +408,34 @@ export class ListsComponent implements OnInit, OnDestroy {
     this.detailRequests.next(ids);
   }
 
+  /** Set while a refresh the person asked for is running; called once every game is back. */
+  private afterRefresh?: () => void;
+
+  /**
+   * The refresh button: re-checks every game, spins while it does, then says what
+   * changed ("2 games came back", "Availability is up to date"). Before, it looked
+   * like nothing happened when nothing had changed.
+   */
   refresh(): void {
+    if (this.refreshing() || !this.games()?.length) return;
+    const before = new Map([...this.details()].map(([id, item]) => [id, !!item.is_checked_out]));
+    const started = Date.now();
+    this.afterRefresh = () => {
+      const after = this.details();
+      let back = 0, out = 0;
+      for (const [id, wasOut] of before) {
+        const nowOut = after.get(id)?.is_checked_out;
+        if (nowOut === undefined) continue;
+        if (wasOut && !nowOut) back++;
+        if (!wasOut && nowOut) out++;
+      }
+      const failed = this.failedIds().size;
+      const text = failed ? `Couldn't check ${failed} ${failed === 1 ? 'game' : 'games'}. Check your connection.`
+        : back || out ? [back ? `${back} ${back === 1 ? 'game' : 'games'} came back` : '', out ? `${out} checked out` : ''].filter(Boolean).join(' · ')
+        : 'Availability is up to date';
+      // Keep the spin visible for a moment so a quick answer still registers.
+      setTimeout(() => this.toast.show({ text }), Math.max(0, 600 - (Date.now() - started)));
+    };
     this.loadDetails(true);
   }
 

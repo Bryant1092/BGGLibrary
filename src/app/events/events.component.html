@@ -16,7 +16,8 @@
         <button type="button" class="bl-icon-btn accent" aria-label="Open venue maps" (click)="openMaps()"><bl-icon name="map" [size]="22" /></button>
       }
       <!-- Seat counts change constantly at the con; this re-downloads them (or the news, on Info). -->
-      <button type="button" class="bl-icon-btn accent" [attr.aria-label]="view() === 'info' ? 'Check for new posts' : 'Refresh events'" [disabled]="service.loading()" (click)="refresh()" style="margin-right: -8px">
+      <!-- Spins while checking; a message then says what changed (it used to look like nothing happened). -->
+      <button type="button" class="bl-icon-btn accent" [class.bl-spinning]="refreshing()" [attr.aria-label]="view() === 'info' ? 'Check for new posts' : 'Refresh events'" [disabled]="refreshing()" (click)="refresh()" style="margin-right: -8px">
         <bl-icon name="refresh" [size]="22" />
       </button>
     </div>

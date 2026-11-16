@@ -126,12 +126,20 @@ export class EventsService {
   private loadedFor = '';
 
   /** Loads the schedule unless a recent copy is already here (force = refresh button). */
-  load(convention: Convention, force = false): void {
+  /**
+   * Resolves when this load finishes: true if the schedule came back, false if it
+   * failed or nothing was loaded (the refresh button uses it to say what happened).
+   */
+  load(convention: Convention, force = false): Promise<boolean> {
+    return new Promise(resolve => this.loadInner(convention, force, resolve));
+  }
+
+  private loadInner(convention: Convention, force: boolean, done: (ok: boolean) => void): void {
     const id = convention.tteConventionId;
-    if (!id || this.loading()) return;
+    if (!id || this.loading()) { done(false); return; }
     if (this.loadedFor !== id) this.showSaved(id);
     const fresh = this.loadedFor === id && Date.now() - (this.loadedAt() || 0) < FRESH_MS;
-    if (fresh && !force) return;
+    if (fresh && !force) { done(true); return; }
     this.loading.set(true);
     this.error.set(false);
     forkJoin({ types: this.fetchTypes(id), raw: this.fetchAllEvents(id) }).subscribe({
@@ -142,11 +150,13 @@ export class EventsService {
         this.loadedAt.set(Date.now());
         this.loading.set(false);
         this.save(id, this.events()!);
+        done(true);
       },
       error: err => {
         console.error('Failed to load events', err);
         this.error.set(true);
         this.loading.set(false);
+        done(false);
       },
     });
   }

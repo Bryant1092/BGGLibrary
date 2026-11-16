@@ -433,14 +433,43 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /** The title-row refresh button: re-downloads whatever the current view shows. */
-  refresh(): void {
+  /** True while a refresh the person asked for is running (spins the button). */
+  refreshing = signal(false);
+
+  /**
+   * The refresh button. Reported (Nov 2026): tapping it looked like nothing happened,
+   * especially when nothing had changed. Now the icon spins while checking, then a short
+   * message says the result: what changed, or that it's already up to date. It stays
+   * spinning for at least ~0.6 s so a fast answer still registers.
+   */
+  async refresh(): Promise<void> {
     const convention = this.convention();
+    if (this.refreshing()) return;
+    this.refreshing.set(true);
+    const minSpin = new Promise(r => setTimeout(r, 600));
+    let text: string;
     if (this.view() === 'info') {
-      this.info.checkNews();
+      const before = this.info.unreadCount();
       this.info.loadPages(true);
+      const ok = await this.info.checkNews();
+      const added = this.info.unreadCount() - before;
+      text = !ok ? "Couldn't check for news. Check your connection."
+        : added > 0 ? `${added} new ${added === 1 ? 'post' : 'posts'} from BGG` : 'No new posts';
     } else if (convention) {
-      this.service.load(convention, true);
+      const before = new Map((this.service.events() || []).map(e => [e.id, e.seatsLeft]));
+      const ok = await this.service.load(convention, true);
+      const after = this.service.events() || [];
+      const changed = after.filter(e => before.has(e.id) && before.get(e.id) !== e.seatsLeft).length;
+      const added = after.filter(e => !before.has(e.id)).length;
+      text = !ok ? "Couldn't refresh. Showing the last saved schedule."
+        : changed || added ? ['Schedule updated', changed ? `seats changed on ${changed} ${changed === 1 ? 'event' : 'events'}` : '', added ? `${added} new` : ''].filter(Boolean).join(' · ')
+        : 'Schedule is up to date';
+    } else {
+      text = 'Nothing to refresh yet';
     }
+    await minSpin;
+    this.refreshing.set(false);
+    this.toast.show({ text });
   }
 
   selectDay(key: string): void {
