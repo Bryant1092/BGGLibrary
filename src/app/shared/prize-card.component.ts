@@ -21,6 +21,7 @@ import { ToastService } from '../service/toast.service';
     form .bl-btn { width: auto; min-height: 48px; padding: 0 18px; flex: none; }
     .watching { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .watching strong { font-size: 16px; color: var(--bl-text); }
+    .edit-actions { display: flex; gap: 24px; }
     .won { color: var(--bl-avail-text); font-weight: 700; font-size: 14px; }
   `,
   template: `
@@ -42,7 +43,14 @@ import { ToastService } from '../service/toast.service';
                  placeholder="Badge number (on your badge)" [value]="prize.badge()">
           <button type="submit" class="bl-btn">Save</button>
         </form>
-        @if (prize.badge()) { <button type="button" class="bl-link-btn" style="align-self: flex-start" (click)="save('')">Stop watching</button> }
+        @if (prize.badge()) {
+          <!-- Cancel: back out of Change without saving (tapping Change by accident shouldn't
+               require a Save). Stop watching: remove the number from this phone and the account. -->
+          <div class="edit-actions">
+            <button type="button" class="bl-link-btn" (click)="editing.set(false)">Cancel</button>
+            <button type="button" class="bl-link-btn" (click)="save('')">Stop watching</button>
+          </div>
+        }
       }
     </div>
   `,
