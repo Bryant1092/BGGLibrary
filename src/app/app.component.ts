@@ -20,6 +20,7 @@ import { IconComponent } from './shared/icon.component';
 import { SheetComponent } from './shared/sheet.component';
 import { TabBarComponent } from './shared/tab-bar.component';
 import { ToastComponent } from './shared/toast.component';
+import { OfflineReadyService } from './service/offline-ready.service';
 
 @Component({
   selector: 'app-root',
@@ -32,6 +33,7 @@ export class AppComponent implements OnInit {
   private friends = inject(FriendsService);
   private firestoreConnection = inject(FirestoreConnection);
   private eventReminders = inject(EventRemindersService);
+  private offlineReady = inject(OfflineReadyService);
   private reactions = inject(ReactionsService);
   private push = inject(PushService);
   prize = inject(PrizeService);
@@ -91,6 +93,9 @@ export class AppComponent implements OnInit {
     this.push.start(this.destroyRef);
     // Your badge number vs BGG's prize-drawing winner lists (shows "You won!").
     this.prize.start(this.destroyRef);
+    // Watches the offline download (search, maps, app) for the Account tab's
+    // "Ready offline" line and the one-time "Saved for offline use" toast.
+    this.offlineReady.start(this.destroyRef);
   }
 
   /**

@@ -12,6 +12,7 @@ import { InstallService } from '../service/install.service';
 import { WatchService } from '../service/watch.service';
 import { EventRemindersService, REMINDER_CHOICES } from '../service/event-reminders.service';
 import { UserService } from '../service/user.service';
+import { OfflineReadyService } from '../service/offline-ready.service';
 import { currentOrNextConvention } from '../util/library-time';
 
 /**
@@ -58,6 +59,16 @@ import { currentOrNextConvention } from '../util/library-time';
     .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; border-radius: 14px; background: var(--bl-surface); border: 1.5px solid var(--bl-control-border); }
     .segmented button { min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--bl-text); font-size: 15px; font-weight: 600; white-space: nowrap; padding: 0 4px; }
     .segmented button[aria-checked="true"] { background: var(--bl-accent); color: var(--bl-on-accent); }
+    /* Offline status: one compact card, icon + two lines, like the alerts switch above. */
+    .offline { gap: 10px; padding: 12px 16px; }
+    .offline-head { display: flex; gap: 12px; align-items: center; }
+    .offline-head > span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .offline-head small { color: var(--bl-muted); font-size: 13px; line-height: 18px; }
+    .offline .ok { color: var(--bl-accent-text); }
+    .offline .spin { color: var(--bl-muted); animation: bl-spin 1s linear infinite; }
+    .offline-bar { height: 4px; border-radius: 2px; background: var(--bl-hair); overflow: hidden; }
+    .offline-bar span { display: block; height: 100%; background: var(--bl-accent); transition: width .4s ease; }
+    @media (prefers-reduced-motion: reduce) { .offline .spin { animation: none; } .offline-bar span { transition: none; } }
   `,
   template: `
     <div class="bl-page">
@@ -108,6 +119,30 @@ import { currentOrNextConvention } from '../util/library-time';
             <a class="bl-btn" routerLink="/login" [queryParams]="{ redirectUrl: '/library/user' }" style="text-decoration: none">Sign in or sign up</a>
           }
         </div>
+
+        <!--
+          Offline status (OfflineReadyService). Quiet on purpose: the download runs in the
+          background and closing the app only pauses it, so this informs, it doesn't warn.
+          Hidden when we can't tell (e.g. no service worker).
+        -->
+        @if (offline.state() === 'saving') {
+          <div class="card offline" role="status">
+            <div class="offline-head">
+              <bl-icon name="refresh" [size]="20" class="spin" />
+              <span><strong>Saving for offline use…</strong>
+                <small>Search and maps, so they work without a signal. If you close the app, it finishes next time.</small></span>
+            </div>
+            <div class="offline-bar" aria-hidden="true"><span [style.width.%]="offline.total() ? offline.saved() / offline.total() * 100 : 0"></span></div>
+          </div>
+        } @else if (offline.state() === 'ready') {
+          <div class="card offline" role="status">
+            <div class="offline-head">
+              <bl-icon name="check" [size]="20" class="ok" />
+              <span><strong>Ready offline</strong>
+                <small>Search and maps work without a signal.</small></span>
+            </div>
+          </div>
+        }
 
         @if (signedIn()) {
           <app-friends-card />
@@ -180,6 +215,7 @@ export class AccountComponent implements OnInit {
   install = inject(InstallService);
   watch = inject(WatchService);
   reminders = inject(EventRemindersService);
+  offline = inject(OfflineReadyService);
   readonly reminderChoices = REMINDER_CHOICES;
 
   readonly themeOptions: { value: ThemeChoice; label: string }[] = [

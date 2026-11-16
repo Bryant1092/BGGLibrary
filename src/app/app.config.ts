@@ -42,7 +42,11 @@ export const appConfig: ApplicationConfig = {
      */
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
-      registrationStrategy: 'registerWhenStable:30000'
+      // Was registerWhenStable:30000. The app never counts as "stable" (live Firestore
+      // listeners keep it busy), so the offline download didn't even start for 30 s, and
+      // people who opened the app briefly at home never got search and maps saved.
+      // 5 s still lets the first screen load before the background download begins.
+      registrationStrategy: 'registerWhenStable:5000'
     }),
     // Keep component styles on the page after a component closes. A closing
     // sheet leaves a copy of itself sliding away (SheetComponent), and without
