@@ -124,15 +124,32 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
   private dayEvents = computed(() => (this.service.events() || []).filter(e => e.day === this.day()));
 
   /** "Hours" panel: Library, Hot Games, Exhibit Hall, Registration and the prize drawing for the selected day. */
+  /**
+   * One line per place: "Library · 9 AM – midnight". Back-to-back entries are merged:
+   * BGG lists Registration as two shifts (9 AM – 1 PM and 1 PM – midnight), which read
+   * as a wrapped "9 AM – 1 PM, 1 PM – midnight" (feedback 2026-11-16). Short entries
+   * (an hour or less, e.g. the 7 PM prize drawing) show just their start time.
+   */
   hours = computed(() => {
-    const byName = new Map<string, { spans: string[]; place: MapRequest | null }>();
+    const byName = new Map<string, { spans: { start: number; end: number; point: boolean }[]; place: MapRequest | null }>();
     for (const e of this.dayEvents().filter(ev => ev.info)) {
-      const span = e.durationMin <= 60 ? this.clockText(e.start) : `${this.clockText(e.start)} – ${this.clockText(e.end)}`;
       const entry = byName.get(e.name) || { spans: [], place: this.placeFor(e, e.name) };
-      entry.spans.push(span);
+      entry.spans.push({ start: e.start, end: e.end, point: e.durationMin <= 60 });
       byName.set(e.name, entry);
     }
-    return [...byName].map(([name, { spans, place }]) => ({ name, text: spans.join(', '), place }));
+    return [...byName].map(([name, { spans, place }]) => {
+      const merged: { start: number; end: number; point: boolean }[] = [];
+      for (const s of [...spans].sort((a, b) => a.start - b.start)) {
+        const last = merged[merged.length - 1];
+        if (last && !last.point && !s.point && s.start <= last.end) last.end = Math.max(last.end, s.end);
+        else merged.push({ ...s });
+      }
+      // One line per separate window, so the time column stays narrow and aligned.
+      const times = merged.map(s => s.point ? this.clockText(s.start) : `${this.clockText(s.start)} – ${this.clockText(s.end)}`);
+      // Shorter label so the row fits on one line ("Registration and Information" wrapped).
+      const label = name.trim().replace(/ and Information$/i, ' & Info');
+      return { name: label, times, text: times.join(', '), place };
+    });
   });
 
   /** Starred events (all days), for overlap checks. */

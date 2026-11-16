@@ -85,19 +85,30 @@
             <span><strong>Hours</strong> · {{ hours()[0].name }} {{ hours()[0].text }}</span>
             <bl-icon name="chevronDown" [size]="16" [stroke]="2.4" class="chev" />
           </summary>
-          <dl>
+          <!--
+            A two-column table: place on the left, hours in one right-aligned column that
+            never wraps, so every time lines up. The whole row opens the place on the map
+            (bigger target than a lone pin button); the pin next to the time says so.
+          -->
+          <ul class="hours-list">
             @for (h of hours(); track h.name) {
-              <div>
-                <dt>{{ h.name }}</dt>
-                <dd>{{ h.text }}</dd>
-                @if (h.place) {
-                  <button type="button" class="bl-icon-btn accent map-btn" [attr.aria-label]="'Show ' + h.name + ' on the map'" (click)="showPlace(h.place)">
-                    <bl-icon name="pin" [size]="18" />
+              <li>
+                @if (h.place; as place) {
+                  <button type="button" class="hours-row" (click)="showPlace(place)" [attr.aria-label]="h.name + ', ' + h.text + '. Show on the map'">
+                    <span class="hours-name">{{ h.name }}</span>
+                    <span class="hours-time">@for (t of h.times; track $index) { <span>{{ t }}</span> }</span>
+                    <bl-icon name="pin" [size]="16" class="hours-pin" />
                   </button>
+                } @else {
+                  <div class="hours-row">
+                    <span class="hours-name">{{ h.name }}</span>
+                    <span class="hours-time">@for (t of h.times; track $index) { <span>{{ t }}</span> }</span>
+                    <span class="hours-pin"></span>
+                  </div>
                 }
-              </div>
+              </li>
             }
-          </dl>
+          </ul>
         </details>
       }
 
