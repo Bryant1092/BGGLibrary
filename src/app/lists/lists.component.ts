@@ -28,6 +28,7 @@ import { dueInfo, shortDuration } from '../util/library-time';
 import { checkedInText, fitsPlayers, fitsPlayTime, minutesText, PLAY_TIME_CHOICES, PlayTimeChoice, playersText, shelfText, statusText } from '../util/game-format';
 import { PlayFiltersComponent } from '../shared/play-filters.component';
 import { GameDetailsCache } from '../service/game-details-cache';
+import { isHotGame } from '../util/hot-games';
 
 /**
  * How many game-detail requests to send to Tabletop.Events at once.
@@ -46,6 +47,7 @@ interface ListRow {
   shelf: string;
   longShelf: boolean;
   status: string;
+  hot: boolean;
   /** "2–4" and "30–60" (shown with the players / clock icons). */
   players: string;
   minutes: string;
@@ -164,6 +166,8 @@ export class ListsComponent implements OnInit, OnDestroy {
         liked: reaction.liked ?? null, buy: !!reaction.buy,
         checkedIn: item ? checkedInText(item, now) : '',
         status: item ? statusText(item, now) : '',
+        /** Also on the Hot Games tables (tag on the row). */
+        hot: isHotGame(game.name || '', now),
         players: item ? playersText(item) : '',
         minutes: item ? minutesText(item) : '',
         // Sort key for "Checked out": soonest due first; stale checkouts (likely

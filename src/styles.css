@@ -259,6 +259,13 @@ body {
 .bl-hot-card .kicker { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-accent-text); }
 .bl-hot-card strong { font-size: 18px; line-height: 23px; }
 .bl-hot-card .body { font-size: 14px; line-height: 19px; color: var(--bl-muted); }
+.bl-hot-card .bl-link-btn { align-self: flex-start; margin: 2px 0 -6px -2px; display: inline-flex; align-items: center; gap: 4px; }
+/*
+  Small "Hot Games" tag on game rows (Library, Browse a shelf, My Lists, Friends' picks).
+  Why: a game on the Hot Games tables can be played there without checking it out, which
+  matters most when the library's copy is checked out (the tag sits next to "Checked out").
+*/
+.bl-hot-tag { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 6px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 18px; white-space: nowrap; background: var(--bl-accent-soft); color: var(--bl-accent-text); }
 .bl-add {
   flex: none; width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; padding: 0;
   border: 1.5px solid var(--bl-accent-text); background: transparent; color: var(--bl-accent-text);

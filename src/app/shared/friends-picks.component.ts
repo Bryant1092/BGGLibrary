@@ -9,6 +9,7 @@ import { UserGameListRef } from '../model/user-gamelist-ref.model';
 import { FriendsService, GamePick } from '../service/friends.service';
 import { GameService } from '../service/game.service';
 import { GameDetailsCache } from '../service/game-details-cache';
+import { isHotGame } from '../util/hot-games';
 import { UserService } from '../service/user.service';
 import { WatchService } from '../service/watch.service';
 import { ToastService } from '../service/toast.service';
@@ -107,6 +108,7 @@ type Filter = 'all' | 'most' | 'any';
                 <span class="bl-status-line">
                   <span class="bl-pill" [class.out]="item.is_checked_out">{{ status(item) }}</span>
                   <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ shelf(item) }}</span>
+                  @if (hot(p)) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
                 </span>
                 <span class="bl-meta">
                   <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ playersOf(item) }}</span>
@@ -332,6 +334,11 @@ export class FriendsPicksComponent implements OnInit {
 
   toggleWatch(item: BggItem): void {
     this.watch.toggle({ id: item.id, name: item.name, shelf: shelfText(item) });
+  }
+
+  /** Also on the Hot Games tables (tag on the row). */
+  hot(p: GamePick): boolean {
+    return isHotGame(p.game.name || '', this.now);
   }
 
   playersOf(item: BggItem): string {

@@ -20,7 +20,8 @@ import { ShelfIndex, ShelfInfo, ShelfService } from '../service/shelf.service';
 import { ShelfListComponent } from './shelf-list.component';
 import { currentOrNextConvention, libraryStatus, shortDuration } from '../util/library-time';
 import { isNewArrival, minutesText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
-import { matchHotGames } from '../util/hot-games';
+import { isHotGame, matchHotGames } from '../util/hot-games';
+import { MapService } from '../service/map.service';
 import { InViewDirective } from '../shared/in-view.directive';
 import { RatingControlsComponent } from '../shared/rating-controls.component';
 
@@ -92,6 +93,8 @@ export class LibraryComponent implements OnInit, OnDestroy {
   private saved = inject(LibraryPageState);
   private route = inject(ActivatedRoute);
   watch = inject(WatchService);
+  /** Opens the venue map (Hot Games room) from the Hot Games search card. */
+  map = inject(MapService);
   recent = inject(RecentService);
   private shelfService = inject(ShelfService);
   /** Which shelves exist and their sizes (public/shelves/index.json); null until loaded. */
@@ -193,6 +196,8 @@ export class LibraryComponent implements OnInit, OnDestroy {
       shelf: shelfText(item),
       players: playersText(item),
       minutes: minutesText(item),
+      /** Also on the Hot Games tables (tag on the row). */
+      hot: isHotGame(item.name, now),
       inList: ids.has(item.id),
       busy: busy.has(item.id),
       addLabel: ids.has(item.id) ? `Remove ${item.name} from ${list}` : `Add ${item.name} to ${list || 'a list'}`,
@@ -232,6 +237,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
         checking: !checked.has(item.id),
         status: statusText(item, now),
         out: !!item.is_checked_out,
+        hot: isHotGame(item.name, now),
         shelf: shelfText(item),
         when: ago < 60_000 ? 'just now' : `${shortDuration(ago)} ago`,
       };
@@ -240,6 +246,8 @@ export class LibraryComponent implements OnInit, OnDestroy {
 
   /** BGG.CON Hot Games matching the search; shown as cards above the results. */
   hotMatches = computed(() => matchHotGames(this.filters().query, this.now()));
+  /** "Show Hot Games on the map" on the Hot Games search card. */
+  hotGamesMap = computed(() => this.hotMatches().length ? this.map.hotGamesRequest() : null);
 
   ngOnInit(): void {
     this.requests.pipe(

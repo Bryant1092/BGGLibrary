@@ -11,6 +11,7 @@ import { InViewDirective } from '../shared/in-view.directive';
 import { SheetComponent } from '../shared/sheet.component';
 import { ThumbComponent } from '../shared/thumb.component';
 import { statusText } from '../util/game-format';
+import { isHotGame } from '../util/hot-games';
 
 /** Rows drawn at first; more are added as you scroll (a shelf can hold 900+ games). */
 const FIRST_ROWS = 60;
@@ -95,6 +96,7 @@ const LETTER_ORDER = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
                 } @else {
                   <span class="bl-pill checking">Checking…</span>
                 }
+                @if (row.hot) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
               </span>
               <span class="bl-meta">
                 <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ row.players }}</span>
@@ -224,6 +226,8 @@ export class ShelfListComponent {
         game, letter, letterStart,
         status: item ? statusText(item, now) : '',
         out: !!item?.is_checked_out,
+        /** Also on the Hot Games tables (tag on the row). */
+        hot: isHotGame(game.name, now),
         players: game.minPlayers === game.maxPlayers ? `${game.minPlayers}` : `${game.minPlayers}–${game.maxPlayers}`,
         minutes: game.minMinutes === game.maxMinutes ? `${game.minMinutes}` : `${game.minMinutes}–${game.maxMinutes}`,
         inList: ids.has(game.id),

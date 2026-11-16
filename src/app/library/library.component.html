@@ -90,6 +90,9 @@
           <span class="kicker">On the Hot Games tables</span>
           <strong>{{ title }}</strong>
           <span class="body">No checkout needed: find a free table in the Hot Games area and play. Tables are first-come, first-served.</span>
+          @if (hotGamesMap(); as request) {
+            <button type="button" class="bl-link-btn" (click)="map.show(request)"><bl-icon name="map" [size]="16" /> Show Hot Games on the map</button>
+          }
         </div>
       </div>
     }
@@ -115,6 +118,7 @@
                 <span class="bl-pill" [class.out]="r.out">{{ r.status }}</span>
               }
               <span class="bl-shelf">Shelf {{ r.shelf }}</span>
+              @if (r.hot) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
             </span>
           </span>
           <span class="bl-when">{{ r.when }}</span>
@@ -181,6 +185,7 @@
                 <span class="bl-status-line">
                   <span class="bl-pill" [class.out]="row.out" [class.new]="row.isNew">{{ row.status }}</span>
                   <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ row.shelf }}</span>
+                  @if (row.hot) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
                 </span>
                 <span class="bl-meta">
                   <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ row.players }}</span>

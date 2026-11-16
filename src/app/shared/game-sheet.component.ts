@@ -4,6 +4,7 @@ import { BggItem } from '../model/bgg.model';
 import { dueInfo, formatLibraryDate, formatLibraryTime, shortDuration } from '../util/library-time';
 import { bggUrl, checkedInText, howToPlayUrl, minutesText, playersText, shelfText } from '../util/game-format';
 import { isHotGame } from '../util/hot-games';
+import { MapService } from '../service/map.service';
 import { IconComponent } from './icon.component';
 import { SheetComponent } from './sheet.component';
 import { ThumbComponent } from './thumb.component';
@@ -49,7 +50,9 @@ import { ThumbComponent } from './thumb.component';
     .detail { font-size: 14px; line-height: 19px; color: var(--bl-muted); }
     .note { font-size: 13px; line-height: 18px; color: var(--bl-muted); }
     .hot { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--bl-accent-soft); font-size: 14px; line-height: 19px; display: flex; gap: 10px; align-items: flex-start; }
-    .hot bl-icon { color: var(--bl-accent-text); }
+    .hot > bl-icon { color: var(--bl-accent-text); }
+    .hot-text { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+    .hot-text .bl-link-btn { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 -6px -2px; }
     .bgg { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; font-weight: 600; text-decoration: none; color: var(--bl-accent-text); }
   `,
   template: `
@@ -90,7 +93,14 @@ import { ThumbComponent } from './thumb.component';
       }
 
       @if (hot()) {
-        <p class="hot"><bl-icon name="flame" [size]="20" /><span>Also on the <strong>Hot Games tables</strong>: no checkout needed if a table is free.</span></p>
+        <div class="hot">
+          <bl-icon name="flame" [size]="20" />
+          <div class="hot-text">
+            <!-- Checked out here doesn't mean unavailable: the Hot Games copy can be played without a checkout. -->
+            <span>{{ game().is_checked_out ? 'The library copy is out, but this game is also on the ' : 'Also on the ' }}<strong>Hot Games tables</strong>: no checkout needed if a table is free.</span>
+            @if (hotMap()) { <button type="button" class="bl-link-btn" (click)="showHotMap()"><bl-icon name="map" [size]="16" /> Show on map</button> }
+          </div>
+        </div>
       }
 
       @if (due(); as d) {
@@ -169,6 +179,15 @@ export class GameSheetComponent {
   bgg = computed(() => bggUrl(this.game()));
   howToPlay = computed(() => howToPlayUrl(this.game()));
   hot = computed(() => isHotGame(this.game().name, this.now()));
+  private map = inject(MapService);
+  /** Where the Hot Games room is on this convention's venue map (null if no map). */
+  hotMap = computed(() => this.hot() ? this.map.hotGamesRequest() : null);
+
+  /** Opens the venue map over this sheet; closing the map comes back here. */
+  showHotMap(): void {
+    const request = this.hotMap();
+    if (request) this.map.show(request);
+  }
   actionLabel = computed(() => {
     const list = this.listName();
     if (!list) return 'Add to a list';

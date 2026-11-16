@@ -117,6 +117,16 @@ export class MapService {
     return this.hallRequest();
   }
 
+  /**
+   * The Hot Games room (BGG.CON: Cumberland E–H on the Exhibition level), for the
+   * "Show on map" buttons next to Hot Games notes. Uses the room marked kind "hot" in
+   * this convention's map, so next year's map only needs that room drawn.
+   */
+  hotGamesRequest(): MapRequest | null {
+    const room = this.maps()?.rooms.find(r => r.kind === 'hot');
+    return room ? { select: ['room:' + room.id], label: `Hot Games tables · ${room.sub}` } : null;
+  }
+
   homegrownRequest(): MapRequest | null {
     return this.maps() ? { select: HOMEGROWN, label: 'HomeGrown playtesting rooms' } : null;
   }
