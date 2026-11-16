@@ -185,8 +185,8 @@ export class LoginComponent implements OnInit, OnDestroy {
     return [
       { label: '8+ characters', ok: p.length >= 8 },
       { label: 'Upper and lower case', ok: /[a-z]/.test(p) && /[A-Z]/.test(p) },
-      { label: 'A number', ok: /d/.test(p) },
-      { label: 'A symbol (like ! # ?)', ok: /[^A-Za-zd]/.test(p) },
+      { label: 'A number', ok: /\d/.test(p) },
+      { label: 'A symbol (like ! # ?)', ok: /[^A-Za-z\d]/.test(p) },
     ];
   }
 

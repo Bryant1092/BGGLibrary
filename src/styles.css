@@ -345,6 +345,8 @@ body {
 .bl-view-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 12px; background: var(--bl-field); }
 .bl-view-switch button { min-height: 38px; border: 0; border-radius: 9px; background: transparent; color: var(--bl-muted); font-size: 15px; font-weight: 600; }
 .bl-view-switch button[aria-selected="true"] { background: var(--bl-surface); color: var(--bl-text); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+/* Dark mode: the selected option has to be lighter than the bar (as on iPhone), not darker. */
+:root[data-theme="dark"] .bl-view-switch button[aria-selected="true"] { background: #4a4643; box-shadow: none; }
 .bl-choice[aria-pressed="true"] .bl-radio { border: 7px solid var(--bl-accent); }
 
 /* ---------- Toast and tab bar ---------- */
