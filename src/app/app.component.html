@@ -39,7 +39,8 @@
       You're in BGG's <strong>{{ win.section }}</strong>{{ win.bundle ? ' (bundle ' + win.bundle + ')' : '' }}, in the news post "{{ win.postTitle }}".
     </p>
     @if (win.pickup) { <p class="bl-sheet-note" style="font-size: 15px; line-height: 21px">BGG says: "{{ win.pickup }}"</p> }
-    <p class="bl-sheet-note">The BGG Prize Booth is by the Registration desk on the Lobby level this year. Bring your badge.</p>
+    <!-- Where the booth is comes from BGG's own posts each convention (findPrizeBooth). -->
+    <p class="bl-sheet-note">{{ prize.boothText() }}</p>
     <button type="button" class="bl-btn" (click)="showPrizeBooth(win)">Show the Prize Booth on the map</button>
     <button type="button" class="bl-btn secondary" (click)="prize.markSeen(win)">Got it</button>
   </app-sheet>

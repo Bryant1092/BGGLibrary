@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { doc, Firestore, getDoc, serverTimestamp, setDoc, deleteDoc } from '@angular/fire/firestore';
 import { ConInfoService } from './con-info.service';
 import { UserService } from './user.service';
-import { findPrizeWins, normalizeBadge, PrizeWin } from '../util/prize-drawing';
+import { findPrizeBooth, findPrizeWins, normalizeBadge, PrizeBoothPlace, PrizeWin } from '../util/prize-drawing';
 
 const BADGE_PREFIX = 'bgglibrary.badge.';
 const SEEN_KEY = 'bgglibrary.prizeSeen';
@@ -31,6 +31,16 @@ export class PrizeService {
 
   /** Every win for your badge in this convention's posts, newest post first. */
   readonly wins = computed<PrizeWin[]>(() => findPrizeWins((this.info.posts() || []).map(p => ({ id: p.id, title: p.title, html: p.html })), this.badge()));
+  /** Where BGG says the Prize Booth is this convention (newest post that says). */
+  readonly booth = computed<PrizeBoothPlace>(() => findPrizeBooth(this.info.posts() || []));
+  /** One line for the "You won!" sheet, in BGG's words when they gave the place. */
+  readonly boothText = computed(() => {
+    const b = this.booth();
+    return b.quote
+      ? `BGG says the Prize Booth is ${b.quote}. Bring your badge.`
+      : "The Prize Booth has usually been in the Exhibit Hall. Ask at Registration if you can't find it. Bring your badge.";
+  });
+
   /** Wins not shown yet: the first one is shown in the "You won!" sheet (AppComponent). */
   readonly unseen = computed(() => this.wins().filter(w => !this.seen().has(w.key)));
 

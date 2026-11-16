@@ -97,18 +97,24 @@ export class MapService {
 
   /** All HomeGrown playtesting rooms highlighted (they're on two floors; the card lists them). */
   /**
-   * The BGG Prize Booth, for prize-drawing winners. BGG's BGG.CON 2026 exhibitor post
-   * says it's "located up near the Registration/Information Desk" (it was in the
-   * Exhibit Hall in 2025), so this circles the map's REGISTRATION label. If a future
-   * map has no such label, it falls back to the exhibit hall.
+   * The BGG Prize Booth, for prize-drawing winners. Where it is comes from BGG's own
+   * posts each convention (findPrizeBooth): 2023-2025 "in the Exhibit Hall", 2026
+   * "near the Registration/Information Desk".
+   * - registration: circles the map's REGISTRATION label.
+   * - hall: the booth itself if that year's hall map lists a Prize Booth, else the hall.
+   * - unknown (BGG didn't say): the exhibit hall, where it has been most years.
+   * Falls back to the hall when the map has no matching spot.
    */
-  prizeBoothRequest(): MapRequest | null {
+  prizeBoothRequest(where: 'registration' | 'hall' | 'unknown'): MapRequest | null {
     const maps = this.maps();
     if (!maps) return null;
-    const reg = maps.marks.find(m => m.kind === 'text' && /^registration/i.test((m as any).text || ''));
-    return reg
-      ? { floor: reg.floor, point: { floor: reg.floor, x: reg.x, y: reg.y - 3 }, label: 'BGG Prize Booth (by Registration)' }
-      : this.hallRequest();
+    if (where === 'registration') {
+      const reg = maps.marks.find(m => m.kind === 'text' && /^registration/i.test(m.text || ''));
+      if (reg) return { floor: reg.floor, point: { floor: reg.floor, x: reg.x, y: reg.y - 3 }, label: 'BGG Prize Booth (by Registration)' };
+    }
+    const booth = maps.booths.find(b => /prize/i.test(b.name));
+    if (booth) return this.boothRequest(booth.num, booth.name);
+    return this.hallRequest();
   }
 
   homegrownRequest(): MapRequest | null {

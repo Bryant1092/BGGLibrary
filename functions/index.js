@@ -168,10 +168,14 @@ exports.checkPrizeDrawings = onSchedule({
   if (people.empty) return;
   const updates = await tteJson(`https://tabletop.events/api/convention/${con.id}/updates?_items_per_page=100`);
   const posts = (updates?.items || []).filter(u => Number(u.published) === 1)
-    .map(u => ({ id: u.id, title: (u.name || '').trim(), html: u.body_html || '' }));
+    .map(u => ({ id: u.id, title: (u.name || '').trim(), html: u.body_html || '', date: u.date_posted || '' }));
   if (!posts.length) return;
 
   webpush.setVapidDetails(APP_URL, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.value());
+  // Where BGG says the booth is this convention, in their words (newest post first).
+  const newestFirst = [...posts].sort((a, b) => b.date.localeCompare(a.date));
+  const booth = findPrizeBooth(newestFirst);
+  const where = booth.quote ? `at the BGG Prize Booth, ${booth.quote},` : 'at the BGG Prize Booth';
   let sent = 0;
   for (const person of people.docs) {
     const { badge, notified = [] } = person.data();
@@ -182,7 +186,7 @@ exports.checkPrizeDrawings = onSchedule({
       const payload = JSON.stringify({
         notification: {
           title: '🎉 You won a BGG prize drawing!',
-          body: `Badge #${win.badge}: ${win.section}${win.bundle ? `, bundle ${win.bundle}` : ''}. Pick it up at the BGG Prize Booth (by Registration) the next day, or it goes back into the drawing.`,
+          body: `Badge #${win.badge}: ${win.section}${win.bundle ? `, bundle ${win.bundle}` : ''}. Pick it up ${where} the next day, or it goes back into the drawing.`,
           icon: `${APP_URL}icons/icon-192x192.png`,
           tag: `prize-${win.key}`,
           requireInteraction: true,
@@ -228,6 +232,18 @@ async function tteJson(url) {
 }
 
 // Same parser as the app's src/app/util/prize-drawing.ts (keep them in step).
+function findPrizeBooth(posts) {
+  const re = /prize booth\s*(?:[-–—(:,]\s*)*(?:is\s+)?(?:now\s+)?(?:located\s+)?(?:up\s+|right\s+|over\s+)?(?:near|by|next to|beside|inside|in|at)\s+(?:the\s+)?([^.)\n]{3,70})/i;
+  for (const post of posts) {
+    const m = strip(post.html || '').match(re);
+    if (!m) continue;
+    const place = m[1];
+    const short = place.match(/^.*?(registration\s*\/\s*information desk|information desk|registration(?: desk| area)?|exhibit hall|marsalis hall [ab]?)/i)?.[0] ?? place.split(/\s+/).slice(0, 6).join(' ');
+    const quote = (m[0].slice(0, m[0].length - m[1].length) + short).replace(/^prize booth\s*[-–—(:,]*\s*/i, '').replace(/\s+/g, ' ').trim();
+    return { quote };
+  }
+  return { quote: '' };
+}
 const strip = html => html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&rsquo;/g, "'").replace(/\s+/g, ' ').trim();
 const normalizeBadge = v => String(v || '').replace(/\D/g, '').replace(/^0+(?=\d)/, '');
 function findPrizeWins(posts, badgeInput) {

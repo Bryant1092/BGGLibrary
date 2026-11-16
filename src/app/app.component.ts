@@ -41,7 +41,7 @@ export class AppComponent implements OnInit {
   /** "Show on map" in the "You won!" sheet: the Prize Booth (MapService.prizeBoothRequest). */
   showPrizeBooth(win: PrizeWin): void {
     this.prize.markSeen(win);
-    const request = this.map.prizeBoothRequest();
+    const request = this.map.prizeBoothRequest(this.prize.booth().where);
     if (request) this.map.show(request);
   }
   /** The full-screen venue map is shown here so any tab can open it (MapService.show). */

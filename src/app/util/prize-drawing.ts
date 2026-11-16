@@ -33,6 +33,38 @@ export function normalizeBadge(value: string): string {
   return (value || '').replace(/\D/g, '').replace(/^0+(?=\d)/, '');
 }
 
+/** Where BGG says the Prize Booth is this convention. */
+export interface PrizeBoothPlace {
+  /** Which map spot to show: the Registration desk, the exhibit hall, or not stated. */
+  where: 'registration' | 'hall' | 'unknown';
+  /** BGG's own words, e.g. "Prize Booth - located up near the Registration/Information Desk". */
+  quote: string;
+}
+
+/**
+ * Reads the Prize Booth's location from the convention's posts, newest first, so a
+ * move announced mid-con wins. Only location wording counts ("Prize Booth (in the
+ * Exhibit Hall)", "Prize Booth - located up near the Registration/Information Desk");
+ * "pickup at the Prize Booth on Thursday when the Exhibit Hall opens" is about time,
+ * not place, and is ignored. Checked on 2023-2026: 2023-2025 say Exhibit Hall,
+ * 2026 says Registration/Information Desk.
+ */
+export function findPrizeBooth(posts: { html: string }[]): PrizeBoothPlace {
+  const re = /prize booth\s*(?:[-–—(:,]\s*)*(?:is\s+)?(?:now\s+)?(?:located\s+)?(?:up\s+|right\s+|over\s+)?(?:near|by|next to|beside|inside|in|at)\s+(?:the\s+)?([^.)\n]{3,70})/i;
+  for (const post of posts) {
+    const m = strip(post.html || '').match(re);
+    if (!m) continue;
+    const place = m[1];
+    const where = /regist|information|info desk/i.test(place) ? 'registration' : /exhibit|marsalis|hall/i.test(place) ? 'hall' : 'unknown';
+    // Posts often run straight on into the next item (no full stop), so keep the
+    // wording only up to the place name itself.
+    const short = place.match(/^.*?(registration\s*\/\s*information desk|information desk|registration(?: desk| area)?|exhibit hall|marsalis hall [ab]?)/i)?.[0] ?? place.split(/\s+/).slice(0, 6).join(' ');
+    const quote = (m[0].slice(0, m[0].length - m[1].length) + short).replace(/^prize booth\s*[-–—(:,]*\s*/i, '').replace(/\s+/g, ' ').trim();
+    return { where, quote };
+  }
+  return { where: 'unknown', quote: '' };
+}
+
 export function findPrizeWins(posts: { id: string; title: string; html: string }[], badgeInput: string): PrizeWin[] {
   const badge = normalizeBadge(badgeInput);
   if (!badge) return [];
