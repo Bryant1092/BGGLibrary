@@ -1,10 +1,10 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
-  collection, collectionData, doc, docData, Firestore, getDoc, query, runTransaction, serverTimestamp, updateDoc, where, writeBatch,
+  collection, collectionData, doc, docData, Firestore, getDoc, getDocs, query, runTransaction, serverTimestamp, updateDoc, where, writeBatch,
 } from '@angular/fire/firestore';
 import { combineLatest, Observable, of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { catchError, map, switchMap, tap } from 'rxjs/operators';
 import { Game } from '../model/game.model';
 import { UserService } from './user.service';
 import { GameService } from './game.service';
@@ -85,9 +85,33 @@ export class FriendsService {
 
   start(destroyRef: DestroyRef): void {
     this.userService.checkAuth().pipe(
+      tap(user => { if (user) this.backfillAll(user.uid); }),
       switchMap(user => user ? this.friends$() : of([] as Friend[])),
       takeUntilDestroyed(destroyRef),
     ).subscribe(rows => this.list.set(rows));
+  }
+
+  private backfilledFor = '';
+
+  /**
+   * Lists made before friends existed have no owner/visible fields, so friends
+   * couldn't see them until the owner happened to open each one. Once per sign-in,
+   * fill them in for every list I own (visible on, the chosen default). A few
+   * small reads; lists already done are skipped.
+   */
+  private async backfillAll(uid: string): Promise<void> {
+    if (this.backfilledFor === uid) return;
+    this.backfilledFor = uid;
+    try {
+      const refs = await getDocs(collection(this.firestore, 'users', uid, 'gameLists'));
+      for (const ref of refs.docs) {
+        if (ref.data()['owner'] && ref.data()['owner'] !== uid) continue; // shared with me, not mine
+        const list = await getDoc(doc(this.firestore, 'dataLists', ref.id));
+        if (list.exists() && !list.data()['owner']) {
+          await updateDoc(list.ref, { owner: uid, visible: list.data()['visible'] ?? true });
+        }
+      }
+    } catch { /* offline or not allowed: tried again next sign-in */ }
   }
 
   private uid(): string {
