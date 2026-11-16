@@ -86,6 +86,45 @@ function libraryDays(start: number, end: number): LibraryDay[] {
   return days;
 }
 
+/**
+ * Library hours straight from BGG's schedule. Every BGG.CON and BGG.Spring since
+ * 2021 has a daily "Library" event on Tabletop.Events with the exact opening time
+ * and length (checked Nov 2026: 2025/2026 BGG.CON and Spring 2026 all match the
+ * LIBRARY_HOURS pattern). Using them means a year with different hours is picked
+ * up with no app change. Only upcoming/current conventions are asked (one small
+ * request each); if there are no Library events, the pattern stays. Overrides win.
+ * Returns null when nothing changed.
+ */
+async function withScheduledHours(http: HttpClient, list: Convention[]): Promise<Convention[] | null> {
+  const today = dallasDateKey(Date.now());
+  let changed = false;
+  const result = await Promise.all(list.map(async c => {
+    if (!c.tteConventionId || c.days[c.days.length - 1].date < today || CONVENTION_OVERRIDES[c.name]?.days) return c;
+    try {
+      const r: any = await firstValueFrom(http.get(`${API}/${c.tteConventionId}/events`, {
+        params: new HttpParams().set('query', 'library').set('_items_per_page', 20),
+      }).pipe(timeout(15_000)));
+      const days = ((r?.result?.items || []) as any[])
+        .filter(e => (e.name || '').trim().toLowerCase() === 'library' && e.start_date && Number(e.duration) > 0)
+        .map(e => {
+          const start = parseTteDate(e.start_date)!.getTime();
+          const end = start + Number(e.duration) * 60_000;
+          const date = dallasDateKey(start);
+          // Ends at midnight (or later): '24:00' on the same day, as LibraryDay expects.
+          const close = dallasDateKey(end) > date ? '24:00' : dallasTimeKey(end);
+          return { date, open: dallasTimeKey(start), close } as LibraryDay;
+        })
+        .sort((a, b) => a.date.localeCompare(b.date));
+      if (!days.length || JSON.stringify(days) === JSON.stringify(c.days)) return c;
+      changed = true;
+      return { ...c, days };
+    } catch {
+      return c; // keep the pattern
+    }
+  }));
+  return changed ? result : null;
+}
+
 /** Swaps the list's contents, keeping the same array that every caller imported. */
 function apply(list: Convention[]): void {
   if (!list.length) return;
@@ -128,6 +167,10 @@ export function syncConventions(): Promise<void> {
     if (!list.length) return;
     apply(list);
     writeCache(list);
+    // Then, in the background, the exact hours from BGG's own schedule.
+    withScheduledHours(http, list).then(exact => {
+      if (exact) { apply(exact); writeCache(exact); }
+    });
   });
   // With a saved copy, startup doesn't wait; the refresh lands in the background.
   return cached ? Promise.resolve() : done;

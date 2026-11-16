@@ -167,6 +167,21 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Badge number for BGG's daily prize drawings (PrizeService). Only you; the server
+    // job (functions/index.js, checkPrizeDrawings) reads it with admin access and
+    // records which wins it already notified you about (`notified`).
+    match /prizeBadges/{uid} {
+      allow read, delete: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['badge', 'at'])
+        && request.resource.data.badge is string && request.resource.data.badge.matches('[0-9]{1,6}');
+      // The app may change the number; only the server writes `notified`.
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['badge', 'notified', 'at'])
+        && request.resource.data.badge is string && request.resource.data.badge.matches('[0-9]{1,6}')
+        && request.resource.data.get('notified', []) == resource.data.get('notified', []);
+    }
+
     // Meeple codes: codes/{MEEP-XXXX} -> { uid }. Claimed once, in a transaction, so a
     // code can never belong to two people. Looked up one code at a time, never listed.
     match /codes/{code} {

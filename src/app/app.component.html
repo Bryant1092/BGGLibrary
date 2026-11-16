@@ -27,6 +27,24 @@
   </app-sheet>
 }
 
+<!--
+  "You won!" when your badge number is in one of BGG's prize-drawing tables (PrizeService).
+  Prizes must be picked up the next day or they go back into the drawing, so it's a sheet,
+  not a passing message, with the way to the Prize Booth.
+-->
+@if (prize.unseen()[0]; as win) {
+  <app-sheet label="You won a prize drawing" (closed)="prize.markSeen(win)">
+    <h2>🎉 You won! Badge #{{ win.badge }}</h2>
+    <p class="bl-sheet-note" style="font-size: 16px; line-height: 22px; color: var(--bl-text)">
+      You're in BGG's <strong>{{ win.section }}</strong>{{ win.bundle ? ' (bundle ' + win.bundle + ')' : '' }}, in the news post "{{ win.postTitle }}".
+    </p>
+    @if (win.pickup) { <p class="bl-sheet-note" style="font-size: 15px; line-height: 21px">BGG says: "{{ win.pickup }}"</p> }
+    <p class="bl-sheet-note">The BGG Prize Booth is by the Registration desk on the Lobby level this year. Bring your badge.</p>
+    <button type="button" class="bl-btn" (click)="showPrizeBooth(win)">Show the Prize Booth on the map</button>
+    <button type="button" class="bl-btn secondary" (click)="prize.markSeen(win)">Got it</button>
+  </app-sheet>
+}
+
 <!-- "Add to Home Screen" steps, opened by "Show me how" (Account row, My Lists card). -->
 @if (install.sheetOpen()) {
   <app-sheet label="Add to Home Screen" (closed)="install.closeSteps()">

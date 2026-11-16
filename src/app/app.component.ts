@@ -5,11 +5,13 @@ import { HideNavService } from './service/hide-nav.service';
 import { WatchService } from './service/watch.service';
 import { InstallService } from './service/install.service';
 import { InstallStepsComponent } from './shared/install-steps.component';
+import { PrizeWin } from './util/prize-drawing';
 import { MapService } from './service/map.service';
 import { ConInfoService } from './service/con-info.service';
 import { FriendsService } from './service/friends.service';
 import { ReactionsService } from './service/reactions.service';
 import { PushService } from './service/push.service';
+import { PrizeService } from './service/prize.service';
 import { NewsPromptComponent } from './shared/news-prompt.component';
 import { MapViewerComponent } from './shared/map-viewer.component';
 import { IconComponent } from './shared/icon.component';
@@ -28,12 +30,20 @@ export class AppComponent implements OnInit {
   private friends = inject(FriendsService);
   private reactions = inject(ReactionsService);
   private push = inject(PushService);
+  prize = inject(PrizeService);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
   watch = inject(WatchService);
   // Created at startup because Android announces "installable" only once, early
   // (beforeinstallprompt); the Account tab uses it for its Install button.
   install = inject(InstallService);
+
+  /** "Show on map" in the "You won!" sheet: the Prize Booth (MapService.prizeBoothRequest). */
+  showPrizeBooth(win: PrizeWin): void {
+    this.prize.markSeen(win);
+    const request = this.map.prizeBoothRequest();
+    if (request) this.map.show(request);
+  }
   /** The full-screen venue map is shown here so any tab can open it (MapService.show). */
   map = inject(MapService);
   /** BGG news posts: the Events tab's unread number and the new-post message. */
@@ -70,6 +80,8 @@ export class AppComponent implements OnInit {
     this.reactions.start(this.destroyRef);
     // Keeps this phone's push address saved, so "X is back" arrives with the app closed.
     this.push.start(this.destroyRef);
+    // Your badge number vs BGG's prize-drawing winner lists (shows "You won!").
+    this.prize.start(this.destroyRef);
   }
 
   /**

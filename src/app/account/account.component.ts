@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FriendsCardComponent } from '../shared/friends-card.component';
 import { InstallStepsComponent } from '../shared/install-steps.component';
+import { PrizeCardComponent } from '../shared/prize-card.component';
 import { IconComponent } from '../shared/icon.component';
 import { EMPTY, switchMap } from 'rxjs';
 import { CONVENTIONS, LibraryDay } from '../config/conventions';
@@ -20,7 +21,7 @@ import { currentOrNextConvention } from '../util/library-time';
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [RouterLink, FriendsCardComponent, InstallStepsComponent, IconComponent],
+  imports: [RouterLink, FriendsCardComponent, InstallStepsComponent, IconComponent, PrizeCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .card { margin: 16px; padding: 16px; border-radius: 16px; background: var(--bl-field); display: flex; flex-direction: column; gap: 12px; }
@@ -116,6 +117,9 @@ import { currentOrNextConvention } from '../util/library-time';
             </button>
           </div>
         }
+
+        <!-- Badge number for BGG's daily prize drawings (works signed out too, on this phone). -->
+        <app-prize-card />
 
         <!-- Appearance lives here, not on the Library screen: it's set once and rarely changed. -->
         <div class="card">
