@@ -139,8 +139,10 @@ export class FriendsCardComponent implements OnInit {
   outgoing = computed(() => this.friends.list().filter(f => f.status === 'outgoing'));
 
   ngOnInit(): void {
+    // Show the code saved on this phone right away; the server check runs behind it.
+    this.code.set(this.friends.savedCode());
     this.friends.myCode().then(c => { this.code.set(c.code); return this.friends.shareRatings(); }).then(on => this.shareRatings.set(on))
-      .catch(() => this.toast.error("Couldn't load your Meeple code. Check your connection."));
+      .catch(() => { if (!this.code()) this.toast.error("Couldn't load your Meeple code. Check your connection."); });
     // A shared link: …/account?meeple=MEEP-7K4Q opens "Add Alex G.?". The parameter is
     // dropped right away so a reload doesn't ask again.
     const shared = this.route.snapshot.queryParamMap.get('meeple');

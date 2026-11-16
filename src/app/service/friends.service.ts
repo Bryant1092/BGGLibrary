@@ -56,6 +56,8 @@ export interface FriendList {
 /** No 0/O, 1/I/L or U: easy to read aloud and type without mix-ups. 30^4 = 810,000 codes. */
 const CODE_CHARS = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
 const PREFIX = 'MEEP-';
+/** Per account: this phone's copy of your Meeple code (see savedCode). */
+const CODE_KEY = 'bgglibrary.meepleCode.';
 
 /** Turns whatever was typed ("meep 7k4q", "7K4Q", "MEEP-7K4Q") into MEEP-7K4Q, or '' if it can't be one. */
 export function normalizeCode(input: string): string {
@@ -130,11 +132,29 @@ export class FriendsService {
    * written in one transaction that fails if the code is taken, so two people can
    * never share a code; on a clash it just tries another.
    */
+  /**
+   * The Meeple code saved on this phone, shown instantly. A code never changes, but
+   * asking the server for it each time Account opened took a few seconds on slow
+   * Wi-Fi (reported: "• • • • •" before the code appeared). myCode() refreshes it.
+   */
+  savedCode(): string {
+    const uid = this.userService.getCurrentUid();
+    try { return uid ? localStorage.getItem(CODE_KEY + uid) || '' : ''; } catch { return ''; }
+  }
+
+  private saveCode(uid: string, code: string): void {
+    try { localStorage.setItem(CODE_KEY + uid, code); } catch { /* shown after the server answers instead */ }
+  }
+
   async myCode(): Promise<{ code: string; name: string }> {
     const uid = this.uid();
     const profileRef = doc(this.firestore, 'profiles', uid);
     const existing = await getDoc(profileRef);
-    if (existing.exists()) return existing.data() as { code: string; name: string };
+    if (existing.exists()) {
+      const data = existing.data() as { code: string; name: string };
+      this.saveCode(uid, data.code);
+      return data;
+    }
 
     const me = await getDoc(doc(this.firestore, 'users', uid));
     const name = shortName(me.data()?.['firstName'] || '', me.data()?.['lastName'] || '');
@@ -147,7 +167,7 @@ export class FriendsService {
         tx.set(profileRef, { name, code });
         return true;
       });
-      if (claimed) return { code, name };
+      if (claimed) { this.saveCode(uid, code); return { code, name }; }
     }
     throw new Error('Could not create a Meeple code. Try again.');
   }
