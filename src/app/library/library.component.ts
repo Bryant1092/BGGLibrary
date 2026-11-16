@@ -23,6 +23,8 @@ import { isNewArrival, minutesText, playersText, returnedText, shelfText, status
 import { isHotGame, matchHotGames } from '../util/hot-games';
 import { MapService } from '../service/map.service';
 import { UpNextComponent } from '../shared/up-next.component';
+import { ConPopularComponent } from '../shared/con-popular.component';
+import { ConCheckoutsService } from '../service/con-checkouts.service';
 import { InViewDirective } from '../shared/in-view.directive';
 import { RatingControlsComponent } from '../shared/rating-controls.component';
 
@@ -46,7 +48,8 @@ const SORT_OPTIONS: { value: LibrarySort; label: string; chip: string; note: str
   { value: 'name', label: 'Name A–Z', chip: 'A–Z', note: 'Alphabetical' },
   { value: 'nameDesc', label: 'Name Z–A', chip: 'Z–A', note: 'Reverse alphabetical' },
   { value: 'availability', label: 'Available first', chip: 'Available first', note: 'Checked-out games go to the end' },
-  { value: 'popular', label: 'Most played', chip: 'Most played', note: 'Checked out most often at past conventions' },
+  // "(all time)": the con-only ranking ("Most played this con") sits right above it during the con.
+  { value: 'popular', label: 'Most played (all time)', chip: 'Most played', note: 'Checked out most often at past conventions' },
   { value: 'newest', label: 'Newest to the library', chip: 'Newest', note: 'Games added most recently come first' },
   { value: 'returned', label: 'Just returned', chip: 'Just returned', note: 'New arrivals first, then games just checked back in' },
 ];
@@ -80,7 +83,7 @@ export class LibraryPageState {
 @Component({
   selector: 'app-library',
   standalone: true,
-  imports: [InViewDirective, RatingControlsComponent, IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent, UpNextComponent],
+  imports: [InViewDirective, RatingControlsComponent, IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent, UpNextComponent, ConPopularComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './library.component.html',
 })
@@ -172,7 +175,22 @@ export class LibraryComponent implements OnInit, OnDestroy {
     const p = this.filters().players;
     return p ? `${p} ${p === 1 ? 'player' : 'players'}` : 'Players';
   });
-  sortChip = computed(() => SORT_OPTIONS.find(o => o.value === this.filters().sort)?.chip || 'A–Z');
+  sortChip = computed(() => this.conMode() ? 'This con' : SORT_OPTIONS.find(o => o.value === this.filters().sort)?.chip || 'A–Z');
+
+  /**
+   * "Most played this con" (ConPopularComponent): shows the server's ranking for this
+   * convention instead of a library search. Separate from filters().sort because it
+   * isn't a Tabletop.Events sort order. Turned off when another sort is picked.
+   */
+  conCheckouts = inject(ConCheckoutsService);
+  conMode = signal(false);
+  conName = computed(() => currentOrNextConvention(this.now())?.name || 'this convention');
+
+  setConSort(): void {
+    this.sheet.set(null);
+    this.conMode.set(true);
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }
   playTimeChip = computed(() => {
     const t = this.filters().playTime;
     return t ? PLAY_TIME_LABELS[t] : 'Play time';
@@ -446,6 +464,11 @@ export class LibraryComponent implements OnInit, OnDestroy {
 
   setSort(sort: LibrarySort): void {
     this.sheet.set(null);
+    if (this.conMode()) {
+      this.conMode.set(false);
+      // Back to library results: run the search even if the sort itself didn't change.
+      if (sort === this.filters().sort) { this.search(); return; }
+    }
     if (sort !== this.filters().sort) {
       this.filters.update(f => ({ ...f, sort }));
       this.search();

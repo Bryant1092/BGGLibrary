@@ -194,6 +194,14 @@ service cloud.firestore {
         && request.resource.data.get('notified', []) == resource.data.get('notified', []);
     }
 
+    // "Most played this con" ranking, written by the server (functions/index.js,
+    // trackConCheckouts). Public library data, so anyone using the app can read it,
+    // signed in or not. Its working documents (starting counts, progress) under
+    // meta/ stay server-only: no rule matches them, so clients can't read them.
+    match /meta/conCheckouts {
+      allow read: if true;
+    }
+
     // Meeple codes: codes/{MEEP-XXXX} -> { uid }. Claimed once, in a transaction, so a
     // code can never belong to two people. Looked up one code at a time, never listed.
     match /codes/{code} {

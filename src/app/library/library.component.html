@@ -83,6 +83,11 @@
         <div class="bl-empty"><p class="title">That shelf isn't in the library list</p>
           <button type="button" class="bl-btn outline" (click)="setShelf(null)">Show all games</button></div>
       }
+    } @else if (conMode()) {
+      <!-- "Most played this con" sort: the server's ranking, with this page's search and filters. -->
+      <app-con-popular mode="list" [query]="filters().query" [availableOnly]="filters().availableOnly"
+                       [players]="filters().players" [playTime]="filters().playTime"
+                       [inList]="listGameIds()" [busy]="busyIds()" (open)="openDetails($event)" (toggle)="toggleGame($event)" />
     } @else {
     <!-- BGG.CON Hot Games matching the search (list in config/conventions.ts). -->
     @for (title of hotMatches(); track title) {
@@ -102,6 +107,10 @@
       <h2 class="bl-section">Also in the checkout library</h2>
     }
 
+    <!-- Top 5 "Most played this con" (collapsible), during the con, while the search box is empty. -->
+    @if (!filters().query) {
+      <app-con-popular mode="card" (open)="openDetails($event)" (seeAll)="setConSort()" />
+    }
     <!-- Recently viewed: only while the search box is empty, so it never gets in the way of a search. -->
     @if (recentRows().length) {
       <div class="bl-section-head">
@@ -264,7 +273,14 @@
       <h2>Sort by</h2>
       <div>
         @for (option of sortOptions; track option.value) {
-          <button type="button" class="bl-choice" [attr.aria-pressed]="filters().sort === option.value" (click)="setSort(option.value)">
+          @if (option.value === 'popular' && conCheckouts.available()) {
+            <!-- Only during the con, once there's a ranking (ConCheckoutsService). -->
+            <button type="button" class="bl-choice" [attr.aria-pressed]="conMode()" (click)="setConSort()">
+              <span class="bl-radio"></span>
+              <span class="text"><strong>Most played this con</strong><small>Checked out most at {{ conName() }} so far (updates every 10 min)</small></span>
+            </button>
+          }
+          <button type="button" class="bl-choice" [attr.aria-pressed]="!conMode() && filters().sort === option.value" (click)="setSort(option.value)">
             <span class="bl-radio"></span>
             <span class="text"><strong>{{ option.label }}</strong><small>{{ option.note }}</small></span>
           </button>

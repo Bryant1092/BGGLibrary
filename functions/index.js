@@ -289,7 +289,7 @@ exports.checkPrizeDrawings = onSchedule({
   region: 'us-central1',
   secrets: [VAPID_PRIVATE_KEY],
   memory: '256MiB',
-  timeoutSeconds: 120,
+  timeoutSeconds: 300, // the first run downloads every game's count (~91 requests)
   maxInstances: 1,
   retryCount: 0,
 }, async () => {
@@ -311,6 +311,8 @@ exports.checkPrizeDrawings = onSchedule({
     }
     return;
   }
+  // "Most played this con" rides along on this job (already con-only, every 10 min).
+  await trackConCheckouts(db, con).catch(err => logger.error('con checkouts failed', err));
   const people = await db.collection('prizeBadges').get();
   if (people.empty) return;
   const updates = await tteJson(`https://tabletop.events/api/convention/${con.id}/updates?_items_per_page=100`);
@@ -353,6 +355,144 @@ exports.checkPrizeDrawings = onSchedule({
   }
   logger.info(`prize check: ${con.name}, ${posts.length} posts, ${people.size} badges, ${sent} notifications`);
 });
+
+// ---------------------------------------------------------------------------
+// "Most played this con" (Library tab: Top 5 card and a sort option).
+//
+// Tabletop.Events only has each game's ALL-TIME checkout_count (individual checkouts
+// aren't public). So: save every game's count just before the library opens
+// (meta/conCheckoutBaseline, server-only), and during the con "this con" = current
+// count - saved count. Each run only reads the games checked out since then (the API
+// can sort by last_checkout_date), adds copies of the same game together (bgg_id),
+// and saves the top 100 to meta/conCheckouts, which the app reads (one document).
+// Staff scans that don't raise the count (e.g. intake on 2026-11-15) don't count.
+// Cost: Tabletop.Events requests are free; one Firestore write per change.
+// ---------------------------------------------------------------------------
+const LIBRARY_GAMES = `https://tabletop.events/api/library/${BGG_LIBRARY_ID}/librarygames`;
+const CON_BASELINE = 'meta/conCheckoutBaseline';
+const CON_TOP = 'meta/conCheckouts';
+/** The starting counts are taken again this long before opening, so pre-con staff scans aren't counted. */
+const BASELINE_REFRESH_MS = 40 * 60 * 1000;
+let baselineCache = null;
+let openCache = null;
+let lastWritten = '';
+
+const tteTime = value => value ? new Date(String(value).trim().replace(' ', 'T') + 'Z').getTime() : 0;
+
+/** When the library first opens: BGG lists the library's hours as "Library" events. */
+async function libraryOpens(con) {
+  if (openCache?.conId === con.id) return openCache.at;
+  const res = await tteJson(`https://tabletop.events/api/convention/${con.id}/events?_items_per_page=100&_order_by=start_date`);
+  const first = (res?.items || []).find(e => /^library$/i.test((e.name || '').trim()));
+  const at = first ? tteTime(first.start_date) : tteTime(con.start_date);
+  openCache = { conId: con.id, at };
+  return at;
+}
+
+/** Every in-circulation game's checkout_count right now ({ id: count }), or null if a page failed. */
+async function allCheckoutCounts() {
+  const url = page => `${LIBRARY_GAMES}?_items_per_page=100&_page_number=${page}&_order_by=name&is_in_circulation=1`;
+  const first = await tteJson(url(1));
+  if (!first?.items) return null;
+  const pages = Number(first.paging?.total_pages) || 1;
+  const counts = {};
+  first.items.forEach(g => { counts[g.id] = Number(g.checkout_count) || 0; });
+  for (let p = 2; p <= pages; p += PARALLEL) {
+    const batch = await Promise.all(Array.from({ length: Math.min(PARALLEL, pages - p + 1) }, (_, i) => tteJson(url(p + i))));
+    if (batch.some(r => !r?.items)) return null;
+    batch.forEach(r => r.items.forEach(g => { counts[g.id] = Number(g.checkout_count) || 0; }));
+  }
+  return counts;
+}
+
+async function conBaseline(db, con, open, now) {
+  let base = baselineCache?.conId === con.id ? baselineCache : (await db.doc(CON_BASELINE).get()).data();
+  const missing = !base || base.conId !== con.id;
+  // Retake once in the last 40 minutes before opening (counts may have moved since).
+  const refresh = !missing && now < open && now >= open - BASELINE_REFRESH_MS && base.takenAt < open - BASELINE_REFRESH_MS;
+  if (missing || refresh) {
+    const counts = await allCheckoutCounts();
+    if (!counts) return base?.conId === con.id ? base : null; // try again next run
+    base = { conId: con.id, conName: con.name, takenAt: now, open, counts };
+    await db.doc(CON_BASELINE).set(base);
+    logger.info(`con checkouts: starting counts saved for ${Object.keys(counts).length} games${now > open ? ' (after opening: late start)' : ''}`);
+  }
+  baselineCache = base;
+  return base;
+}
+
+/**
+ * Progress between runs (meta/conCheckoutState, server-only): which games have checkouts
+ * this con, and the newest checkout already processed. Tabletop.Events took ~10 s per
+ * page when tested (2026-11-16), so each run only fetches what's new since the last one
+ * (usually 1-3 pages) instead of everything since the start.
+ */
+const CON_STATE = 'meta/conCheckoutState';
+let stateCache = null;
+
+async function trackConCheckouts(db, con) {
+  const now = Date.now();
+  const open = await libraryOpens(con);
+  const base = await conBaseline(db, con, open, now);
+  if (!base || now < open) return;
+
+  let state = stateCache?.conId === con.id ? stateCache : (await db.doc(CON_STATE).get()).data();
+  if (!state || state.conId !== con.id || state.takenAt !== base.takenAt) state = { conId: con.id, takenAt: base.takenAt, seenUntil: base.takenAt, perId: {} };
+  // A little overlap, in case two checkouts share a timestamp across runs.
+  const cutoff = state.seenUntil - 5 * 60 * 1000;
+
+  // Games checked out since the last run, newest first; 4 pages at a time; stop at older ones.
+  const url = page => `${LIBRARY_GAMES}?_items_per_page=100&_page_number=${page}&_order_by=last_checkout_date&_sort_order=desc&_include=bgg_icon_uri`;
+  const recent = [];
+  let newest = state.seenUntil, done = false;
+  for (let page = 1; !done && page <= 80; page += PARALLEL) {
+    const batch = await Promise.all(Array.from({ length: PARALLEL }, (_, i) => tteJson(url(page + i))));
+    for (const r of batch) {
+      if (!r?.items) return; // Tabletop.Events unreachable: keep the last list, try again next run
+      for (const g of r.items) {
+        const at = tteTime(g.last_checkout_date);
+        if (at < cutoff) { done = true; break; }
+        newest = Math.max(newest, at);
+        recent.push(g);
+      }
+      if (done || r.items.length < 100) { done = true; break; }
+    }
+  }
+
+  // Update each recently checked-out game's count for this con.
+  for (const g of recent) {
+    const before = base.counts[g.id] ?? (tteTime(g.date_created) > base.takenAt ? 0 : null); // added during the con: from 0
+    if (before == null) continue;
+    const delta = (Number(g.checkout_count) || 0) - before;
+    if (delta > 0) state.perId[g.id] = { c: delta, n: String(g.name || '').trim(), b: g.bgg_id || null, t: g.bgg_icon_uri || '' };
+    else delete state.perId[g.id];
+  }
+  state.seenUntil = newest;
+  stateCache = state;
+
+  // Add copies of the same game together, most checkouts first.
+  const byGame = new Map();
+  for (const [id, g] of Object.entries(state.perId)) {
+    const key = g.b ? `bgg:${g.b}` : `name:${g.n.toLowerCase()}`;
+    const entry = byGame.get(key) || { name: g.n, ids: [], count: 0, thumb: '', bggId: g.b };
+    entry.ids.push(id);
+    entry.count += g.c;
+    if (!entry.thumb && g.t) entry.thumb = g.t;
+    if (g.n.length < entry.name.length) entry.name = g.n; // "Heat" over "Heat (English edition)"
+    byGame.set(key, entry);
+  }
+  const games = [...byGame.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, 100);
+  const snapshot = JSON.stringify(games);
+  if (snapshot === lastWritten) return; // nothing changed: no writes, so phones don't re-read it
+  await db.doc(CON_STATE).set(state);
+  await db.doc(CON_TOP).set({
+    conId: con.id, conName: con.name, games,
+    countingSince: admin.firestore.Timestamp.fromMillis(base.takenAt),
+    updatedAt: admin.firestore.Timestamp.fromMillis(now),
+  });
+  lastWritten = snapshot;
+  logger.info(`con checkouts: ${games.length} games ranked (${recent.length} checked out since the last run)`);
+}
 
 /** Saved badge numbers are kept this long after a convention's last day. */
 const BADGE_KEEP_MS = 14 * 24 * 3600 * 1000;
