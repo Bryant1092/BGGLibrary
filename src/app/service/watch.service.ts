@@ -1,11 +1,13 @@
 import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { catchError, firstValueFrom, of } from 'rxjs';
+import { catchError, EMPTY, firstValueFrom, of, switchMap, tap } from 'rxjs';
+import { collection, collectionData, deleteDoc, doc, Firestore, serverTimestamp, setDoc } from '@angular/fire/firestore';
 import { BggItem } from '../model/bgg.model';
 import { BggService } from './bgg.service';
 import { ToastService } from './toast.service';
 import { UserService } from './user.service';
+import { PushService } from './push.service';
 import { parseTteDate } from '../util/time-ago';
 import { formatLibraryTime } from '../util/library-time';
 
@@ -25,12 +27,15 @@ const MUTED_PREFIX = 'bgglibrary.mutedAlerts.';
 const ASK_DISMISSED_KEY = 'bgglibrary.notifyAskDismissed';
 
 /**
- * "Notify me when it's back" bells, without a server.
+ * "Notify me when it's back" bells.
  *
- * - Bells are saved on this device (localStorage, per account). With no
- *   server, alerts can only come from a phone that has the app open, so
- *   syncing bells between devices wouldn't help yet, and it avoids writing a
- *   new kind of Firestore data that the (unknown) security rules might reject.
+ * - Signed in: bells are saved to your account (users/{uid}/watches), so the
+ *   server job (functions/index.js) can check them every 2 minutes and send a
+ *   push notification even when the app is closed; it removes a bell once it
+ *   fires, and the app sees that live. Bells saved on the phone before this
+ *   are moved to the account once, then the phone copy is dropped (otherwise a
+ *   bell the server already fired would be re-added from the phone).
+ * - Signed out: bells stay on this device (localStorage), app-open alerts only.
  * - While the app is open, watched games are checked every 2 minutes and
  *   whenever the app comes back to the foreground.
  * - When one is available again: an in-app message, plus a phone notification
@@ -47,6 +52,8 @@ export class WatchService {
   private userService = inject(UserService);
   private toast = inject(ToastService);
   private router = inject(Router);
+  private firestore = inject(Firestore);
+  private push = inject(PushService);
 
   /** Watched games by id, for the signed-in account (or "guest"). */
   readonly watched = signal<Map<string, WatchedGame>>(new Map());
@@ -72,14 +79,40 @@ export class WatchService {
 
   /** Called once from AppComponent so checks run on every tab, not just My Lists. */
   start(destroyRef: DestroyRef): void {
-    this.userService.checkAuth().pipe(takeUntilDestroyed(destroyRef)).subscribe((user: any) => {
-      this.storageKey = STORAGE_PREFIX + (user?.uid || 'guest');
-      this.account = user?.uid || 'guest';
-      this.watched.set(this.load());
-      this.autoAlerts.set(localStorage.getItem(AUTO_PREFIX + this.account) !== 'off');
-      this.muted = new Set(this.readJson<string[]>(MUTED_PREFIX + this.account, []));
-      this.check();
-    });
+    this.userService.checkAuth().pipe(
+      switchMap((user: any) => {
+        this.storageKey = STORAGE_PREFIX + (user?.uid || 'guest');
+        this.account = user?.uid || 'guest';
+        this.autoAlerts.set(this.readText(AUTO_PREFIX + this.account) !== 'off');
+        this.muted = new Set(this.readJson<string[]>(MUTED_PREFIX + this.account, []));
+        const local = this.load();
+        if (!user) {
+          this.watched.set(local);
+          this.check();
+          return EMPTY;
+        }
+        let first = true;
+        return collectionData(collection(this.firestore, 'users', user.uid, 'watches'), { idField: 'id' }).pipe(
+          catchError(() => of(null)),
+          tap(rows => {
+            // Couldn't read the account's bells (offline on first start): use the phone's.
+            if (rows === null) { this.watched.set(local); return; }
+            const remote = new Map((rows as any[]).map(r => [r.id as string, { id: r.id, name: r.name || '', shelf: r.shelf || '' }]));
+            if (first) {
+              first = false;
+              // One-time move of bells saved on the phone before they synced.
+              for (const [id, game] of local) if (!remote.has(id)) { remote.set(id, game); this.saveRemote(game); }
+              try { localStorage.removeItem(this.storageKey); } catch { /* nothing to remove */ }
+              this.watched.set(remote);
+              this.check();
+              return;
+            }
+            this.watched.set(remote);
+          }),
+        );
+      }),
+      takeUntilDestroyed(destroyRef),
+    ).subscribe();
     this.timer = setInterval(() => this.check(), CHECK_EVERY_MS);
     const onVisible = () => { if (document.visibilityState === 'visible') this.check(); };
     document.addEventListener('visibilitychange', onVisible);
@@ -130,7 +163,8 @@ export class WatchService {
 
   /** The My Lists card's "Turn on" (must run from that tap; iPhone needs the app on the Home Screen). */
   async enableNotifications(): Promise<void> {
-    try { this.permission.set(await Notification.requestPermission()); } catch { /* unsupported */ }
+    // Also registers this phone for push, so alerts arrive with the app closed.
+    try { this.permission.set(await this.push.subscribe()); } catch { /* unsupported */ }
     this.dismissAsk();
   }
 
@@ -156,7 +190,7 @@ export class WatchService {
     const game = this.askPermissionFor();
     this.askPermissionFor.set(null);
     try {
-      await Notification.requestPermission();
+      this.permission.set(await this.push.subscribe());
     } catch { /* unsupported: in-app alerts only */ }
     if (game) this.confirmOn(game);
   }
@@ -231,12 +265,30 @@ export class WatchService {
   }
 
   private update(change: (map: Map<string, WatchedGame>) => void): void {
-    const next = new Map(this.watched());
+    const before = this.watched();
+    const next = new Map(before);
     change(next);
     this.watched.set(next);
+    if (this.account !== 'guest') {
+      // Signed in: the account is the source of truth (the server job reads it).
+      for (const [id, game] of next) if (!before.has(id)) this.saveRemote(game);
+      for (const id of before.keys()) if (!next.has(id)) {
+        deleteDoc(doc(this.firestore, 'users', this.account, 'watches', id)).catch(() => { /* retried by the next change */ });
+      }
+      return;
+    }
     try {
       localStorage.setItem(this.storageKey, JSON.stringify([...next.values()]));
     } catch { /* storage blocked: bells last until the app is closed */ }
+  }
+
+  private saveRemote(game: WatchedGame): void {
+    setDoc(doc(this.firestore, 'users', this.account, 'watches', game.id), { name: (game.name || '').slice(0, 200), shelf: game.shelf || '', at: serverTimestamp() })
+      .catch(() => { /* offline: Firestore queues it; rules not yet updated: app-open alerts still work */ });
+  }
+
+  private readText(key: string): string | null {
+    try { return localStorage.getItem(key); } catch { return null; }
   }
 
   private load(): Map<string, WatchedGame> {

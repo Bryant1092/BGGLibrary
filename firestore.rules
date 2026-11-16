@@ -91,6 +91,24 @@ service cloud.firestore {
           && (!('buy' in request.resource.data) || request.resource.data.buy is bool);
       }
 
+      // ---------- "Tell me when it's back" ----------
+      // users/{uid}/watches/{gameId}: a bell that's on. users/{uid}/pushSubs/{id}: a
+      // phone that allowed notifications (its web push address). Only you. The server
+      // job (functions/index.js) reads them with admin access and removes a bell
+      // once it has fired.
+      match /watches/{gameId} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['name', 'shelf', 'at'])
+          && request.resource.data.name is string && request.resource.data.name.size() <= 200;
+      }
+      match /pushSubs/{subId} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['sub', 'at'])
+          && request.resource.data.sub is map;
+      }
+
       // ---------- Friends (Meeple codes) ----------
       // users/{uid}/friends/{other}: uid's side of a friendship with `other`.
       //   status: 'outgoing' (uid asked), 'incoming' (other asked uid), 'friends'.

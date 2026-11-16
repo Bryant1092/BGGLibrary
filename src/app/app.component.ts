@@ -8,6 +8,7 @@ import { MapService } from './service/map.service';
 import { ConInfoService } from './service/con-info.service';
 import { FriendsService } from './service/friends.service';
 import { ReactionsService } from './service/reactions.service';
+import { PushService } from './service/push.service';
 import { NewsPromptComponent } from './shared/news-prompt.component';
 import { MapViewerComponent } from './shared/map-viewer.component';
 import { IconComponent } from './shared/icon.component';
@@ -25,6 +26,7 @@ export class AppComponent implements OnInit {
   private hideNavService = inject(HideNavService);
   private friends = inject(FriendsService);
   private reactions = inject(ReactionsService);
+  private push = inject(PushService);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
   watch = inject(WatchService);
@@ -65,6 +67,8 @@ export class AppComponent implements OnInit {
     this.friends.start(this.destroyRef);
     // Your Liked / Want to buy marks, live (shown on every list a game is on).
     this.reactions.start(this.destroyRef);
+    // Keeps this phone's push address saved, so "X is back" arrives with the app closed.
+    this.push.start(this.destroyRef);
   }
 
   /**
