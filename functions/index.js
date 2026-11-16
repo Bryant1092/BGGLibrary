@@ -130,12 +130,11 @@ exports.checkWatchedGames = onSchedule({
     byGame.set(gameId, [...(byGame.get(gameId) || []), uid]);
   }
 
-  const gameIds = [...byGame.keys()];
+  if (tteCoolingDown()) return;
+  const back = await gamesBack(byGame, now);
   let sent = 0;
-  for (let i = 0; i < gameIds.length; i += PARALLEL) {
-    await Promise.all(gameIds.slice(i, i + PARALLEL).map(async gameId => {
-      const game = await fetchGame(gameId);
-      if (!game || Number(game.is_checked_out) !== 0) return;
+  for (const [gameId, game] of back) {
+    {
       for (const uid of byGame.get(gameId)) {
         // Only now are the bells themselves read: one read per person to notify.
         const bell = await db.doc(`users/${uid}/watches/${gameId}`).get();
@@ -149,10 +148,62 @@ exports.checkWatchedGames = onSchedule({
         // syncWatchIndex removes it from the summary.
         await bell.ref.delete().catch(err => logger.warn('could not remove bell', err.message));
       }
+    }
+  }
+  if (sent) logger.info(`${byGame.size} belled games, ${back.size} back, sent ${sent} notifications`);
+});
+
+/**
+ * Which belled games are available again: Map gameId -> game.
+ *
+ * Asking Tabletop.Events about every belled game each run was ~1,200 requests an hour
+ * from one address for 10 people (2026-11-16). Tabletop.Events publishes no limit but
+ * blocks "abuse" (tabletop.events/developer), so instead each run asks for the games
+ * checked in since the previous run, newest first (usually one page), and keeps the
+ * belled ones that are on the shelf. Same 2-minute timing, so alerts are just as quick.
+ *
+ * Asked about directly, one by one (the old way), only when the list can't be trusted:
+ * - a bell added since the last run (its game may have come back just before), and
+ * - the first run after the server starts (no "previous run" to go from) or after a
+ *   failed request, so nothing returned in the meantime is missed.
+ */
+let checkinCursor = 0;
+const knownBells = new Set();
+
+async function gamesBack(byGame, now) {
+  const back = new Map();
+  const direct = checkinCursor ? [...byGame.keys()].filter(id => !knownBells.has(id)) : [...byGame.keys()];
+  let ok = true;
+
+  if (checkinCursor) {
+    // A little overlap with the previous run, in case of clock differences.
+    const since = checkinCursor - 3 * 60 * 1000;
+    for (let page = 1; page <= 20; page++) {
+      const r = await tteJson(`${LIBRARY_GAMES}?_items_per_page=100&_page_number=${page}&_order_by=last_checkin_date&_sort_order=desc`);
+      if (!r?.items) { ok = false; break; }
+      let older = false;
+      for (const g of r.items) {
+        if (tteTime(g.last_checkin_date) < since) { older = true; break; }
+        if (byGame.has(g.id) && Number(g.is_checked_out) === 0) back.set(g.id, g);
+      }
+      if (older || r.items.length < 100) break;
+    }
+  }
+
+  for (let i = 0; i < direct.length; i += PARALLEL) {
+    await Promise.all(direct.slice(i, i + PARALLEL).map(async id => {
+      const { status, result: game } = await fetchGame(id);
+      if (status === 404) return; // gone from the library: nothing to wait for
+      if (!game) { ok = false; return; }
+      if (Number(game.is_checked_out) === 0) back.set(id, game);
     }));
   }
-  if (sent) logger.info(`checked ${gameIds.length} belled games, sent ${sent} notifications`);
-});
+
+  // Only move on when everything was checked; otherwise the next run checks every bell again.
+  if (ok) { checkinCursor = now; byGame.forEach((_, id) => knownBells.add(id)); }
+  else checkinCursor = 0;
+  return back;
+}
 
 /**
  * Starred-event reminders.
@@ -217,14 +268,40 @@ async function remindOwner(db, star, start, now) {
 }
 
 /** The game from Tabletop.Events, or null if the request failed (tried again next run). */
-async function fetchGame(id) {
+/**
+ * Every server request to Tabletop.Events goes through here.
+ * - Names the app in the User-Agent (no personal details), so if Tabletop.Events looks
+ *   at its traffic it can see what this is.
+ * - Backs off: if Tabletop.Events answers 429 (too many requests) or 503 (overloaded),
+ *   all requests from this server pause for 10 minutes instead of retrying.
+ * Returns { status, result } (result null when the request failed).
+ */
+const TTE_HEADERS = { 'User-Agent': 'BGGLibraryFanApp/1.0 (convention library helper)' };
+const TTE_COOLDOWN_MS = 10 * 60 * 1000;
+let tteCooldownUntil = 0;
+
+function tteCoolingDown() {
+  return Date.now() < tteCooldownUntil;
+}
+
+async function tteGet(url, ms = 20000) {
+  if (tteCoolingDown()) return { status: 0, result: null };
   try {
-    const res = await fetch(TTE_GAME(id), { signal: AbortSignal.timeout(15000) });
-    if (!res.ok) return null;
-    return (await res.json())?.result || null;
+    const res = await fetch(url, { headers: TTE_HEADERS, signal: AbortSignal.timeout(ms) });
+    if (res.status === 429 || res.status === 503) {
+      tteCooldownUntil = Date.now() + TTE_COOLDOWN_MS;
+      logger.warn(`Tabletop.Events answered ${res.status}: pausing requests for 10 minutes`);
+    }
+    if (!res.ok) return { status: res.status, result: null };
+    return { status: res.status, result: (await res.json())?.result || null };
   } catch {
-    return null;
+    return { status: 0, result: null };
   }
+}
+
+/** One library game: { status, result }; 404 = no longer in the library. */
+function fetchGame(id) {
+  return tteGet(TTE_GAME(id), 15000);
 }
 
 /** Sends "X is back" to every phone of the bell's owner; returns how many were sent. */
@@ -293,6 +370,9 @@ exports.checkPrizeDrawings = onSchedule({
   maxInstances: 1,
   retryCount: 0,
 }, async () => {
+  // Paused 2-7 AM Dallas like the game alerts: no drawings, checkouts or news then, and
+  // it spares Tabletop.Events overnight. The 7 AM run catches up from where it stopped.
+  if (libraryQuietHours(Date.now()) || tteCoolingDown()) return;
   const { active: con, lastEnd } = await conventionWindow();
   const db = admin.firestore();
   if (!con) {
@@ -520,12 +600,7 @@ async function conventionWindow() {
 }
 
 async function tteJson(url) {
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
-    return res.ok ? (await res.json()).result : null;
-  } catch {
-    return null;
-  }
+  return (await tteGet(url, 20000)).result;
 }
 
 // Same parser as the app's src/app/util/prize-drawing.ts (keep them in step).
