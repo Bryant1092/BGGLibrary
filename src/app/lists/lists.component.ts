@@ -184,6 +184,8 @@ export class ListsComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    document.addEventListener('visibilitychange', this.retryFailed);
+    window.addEventListener('online', this.retryFailed);
     // One stream for detail requests: mergeMap caps parallel requests,
     // catchError per request keeps one failure from stopping the rest, and
     // takeUntilDestroyed cancels anything still queued when the page is left.
@@ -258,9 +260,27 @@ export class ListsComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Availability checks that failed (bad Wi-Fi, app in the background) used to stay
+   * failed until you left My Lists and came back: rows showed grey placeholders and
+   * no shelf. Now they're retried when the app comes back into view or the phone
+   * reconnects, and 20 s after a failure.
+   */
+  private retryFailed = () => {
+    if (document.visibilityState !== 'visible' || !this.failedIds().size) return;
+    const ids = [...this.failedIds()].filter(id => !this.pendingIds.has(id));
+    if (!ids.length) return;
+    ids.forEach(id => this.pendingIds.add(id));
+    this.detailRequests.next(ids);
+  };
+  private retryTimer = setInterval(this.retryFailed, 20_000);
+
   ngOnDestroy(): void {
     clearInterval(this.clock);
     clearInterval(this.outRefresh);
+    clearInterval(this.retryTimer);
+    document.removeEventListener('visibilitychange', this.retryFailed);
+    window.removeEventListener('online', this.retryFailed);
   }
 
   private refreshCheckedOut(): void {

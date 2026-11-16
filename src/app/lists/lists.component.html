@@ -78,7 +78,7 @@
                 Box art first: at the shelf you're scanning for the box, so the picture is what you
                 match against. The shelf badge stays big on the right: which shelf, then which box.
               -->
-              <app-thumb [src]="row.item?.bgg_icon_uri" [name]="row.game.name || ''" [size]="52" [style.opacity]="section.out ? 0.6 : 1" />
+              <app-thumb [src]="row.item?.bgg_icon_uri || row.game.photo" [name]="row.game.name || ''" [size]="52" [style.opacity]="section.out ? 0.6 : 1" />
               <span class="bl-row-text">
                 <span class="bl-name" [style.color]="section.out ? 'var(--bl-muted)' : null">{{ row.game.name }}</span>
                 <span class="bl-meta">

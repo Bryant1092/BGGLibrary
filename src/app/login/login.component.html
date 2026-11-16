@@ -1,5 +1,9 @@
 <div class="login-container">
-    <div *ngIf="!!loginForm" class="shadow rounded card text-center bg-body mx-2 login-card">
+    <div *ngIf="!!loginForm" class="shadow rounded card text-center bg-body mx-2 login-card" style="position: relative">
+        @if (signingIn) {
+            <!-- Covers the form while the profile saves after sign-in (see signingIn). -->
+            <div class="signing-in" role="status"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Signing you in…</div>
+        }
         <div class="card-body">
             <h1 class="mt-4 mb-4">{{ !isRegister ? 'Login' : 'Sign Up' }}</h1>
             @if (!isRegister) {

@@ -42,3 +42,7 @@
     width: 450px;
   }
 }
+
+/* "Signing you in…" over the form while the profile saves after sign-in. */
+.signing-in { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 10px;
+  border-radius: inherit; background: var(--bs-body-bg); font-size: 18px; font-weight: 600; }

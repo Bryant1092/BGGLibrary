@@ -27,6 +27,12 @@ export class LoginComponent implements OnInit, OnDestroy {
   loginForm!: FormGroup;
   isRegister: boolean = false;
   cantLogin: boolean = false;
+  /**
+   * True between "the account is confirmed" and leaving this page. Google sign-in
+   * then saves/checks the profile (1-2 s on phone data); before, the login form just
+   * sat there and looked stuck, so a "Signing you in…" overlay shows instead.
+   */
+  signingIn = false;
   cantRegister: boolean = false;
   redirectUrl = '/';
 
@@ -131,6 +137,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   onSubmit() {
     this.userService.signUserIn(this.loginForm.value.email, this.loginForm.value.password).then((userCredential: any) => {
+      this.signingIn = true;
       // navigateByUrl, not navigate([url]): navigate treats the whole string as
       // one path segment, so a "?" or "#" in the saved URL got encoded and the
       // redirect landed on the 404 page. Same for the two redirects below.
@@ -162,6 +169,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   googleLogin() {
     this.userService.signUserInWithGoogle().then((userCredential: any) => {
+      this.signingIn = true;
       const googleUser = userCredential.user;
       // The old displayName.split(' ')[1] gave undefined for one-word names
       // (and crashed on a missing name), which made Firestore reject the profile.
@@ -178,6 +186,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     }).then(() => {
       this.router.navigateByUrl(this.redirectUrl);
     }).catch(error => {
+      this.signingIn = false;
       console.error('Error logging in with Google:', error);
     });
   }
