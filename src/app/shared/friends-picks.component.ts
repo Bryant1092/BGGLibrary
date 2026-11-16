@@ -30,7 +30,8 @@ type Filter = 'all' | 'most' | 'any';
   imports: [RouterLink, InViewDirective, ThumbComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
-    .chips { padding: 12px 16px 4px; }
+    /* margin 0: .bl-chips normally bleeds into the header's padding; here there's none. */
+    .chips { padding: 12px 16px 4px; margin: 0; }
     .who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .count { font-size: 13px; font-weight: 700; color: var(--bl-accent-text); }
     .dots { display: flex; }
