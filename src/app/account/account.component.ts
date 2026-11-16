@@ -13,6 +13,7 @@ import { WatchService } from '../service/watch.service';
 import { EventRemindersService, REMINDER_CHOICES } from '../service/event-reminders.service';
 import { UserService } from '../service/user.service';
 import { OfflineReadyService } from '../service/offline-ready.service';
+import { AppUpdateService } from '../service/app-update.service';
 import { currentOrNextConvention } from '../util/library-time';
 
 /**
@@ -59,6 +60,9 @@ import { currentOrNextConvention } from '../util/library-time';
     .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; border-radius: 14px; background: var(--bl-surface); border: 1.5px solid var(--bl-control-border); }
     .segmented button { min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--bl-text); font-size: 15px; font-weight: 600; white-space: nowrap; padding: 0 4px; }
     .segmented button[aria-checked="true"] { background: var(--bl-accent); color: var(--bl-on-accent); }
+    /* Version line: small and centered at the very bottom, like Settings › About in most apps. */
+    .version { margin: 8px 16px 24px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--bl-muted); font-size: 13px; }
+    .version .bl-link-btn { font-size: 14px; }
     /* Offline status: one compact card, icon + two lines, like the alerts switch above. */
     .offline { gap: 10px; padding: 12px 16px; }
     .offline-head { display: flex; gap: 12px; align-items: center; }
@@ -201,6 +205,22 @@ import { currentOrNextConvention } from '../util/library-time';
             <p class="muted">New games (blue barcode) are due in 4 hours; others in 8. Midnight to 8 AM doesn't count.</p>
           </div>
         }
+
+        <!--
+          Which version this phone runs (the build's date: newer is obvious at a glance, no
+          number to look up). When someone reports a problem, "what's at the bottom of
+          Account?" says if they're on an old version. "Check for updates" asks right now.
+        -->
+        <div class="version">
+          <span>{{ updates.versionText() }}</span>
+          @if (updates.ready()) {
+            <button type="button" class="bl-link-btn" (click)="updates.update()">Update now</button>
+          } @else if (updates.enabled) {
+            <button type="button" class="bl-link-btn" [disabled]="updates.checkState() === 'checking'" (click)="updates.check(true)">
+              {{ updates.checkState() === 'checking' ? 'Checking…' : updates.checkState() === 'latest' ? 'Up to date ✓' : 'Check for updates' }}
+            </button>
+          }
+        </div>
       </main>
     </div>
   `,
@@ -216,6 +236,7 @@ export class AccountComponent implements OnInit {
   watch = inject(WatchService);
   reminders = inject(EventRemindersService);
   offline = inject(OfflineReadyService);
+  updates = inject(AppUpdateService);
   readonly reminderChoices = REMINDER_CHOICES;
 
   readonly themeOptions: { value: ThemeChoice; label: string }[] = [

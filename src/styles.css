@@ -372,6 +372,11 @@ body {
 .bl-toast span { flex: 1; padding: 8px 0; }
 .bl-toast button { min-height: 44px; padding: 0 14px; border: 0; background: transparent; font-weight: 700; color: var(--bl-toast-action); }
 .bl-toast.error button { color: #fff; text-decoration: underline; }
+/* "A new version is ready" (UpdateBarComponent): toast look, under real toasts (z 60) so
+   "Added to …" still shows on top; hidden while typing and while a sheet is open. */
+.bl-update-bar { z-index: 55; animation: bl-rise .32s cubic-bezier(0.32, 0.72, 0, 1); }
+.bl-update-bar .close { padding: 0 10px; color: var(--bl-toast-muted); display: flex; align-items: center; }
+.bl-typing .bl-update-bar, .bl-sheet-open .bl-update-bar { display: none; }
 
 .bl-tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; height: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom));

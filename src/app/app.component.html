@@ -2,6 +2,8 @@
 <!-- Hidden only on the 404 page, which has its own full-screen layout. -->
 @if (!isHideNav) {
   <app-toast />
+  <!-- "A new version of the app is ready · Update" (AppUpdateService). -->
+  <app-update-bar />
   <!-- "New from BGG" message above the tab bar (see NewsPromptComponent). -->
   <app-news-prompt />
   <app-tab-bar />

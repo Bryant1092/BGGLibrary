@@ -21,11 +21,13 @@ import { SheetComponent } from './shared/sheet.component';
 import { TabBarComponent } from './shared/tab-bar.component';
 import { ToastComponent } from './shared/toast.component';
 import { OfflineReadyService } from './service/offline-ready.service';
+import { AppUpdateService } from './service/app-update.service';
+import { UpdateBarComponent } from './shared/update-bar.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, TabBarComponent, ToastComponent, SheetComponent, IconComponent, MapViewerComponent, NewsPromptComponent, InstallStepsComponent],
+  imports: [RouterOutlet, TabBarComponent, ToastComponent, UpdateBarComponent, SheetComponent, IconComponent, MapViewerComponent, NewsPromptComponent, InstallStepsComponent],
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnInit {
@@ -34,6 +36,7 @@ export class AppComponent implements OnInit {
   private firestoreConnection = inject(FirestoreConnection);
   private eventReminders = inject(EventRemindersService);
   private offlineReady = inject(OfflineReadyService);
+  private appUpdate = inject(AppUpdateService);
   private reactions = inject(ReactionsService);
   private push = inject(PushService);
   prize = inject(PrizeService);
@@ -96,6 +99,8 @@ export class AppComponent implements OnInit {
     // Watches the offline download (search, maps, app) for the Account tab's
     // "Ready offline" line and the one-time "Saved for offline use" toast.
     this.offlineReady.start(this.destroyRef);
+    // Notices new versions (on open, back from the background, every 15 min) for the update bar.
+    this.appUpdate.start(this.destroyRef);
   }
 
   /**
