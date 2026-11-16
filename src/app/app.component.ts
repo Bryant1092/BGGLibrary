@@ -9,6 +9,7 @@ import { PrizeWin } from './util/prize-drawing';
 import { MapService } from './service/map.service';
 import { ConInfoService } from './service/con-info.service';
 import { FriendsService } from './service/friends.service';
+import { FirestoreConnection } from './service/firestore-connection';
 import { ReactionsService } from './service/reactions.service';
 import { PushService } from './service/push.service';
 import { PrizeService } from './service/prize.service';
@@ -28,6 +29,7 @@ import { ToastComponent } from './shared/toast.component';
 export class AppComponent implements OnInit {
   private hideNavService = inject(HideNavService);
   private friends = inject(FriendsService);
+  private firestoreConnection = inject(FirestoreConnection);
   private reactions = inject(ReactionsService);
   private push = inject(PushService);
   prize = inject(PrizeService);
@@ -75,6 +77,9 @@ export class AppComponent implements OnInit {
     // Also here, so new BGG posts are noticed (badge + message) whichever tab is open.
     this.conInfo.start(this.destroyRef);
     // Friends and requests, live, so a new request shows on the Account tab from any tab.
+    // Reconnects Firestore after the Home Screen app comes back from the background,
+    // so the first tap doesn't wait on a dead connection (FirestoreConnection).
+    this.firestoreConnection.start(this.destroyRef);
     this.friends.start(this.destroyRef);
     // Your Liked / Want to buy marks, live (shown on every list a game is on).
     this.reactions.start(this.destroyRef);

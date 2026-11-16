@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Friend, FriendsService, normalizeCode } from '../service/friends.service';
+import { FirestoreTimeout } from '../service/firestore-connection';
 import { ToastService } from '../service/toast.service';
 import { FriendSheetComponent } from './friend-sheet.component';
 import { SheetComponent } from './sheet.component';
@@ -68,7 +69,8 @@ import { IconComponent } from './icon.component';
         <label class="visually-hidden" for="friend-code">Friend's Meeple code</label>
         <input #codeInput id="friend-code" class="bl-input" placeholder="Friend's code (MEEP-…)" autocomplete="off"
                autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="send" maxlength="12">
-        <button type="submit" class="bl-btn" [disabled]="busy()">Add</button>
+        <!-- Says it's working: a gray "Add" alone looked stuck on slow con Wi-Fi. -->
+        <button type="submit" class="bl-btn" [disabled]="busy()">{{ busy() ? 'Checking…' : 'Add' }}</button>
       </form>
 
       @if (friends.incoming().length) {
@@ -116,7 +118,7 @@ import { IconComponent } from './icon.component';
       <app-sheet [label]="'Add ' + c.name" (closed)="confirm.set(null)">
         <h2>Add {{ c.name }}?</h2>
         <p class="bl-sheet-note">They'll get a request. Once they accept, you'll each see the other's lists that have "Friends can see" on.</p>
-        <button type="button" class="bl-btn" [disabled]="busy()" (click)="send(c.code)">Send request</button>
+        <button type="button" class="bl-btn" [disabled]="busy()" (click)="send(c.code)">{{ busy() ? 'Sending…' : 'Send request' }}</button>
         <button type="button" class="bl-btn secondary" (click)="confirm.set(null)">Cancel</button>
       </app-sheet>
     }
@@ -170,7 +172,8 @@ export class FriendsCardComponent implements OnInit {
       if (existing?.status === 'outgoing') { this.toast.show({ text: `Still waiting for ${found.name} to accept` }); return; }
       this.confirm.set({ code, name: found.name });
     } catch {
-      this.toast.error("Couldn't check that code. Check your connection.");
+      // Includes FirestoreTimeout: the app already reconnected and tried twice.
+      this.toast.error("Couldn't reach the server to check that code. Try again in a moment.");
     } finally {
       this.busy.set(false);
     }
@@ -184,7 +187,13 @@ export class FriendsCardComponent implements OnInit {
       const input = document.getElementById('friend-code') as HTMLInputElement | null;
       if (input) input.value = '';
       this.toast.show({ text: r.result === 'accepted' ? `You and ${r.name} are now friends` : `Request sent to ${r.name}` });
-    } catch {
+    } catch (err) {
+      if (err instanceof FirestoreTimeout) {
+        // The request is queued on this phone and goes out when the connection is back.
+        this.confirm.set(null);
+        this.toast.show({ text: "Slow connection: your request will send as soon as it's back." });
+        return;
+      }
       this.toast.error("Couldn't send the request. Check your connection.");
     } finally {
       this.busy.set(false);

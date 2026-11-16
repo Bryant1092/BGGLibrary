@@ -7,6 +7,7 @@ import { combineLatest, Observable, of } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
 import { Game } from '../model/game.model';
 import { UserService } from './user.service';
+import { FirestoreConnection } from './firestore-connection';
 import { GameService } from './game.service';
 import { ReactionsService } from './reactions.service';
 
@@ -87,6 +88,7 @@ export function shortName(first: string, last: string): string {
 @Injectable({ providedIn: 'root' })
 export class FriendsService {
   private firestore = inject(Firestore);
+  private conn = inject(FirestoreConnection);
   private userService = inject(UserService);
   private gameService = inject(GameService);
   private reactions = inject(ReactionsService);
@@ -198,13 +200,13 @@ export class FriendsService {
     const code = normalizeCode(input);
     if (!code) throw new Error('bad-code');
     const uid = this.uid();
-    const owner = await getDoc(doc(this.firestore, 'codes', code));
+    const owner = await this.conn.read(() => getDoc(doc(this.firestore, 'codes', code)));
     if (!owner.exists()) throw new Error('no-code');
     const other = owner.data()['uid'] as string;
     if (other === uid) return { result: 'self', name: '' };
 
     const [theirProfile, mine] = await Promise.all([this.profile(other), this.myCode()]);
-    const existing = await getDoc(doc(this.firestore, 'users', uid, 'friends', other));
+    const existing = await this.conn.read(() => getDoc(doc(this.firestore, 'users', uid, 'friends', other)));
     const status = existing.data()?.['status'] as FriendStatus | undefined;
     if (status === 'friends' || status === 'outgoing') return { result: 'already', name: theirProfile.name };
     if (status === 'incoming') {
@@ -214,7 +216,9 @@ export class FriendsService {
     const batch = writeBatch(this.firestore);
     batch.set(doc(this.firestore, 'users', uid, 'friends', other), { status: 'outgoing', name: theirProfile.name, code, at: serverTimestamp() });
     batch.set(doc(this.firestore, 'users', other, 'friends', uid), { status: 'incoming', name: mine.name, code: mine.code, at: serverTimestamp() });
-    await batch.commit();
+    // Waits with a time limit; if it runs out the request is still queued and sends
+    // when the connection is back (the page says so).
+    await this.conn.write(batch.commit());
     return { result: 'sent', name: theirProfile.name };
   }
 
@@ -238,7 +242,7 @@ export class FriendsService {
 
   /** Name and code for a uid (from a Meeple code lookup). */
   async profile(uid: string): Promise<{ name: string; code: string }> {
-    const snap = await getDoc(doc(this.firestore, 'profiles', uid));
+    const snap = await this.conn.read(() => getDoc(doc(this.firestore, 'profiles', uid)));
     return (snap.data() as { name: string; code: string }) || { name: 'Player', code: '' };
   }
 
@@ -256,7 +260,9 @@ export class FriendsService {
   async lookup(input: string): Promise<{ uid: string; name: string } | null> {
     const code = normalizeCode(input);
     if (!code) return null;
-    const owner = await getDoc(doc(this.firestore, 'codes', code));
+    // Time-limited (FirestoreConnection): a stale connection after the app was in the
+    // background used to leave "Add" stuck with no message.
+    const owner = await this.conn.read(() => getDoc(doc(this.firestore, 'codes', code)));
     if (!owner.exists()) return null;
     const uid = owner.data()['uid'] as string;
     return { uid, name: (await this.profile(uid)).name };
