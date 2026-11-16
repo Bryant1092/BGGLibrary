@@ -9,6 +9,31 @@ export function playersText(game: Pick<BggItem, 'min_players' | 'max_players'>):
   return game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}–${game.max_players}`;
 }
 
+/**
+ * Players / play time filters, shared by the Library (shelf lists), My Lists and Friends'
+ * picks so "4 players" and "Up to 1 hour" mean the same everywhere. Play time goes by the
+ * box's longest time (max_play_time), as the Library's server-side filter does; 0 means
+ * the library has no time for the game, so it matches no play-time choice.
+ */
+export type PlayTimeChoice = 'upTo30' | 'upTo60' | 'over60';
+export const PLAY_TIME_CHOICES: { value: PlayTimeChoice; label: string }[] = [
+  { value: 'upTo30', label: 'Up to 30 min' },
+  { value: 'upTo60', label: 'Up to 1 hour' },
+  { value: 'over60', label: 'Over 1 hour' },
+];
+export const PLAYER_CHOICES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+/** True when the game plays with exactly this many people (min ≤ n ≤ max). */
+export function fitsPlayers(game: Pick<BggItem, 'min_players' | 'max_players'>, players: number | null): boolean {
+  return !players || (game.min_players <= players && players <= game.max_players);
+}
+
+export function fitsPlayTime(game: Pick<BggItem, 'max_play_time'>, choice: PlayTimeChoice | null): boolean {
+  if (!choice) return true;
+  const max = Number(game.max_play_time) || 0;
+  return choice === 'upTo30' ? max > 0 && max <= 30 : choice === 'upTo60' ? max > 0 && max <= 60 : max > 60;
+}
+
 /** "30–45" minutes (or "30"). */
 export function minutesText(game: Pick<BggItem, 'min_play_time' | 'max_play_time'>): string {
   return game.min_play_time === game.max_play_time ? `${game.min_play_time}` : `${game.min_play_time}–${game.max_play_time}`;

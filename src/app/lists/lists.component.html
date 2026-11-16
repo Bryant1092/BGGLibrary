@@ -80,7 +80,9 @@
       </div>
     }
     @if (view() === 'picks') {
-      <app-friends-picks [lists]="lists() || []" [uid]="uid()" (listChosen)="pickList($event)" />
+      <!-- Players / play time are shared with My lists, so they stay set when switching views. -->
+      <app-friends-picks [lists]="lists() || []" [uid]="uid()" (listChosen)="pickList($event)"
+                         [(players)]="players" [(playTime)]="playTime" />
     } @else if (view() === 'buy') {
       <app-buy-list />
     } @else if (lists() === null || (selectedId() && games() === null)) {
@@ -108,6 +110,11 @@
         <a class="bl-btn outline" routerLink="/library/home" style="text-decoration: none">Go to the Library</a>
       </div>
     } @else {
+      <!--
+        Players / play time: how the group picks the next game ("5 of us, about an hour").
+        In the list rather than the pinned header, which already has four rows.
+      -->
+      <app-play-filters [(players)]="players" [(playTime)]="playTime" />
       @for (section of sections(); track section.title) {
         <h2 class="bl-section">{{ section.title }}</h2>
         @for (row of section.rows; track row.game.id) {
@@ -174,12 +181,20 @@
           </div>
         }
       } @empty {
+        @if (players() || playTime()) {
+          <div class="bl-empty">
+            <p class="title">No games fit {{ playFilterText() }}</p>
+            <p class="body">Try another number of players or play time.</p>
+            <button type="button" class="bl-btn outline" (click)="players.set(null); playTime.set(null)">Clear players and time</button>
+          </div>
+        } @else {
         <!-- A filter with no matches (e.g. nothing marked Want to buy yet). -->
         <div class="bl-empty">
           <p class="title">{{ filter() === 'toplay' ? 'You\'ve played everything here' : filter() === 'liked' ? 'No liked games yet' : 'Nothing to buy yet' }}</p>
           <p class="body">Tick Played after a game to rate it, or open a game to mark Liked or Want to buy.</p>
           <button type="button" class="bl-btn outline" (click)="filter.set('all')">Show all games</button>
         </div>
+        }
       }
     }
   </main>

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, input, model, OnInit, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { catchError, mergeMap, of, Subject } from 'rxjs';
@@ -11,7 +11,8 @@ import { GameService } from '../service/game.service';
 import { UserService } from '../service/user.service';
 import { WatchService } from '../service/watch.service';
 import { ToastService } from '../service/toast.service';
-import { minutesText, playersText, shelfText, statusText } from '../util/game-format';
+import { fitsPlayers, fitsPlayTime, minutesText, PlayTimeChoice, playersText, shelfText, statusText } from '../util/game-format';
+import { PlayFiltersComponent } from './play-filters.component';
 import { GameSheetComponent } from './game-sheet.component';
 import { ListPickerSheetComponent } from './list-picker-sheet.component';
 import { RatingControlsComponent } from './rating-controls.component';
@@ -34,7 +35,7 @@ type Filter = 'all' | 'most' | 'any';
 @Component({
   selector: 'app-friends-picks',
   standalone: true,
-  imports: [RouterLink, InViewDirective, ThumbComponent, IconComponent, GameSheetComponent, ListPickerSheetComponent, RatingControlsComponent],
+  imports: [RouterLink, InViewDirective, ThumbComponent, IconComponent, GameSheetComponent, ListPickerSheetComponent, RatingControlsComponent, PlayFiltersComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     /* margin 0: .bl-chips normally bleeds into the header's padding; here there's none. */
@@ -66,6 +67,8 @@ type Filter = 'all' | 'most' | 'any';
         <a class="bl-btn outline" routerLink="/account" style="text-decoration: none">Add friends</a>
       </div>
     } @else {
+      <!-- "5 of us, about an hour": same filters as My lists (values shared with it). -->
+      <app-play-filters [(players)]="players" [(playTime)]="playTime" />
       <div class="bl-chips chips" role="radiogroup" aria-label="Show games wanted by">
         @for (f of filters(); track f.value) {
           <button type="button" class="bl-chip" role="radio" [class.on]="filter() === f.value" [attr.aria-checked]="filter() === f.value" (click)="filter.set(f.value)">{{ f.label }}</button>
@@ -99,8 +102,8 @@ type Filter = 'all' | 'most' | 'any';
                   <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ shelf(item) }}</span>
                 </span>
                 <span class="bl-meta">
-                  <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ players(item) }}</span>
-                  <span><bl-icon name="clock" [size]="15" />{{ minutes(item) }} min</span>
+                  <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ playersOf(item) }}</span>
+                  <span><bl-icon name="clock" [size]="15" />{{ minutesOf(item) }} min</span>
                 </span>
               } @else {
                 <span class="bl-status-line"><span class="bl-pill checking">Checking…</span></span>
@@ -114,7 +117,15 @@ type Filter = 'all' | 'most' | 'any';
           }
         </div>
       } @empty {
-        <div class="bl-empty"><p class="title">No games match</p><p class="body">Try "Anyone" to see every game your group wants.</p></div>
+        @if (players() || playTime()) {
+          <div class="bl-empty">
+            <p class="title">No picks fit these filters</p>
+            <p class="body">Try another number of players or play time{{ filter() !== 'any' ? ', or "Anyone"' : '' }}.</p>
+            <button type="button" class="bl-btn outline" (click)="players.set(null); playTime.set(null)">Clear players and time</button>
+          </div>
+        } @else {
+          <div class="bl-empty"><p class="title">No games match</p><p class="body">Try "Anyone" to see every game your group wants.</p></div>
+        }
       }
     }
 
@@ -156,6 +167,9 @@ export class FriendsPicksComponent implements OnInit {
    * same as choosing it anywhere else, so the Library's + button adds there too.
    */
   listChosen = output<UserGameListRef>();
+  /** Players / play time filters, two-way bound to My Lists so both views share them. */
+  players = model<number | null>(null);
+  playTime = model<PlayTimeChoice | null>(null);
 
   sheet = signal<'details' | 'lists' | null>(null);
   private selectedId = signal<string | null>(null);
@@ -187,8 +201,25 @@ export class FriendsPicksComponent implements OnInit {
     const d = this.data();
     if (!d) return [];
     const need = this.filter() === 'all' ? d.people.length : this.filter() === 'most' ? this.mostCount() : 1;
-    return d.games.filter(p => p.wantedBy.length >= need);
+    const players = this.players(), time = this.playTime();
+    return d.games.filter(p => {
+      if (p.wantedBy.length < need) return false;
+      if (!players && !time) return true;
+      // Still loading: keep the row ("Checking…") until its players / time are known.
+      const item = this.best(p);
+      return !item || (fitsPlayers(item, players) && fitsPlayTime(item, time));
+    });
   });
+
+  constructor() {
+    // Rows normally load their details as they scroll into view. With a players / time
+    // filter on, every pick needs its details to know whether it fits, so ask for all of
+    // them (4 at a time, each only once).
+    effect(() => {
+      if (!this.players() && !this.playTime()) return;
+      (this.data()?.games || []).forEach(p => this.wantCopies(p));
+    });
+  }
 
   ngOnInit(): void {
     this.friends.picks$().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => this.data.set(d));
@@ -260,11 +291,11 @@ export class FriendsPicksComponent implements OnInit {
     this.watch.toggle({ id: item.id, name: item.name, shelf: shelfText(item) });
   }
 
-  players(item: BggItem): string {
+  playersOf(item: BggItem): string {
     return playersText(item);
   }
 
-  minutes(item: BggItem): string {
+  minutesOf(item: BggItem): string {
     return minutesText(item);
   }
 

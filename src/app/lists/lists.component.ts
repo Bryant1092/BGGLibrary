@@ -25,7 +25,8 @@ import { InstallService } from '../service/install.service';
 import { Friend, FriendsService } from '../service/friends.service';
 import { ThumbComponent } from '../shared/thumb.component';
 import { dueInfo, shortDuration } from '../util/library-time';
-import { checkedInText, minutesText, playersText, shelfText, statusText } from '../util/game-format';
+import { checkedInText, fitsPlayers, fitsPlayTime, minutesText, PLAY_TIME_CHOICES, PlayTimeChoice, playersText, shelfText, statusText } from '../util/game-format';
+import { PlayFiltersComponent } from '../shared/play-filters.component';
 
 /**
  * How many game-detail requests to send to Tabletop.Events at once.
@@ -88,7 +89,7 @@ type ListFilter = 'all' | 'toplay' | 'liked' | 'buy';
 @Component({
   selector: 'app-lists',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent, FriendsPicksComponent, RatingControlsComponent, BuyListComponent],
+  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent, FriendsPicksComponent, RatingControlsComponent, BuyListComponent, PlayFiltersComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './lists.component.html',
 })
@@ -105,6 +106,9 @@ export class ListsComponent implements OnInit, OnDestroy {
   private reactions = inject(ReactionsService);
   install = inject(InstallService);
   filter = signal<ListFilter>('all');
+  /** Players / play time filters (PlayFiltersComponent), shared with Friends' picks. */
+  players = signal<number | null>(null);
+  playTime = signal<PlayTimeChoice | null>(null);
   /** The game the "How was it?" prompt is about (after ticking Played). */
   rating = signal<Game | null>(null);
 
@@ -197,11 +201,26 @@ export class ListsComponent implements OnInit, OnDestroy {
     });
   });
 
+  /**
+   * Rows that fit the players / play time filters. Rows still loading stay (they're
+   * filtered as soon as their details arrive) so the list doesn't look empty meanwhile.
+   */
+  private playRows = computed(() => {
+    const p = this.players(), t = this.playTime();
+    return this.rows().filter(r => !r.item || (fitsPlayers(r.item, p) && fitsPlayTime(r.item, t)));
+  });
+
+  /** "4 players and up to 1 hour", for the no-matches message. */
+  playFilterText = computed(() => {
+    const p = this.players(), t = this.playTime();
+    return [p ? `${p} ${p === 1 ? 'player' : 'players'}` : '', t ? PLAY_TIME_CHOICES.find(c => c.value === t)!.label.toLowerCase() : ''].filter(Boolean).join(' and ');
+  });
+
   /** Available games first (what you can grab now), then checked-out ones by soonest due back. */
   sections = computed(() => {
     const byName = (a: ListRow, b: ListRow) => (a.game.name || '').localeCompare(b.game.name || '');
     const f = this.filter();
-    const rows = this.rows().filter(r => f === 'all' || (f === 'toplay' && !r.game.played) || (f === 'liked' && r.liked === true) || (f === 'buy' && r.buy));
+    const rows = this.playRows().filter(r => f === 'all' || (f === 'toplay' && !r.game.played) || (f === 'liked' && r.liked === true) || (f === 'buy' && r.buy));
     const available = rows.filter(r => r.item && !r.item.is_checked_out).sort(byName);
     const out = rows.filter(r => r.item?.is_checked_out).sort((a, b) => a.dueAt - b.dueAt || byName(a, b));
     const unknown = rows.filter(r => !r.item).sort(byName);
@@ -471,7 +490,8 @@ export class ListsComponent implements OnInit, OnDestroy {
 
   /** Counts for the filter chips. */
   filterCounts = computed(() => {
-    const rows = this.rows();
+    // Counts follow the players / play time filters, so they match what each chip shows.
+    const rows = this.playRows();
     return { all: rows.length, toplay: rows.filter(r => !r.game.played).length, liked: rows.filter(r => r.liked === true).length, buy: rows.filter(r => r.buy).length };
   });
 
