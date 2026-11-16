@@ -50,8 +50,13 @@ import { currentOrNextConvention } from '../util/library-time';
     .alerts > span:first-child { flex: 1; display: flex; flex-direction: column; gap: 3px; }
     .alerts strong { font-size: 16px; }
     .alerts small { color: var(--bl-muted); font-size: 13px; line-height: 18px; }
-    .segmented { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--bl-surface); border: 1.5px solid var(--bl-control-border); }
-    .segmented button { min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--bl-text); font-size: 15px; font-weight: 600; }
+    /*
+      One row of equal segments, however many options (Appearance has 3, event reminders 4).
+      It was fixed at 3 columns, so a 4th option wrapped to a second row and looked broken.
+      Apple HIG (segmented controls): equal widths, one line, up to about 5 segments on iPhone.
+    */
+    .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; border-radius: 14px; background: var(--bl-surface); border: 1.5px solid var(--bl-control-border); }
+    .segmented button { min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--bl-text); font-size: 15px; font-weight: 600; white-space: nowrap; padding: 0 4px; }
     .segmented button[aria-checked="true"] { background: var(--bl-accent); color: var(--bl-on-accent); }
   `,
   template: `
