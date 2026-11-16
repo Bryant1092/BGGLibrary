@@ -26,6 +26,16 @@
       }
     },
     {
+      "name": "search",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/shelves/search.json"
+        ]
+      }
+    },
+    {
       "name": "shelves",
       "installMode": "lazy",
       "updateMode": "prefetch",

@@ -24,6 +24,8 @@ import { isHotGame, matchHotGames } from '../util/hot-games';
 import { MapService } from '../service/map.service';
 import { UpNextComponent } from '../shared/up-next.component';
 import { ConPopularComponent } from '../shared/con-popular.component';
+import { LocalResultsComponent } from './local-results.component';
+import { LocalSearchService } from '../service/local-search.service';
 import { ConCheckoutsService } from '../service/con-checkouts.service';
 import { InViewDirective } from '../shared/in-view.directive';
 import { RatingControlsComponent } from '../shared/rating-controls.component';
@@ -83,7 +85,7 @@ export class LibraryPageState {
 @Component({
   selector: 'app-library',
   standalone: true,
-  imports: [InViewDirective, RatingControlsComponent, IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent, UpNextComponent, ConPopularComponent],
+  imports: [InViewDirective, RatingControlsComponent, IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent, UpNextComponent, ConPopularComponent, LocalResultsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './library.component.html',
 })
@@ -182,6 +184,19 @@ export class LibraryComponent implements OnInit, OnDestroy {
    * convention instead of a library search. Separate from filters().sort because it
    * isn't a Tabletop.Events sort order. Turned off when another sort is picked.
    */
+  /**
+   * Name searches answered on the phone (LocalSearchService, LocalResultsComponent).
+   * Tabletop.Events' name search took 11-60 s on 2026-11-16 while single-game requests
+   * stayed fast. Used for every sort except "Just returned" (needs live check-in times),
+   * and only when the saved list has matches (otherwise the library search runs).
+   */
+  private localSearch = inject(LocalSearchService);
+  localMatches = computed(() => {
+    const f = this.filters();
+    return f.query && !f.shelf ? this.localSearch.search(f.query) : [];
+  });
+  localMode = computed(() => !this.conMode() && this.filters().sort !== 'returned' && this.localMatches().length > 0);
+
   conCheckouts = inject(ConCheckoutsService);
   conMode = signal(false);
   conName = computed(() => currentOrNextConvention(this.now())?.name || 'this convention');
@@ -405,6 +420,9 @@ export class LibraryComponent implements OnInit, OnDestroy {
     // Browsing a shelf filters on the phone (ShelfListComponent), so there's nothing to ask
     // Tabletop.Events; the normal results reload when the shelf is cleared.
     if (this.filters().shelf) return;
+    // Searching by name is answered on the phone (localMode): no slow name search on
+    // Tabletop.Events. It's only asked when the saved list has no match.
+    if (this.localMode()) { this.loading.set(false); return; }
     this.requests.next({ page: 1, append: false });
   }
 

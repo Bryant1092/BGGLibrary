@@ -59,7 +59,7 @@ export function shelfSlug(shelf) {
  * is on C). Must match letterOf() in shelf-list.component.ts.
  */
 function sortKey(name) {
-  return name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^[^a-z0-9]+/i, '').replace(/^(the|an|a)s+/i, '').toLowerCase();
+  return name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^[^a-z0-9]+/i, '').replace(/^(the|an|a)\s+/i, '').toLowerCase();
 }
 
 const first = await getPage(1);
@@ -97,5 +97,27 @@ for (const [shelf, games] of byShelf) {
 }
 shelves.sort((a, b) => a.shelf.localeCompare(b.shelf));
 await writeFile(new URL('index.json', OUT), JSON.stringify({ builtAt, total: items.length, thumbHost: THUMB_HOST, shelves }, null, 1));
+
+/*
+ * search.json: every game in one file, for the Library's search box (LocalSearchService).
+ *
+ * Why: Tabletop.Events' name search took 11-60 s per search on 2026-11-16 (simple
+ * requests stayed under 0.5 s), and con Wi-Fi is often overloaded. Searching this list
+ * on the phone is instant and works offline; each row still gets its live status
+ * (Available / Out) from Tabletop.Events, one fast request per game on screen.
+ * The service worker downloads it in the background at install/update
+ * (ngsw-config "search" group), so it's on the phone before anyone searches.
+ *
+ * Rows: [id, name, minPlayers, maxPlayers, minMinutes, maxMinutes, thumbnail, shelf,
+ *        added (Unix seconds; for "Newest"), all-time checkouts (for "Most played")]
+ */
+const tteSeconds = value => value ? Math.round(new Date(String(value).trim().replace(' ', 'T') + 'Z').getTime() / 1000) || 0 : 0;
+const searchRows = items.map(g => [
+  g.id, (g.name || '').trim(), Number(g.min_players) || 0, Number(g.max_players) || 0,
+  Number(g.min_play_time) || 0, Number(g.max_play_time) || 0, (g.bgg_icon_uri || '').replace(THUMB_HOST, '~'),
+  (g.custom_fields?.Location || '').trim(), tteSeconds(g.date_created), Number(g.checkout_count) || 0,
+]).sort((a, b) => sortKey(a[1]).localeCompare(sortKey(b[1])));
+await writeFile(new URL('search.json', OUT), JSON.stringify({ builtAt, thumbHost: THUMB_HOST, games: searchRows }));
+console.log(`Wrote search.json (${searchRows.length} games)`);
 console.log(`Wrote ${shelves.length} shelves (${items.length} games) to public/shelves/:`);
 console.log(shelves.map(s => `${s.shelf}=${s.count}`).join(', '));

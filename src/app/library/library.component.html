@@ -103,7 +103,7 @@
         </div>
       </div>
     }
-    @if (hotMatches().length && items().length) {
+    @if (hotMatches().length && (items().length || localMode())) {
       <h2 class="bl-section">Also in the checkout library</h2>
     }
 
@@ -137,7 +137,17 @@
       }
       <h2 class="bl-section">All games · {{ sortChip() }}</h2>
     }
-    @if (loading() && items().length === 0) {
+    @if (localMode()) {
+      <!--
+        Search results found on the phone (LocalSearchService): instant even when Tabletop.Events
+        or the Wi-Fi is slow; each row's status is still live. Falls back to the library search
+        below when nothing matches here (e.g. a game added after the saved list was made).
+      -->
+      <app-local-results [games]="localMatches()" [sort]="filters().sort" [availableOnly]="filters().availableOnly"
+                         [players]="filters().players" [playTime]="filters().playTime" [now]="now()"
+                         [listIds]="listGameIds()" [busyIds]="busyIds()" [listName]="signedIn() ? currentList()?.name : undefined"
+                         (open)="openDetails($event)" (toggle)="toggleGame($event)" />
+    } @else if (loading() && items().length === 0) {
       <!-- Placeholder rows instead of a spinner, so the page doesn't jump when results arrive. -->
       @for (n of [1, 2, 3, 4, 5, 6]; track n) {
         <div class="bl-row" aria-hidden="true">
