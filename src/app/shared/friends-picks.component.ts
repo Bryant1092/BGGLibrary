@@ -1,13 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, input, model, OnInit, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { catchError, mergeMap, of, Subject } from 'rxjs';
+import { catchError, map, mergeMap, of, Subject } from 'rxjs';
 import { BggItem } from '../model/bgg.model';
 import { Game } from '../model/game.model';
 import { BggService } from '../service/bgg.service';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
 import { FriendsService, GamePick } from '../service/friends.service';
 import { GameService } from '../service/game.service';
+import { GameDetailsCache } from '../service/game-details-cache';
 import { UserService } from '../service/user.service';
 import { WatchService } from '../service/watch.service';
 import { ToastService } from '../service/toast.service';
@@ -51,6 +52,7 @@ type Filter = 'all' | 'most' | 'any';
     .verdict span { display: inline-flex; align-items: center; gap: 4px; }
     .verdict .up { color: var(--bl-avail-text); }
     .verdict .down { color: var(--bl-muted); }
+    .checking-more { padding: 14px 16px; text-align: center; }
     .people { display: flex; flex-direction: column; gap: 4px; border-radius: 12px; padding: 12px 14px; background: var(--bl-field); font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
     .people small { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-muted); }
     .people .up, .people .down { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
@@ -117,7 +119,9 @@ type Filter = 'all' | 'most' | 'any';
           }
         </div>
       } @empty {
-        @if (players() || playTime()) {
+        @if (checkingCount()) {
+          <!-- Nothing fits yet, but some picks haven't been checked: don't say "no picks" too early. -->
+        } @else if (players() || playTime()) {
           <div class="bl-empty">
             <p class="title">No picks fit these filters</p>
             <p class="body">Try another number of players or play time{{ filter() !== 'any' ? ', or "Anyone"' : '' }}.</p>
@@ -126,6 +130,9 @@ type Filter = 'all' | 'most' | 'any';
         } @else {
           <div class="bl-empty"><p class="title">No games match</p><p class="body">Try "Anyone" to see every game your group wants.</p></div>
         }
+      }
+      @if (checkingCount(); as n) {
+        <p class="bl-sheet-note checking-more" role="status">Checking {{ n }} more {{ n === 1 ? 'game' : 'games' }}…</p>
       }
     }
 
@@ -184,9 +191,16 @@ export class FriendsPicksComponent implements OnInit {
 
   data = signal<{ people: { uid: string; name: string }[]; games: GamePick[] } | null>(null);
   filter = signal<Filter>('any');
-  details = signal<Map<string, BggItem>>(new Map());
+  /**
+   * Starts from details already known (from My Lists or an earlier visit here), so
+   * coming back with a players / time filter on shows the filtered list at once.
+   */
+  private cache = inject(GameDetailsCache);
+  details = signal<Map<string, BggItem>>(this.cache.items());
   added = signal<Set<string>>(new Set());
   private requested = new Set<string>();
+  /** Copies whose lookup failed (offline / timeout); not counted as "checking". */
+  private failed = signal<Set<string>>(new Set());
   private queue = new Subject<string>();
   now = Date.now();
 
@@ -205,10 +219,20 @@ export class FriendsPicksComponent implements OnInit {
     return d.games.filter(p => {
       if (p.wantedBy.length < need) return false;
       if (!players && !time) return true;
-      // Still loading: keep the row ("Checking…") until its players / time are known.
+      // Not checked yet: hidden until its players / time are known (counted in
+      // "Checking N more games…"), so the list only grows instead of shrinking.
       const item = this.best(p);
-      return !item || (fitsPlayers(item, players) && fitsPlayTime(item, time));
+      return !!item && fitsPlayers(item, players) && fitsPlayTime(item, time);
     });
+  });
+
+  /** With a players / time filter on: picks still being checked (not shown yet). */
+  checkingCount = computed(() => {
+    const d = this.data();
+    if (!d || (!this.players() && !this.playTime())) return 0;
+    const need = this.filter() === 'all' ? d.people.length : this.filter() === 'most' ? this.mostCount() : 1;
+    const failed = this.failed();
+    return d.games.filter(p => p.wantedBy.length >= need && !this.best(p) && !p.copies.every(c => failed.has(c.id!))).length;
   });
 
   constructor() {
@@ -224,16 +248,30 @@ export class FriendsPicksComponent implements OnInit {
   ngOnInit(): void {
     this.friends.picks$().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => this.data.set(d));
     this.queue.pipe(
-      mergeMap(id => this.bgg.getBggGameInfo(id).pipe(catchError(() => of(null))), 4),
+      mergeMap(id => this.bgg.getBggGameInfo(id).pipe(map((r: any) => ({ id, r })), catchError(() => of({ id, r: null }))), 4),
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe((r: any) => {
+    ).subscribe(({ id, r }) => {
       const item = r?.result as BggItem | undefined;
-      if (item?.id) this.details.update(m => new Map(m).set(item.id, item));
+      if (!item?.id) {
+        // Lost on con Wi-Fi: stop counting it as "checking" and allow a retry the
+        // next time the view opens or a filter changes.
+        this.requested.delete(id);
+        this.failed.update(s => new Set(s).add(id));
+        return;
+      }
+      this.failed.update(s => { if (!s.has(id)) return s; const n = new Set(s); n.delete(id); return n; });
+      this.cache.set(item.id, item);
+      this.details.update(m => new Map(m).set(item.id, item));
     });
   }
 
+  /**
+   * Asks the library for a game once per visit, unless it was checked in the last
+   * 2 minutes. Older remembered details stay on screen meanwhile (players and time
+   * never change; availability is replaced when the answer arrives).
+   */
   want(id: string): void {
-    if (!id || this.requested.has(id)) return;
+    if (!id || this.requested.has(id) || this.cache.isFresh(id)) return;
     this.requested.add(id);
     this.queue.next(id);
   }

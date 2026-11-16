@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, Injectable, OnDestroy, OnInit, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, OnDestroy, OnInit, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -27,6 +27,7 @@ import { ThumbComponent } from '../shared/thumb.component';
 import { dueInfo, shortDuration } from '../util/library-time';
 import { checkedInText, fitsPlayers, fitsPlayTime, minutesText, PLAY_TIME_CHOICES, PlayTimeChoice, playersText, shelfText, statusText } from '../util/game-format';
 import { PlayFiltersComponent } from '../shared/play-filters.component';
+import { GameDetailsCache } from '../service/game-details-cache';
 
 /**
  * How many game-detail requests to send to Tabletop.Events at once.
@@ -35,33 +36,6 @@ import { PlayFiltersComponent } from '../shared/play-filters.component';
  * about 1.5 s without flooding their server.
  */
 const DETAIL_REQUEST_CONCURRENCY = 6;
-
-/** Details younger than this are reused when coming back to My Lists. */
-const DETAILS_FRESH_MS = 2 * 60_000;
-
-/**
- * Game details kept while the app is open. The page used to re-download every
- * game in the list each time you switched to the My Lists tab; now details
- * from the last 2 minutes are reused, and older ones are shown immediately
- * while fresh ones load.
- */
-@Injectable({ providedIn: 'root' })
-export class ListDetailsCache {
-  private entries = new Map<string, { item: BggItem; at: number }>();
-
-  items(): Map<string, BggItem> {
-    return new Map([...this.entries].map(([id, entry]) => [id, entry.item]));
-  }
-
-  isFresh(id: string): boolean {
-    const entry = this.entries.get(id);
-    return !!entry && Date.now() - entry.at < DETAILS_FRESH_MS;
-  }
-
-  set(id: string, item: BggItem): void {
-    this.entries.set(id, { item, at: Date.now() });
-  }
-}
 
 type ListSheet = 'lists' | 'rate' | 'details' | 'actions' | 'create' | 'rename' | 'share' | 'delete' | null;
 
@@ -100,7 +74,8 @@ export class ListsComponent implements OnInit, OnDestroy {
   private toast = inject(ToastService);
   private destroyRef = inject(DestroyRef);
   watch = inject(WatchService);
-  private cache = inject(ListDetailsCache);
+  /** Shared with Friends' picks (service/game-details-cache.ts). */
+  private cache = inject(GameDetailsCache);
   private recent = inject(RecentService);
   friends = inject(FriendsService);
   private reactions = inject(ReactionsService);
