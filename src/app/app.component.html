@@ -27,6 +27,15 @@
   </app-sheet>
 }
 
+<!-- "Add to Home Screen" steps, opened by "Show me how" (Account row, My Lists card). -->
+@if (install.sheetOpen()) {
+  <app-sheet label="Add to Home Screen" (closed)="install.closeSteps()">
+    <h2>Add BGG Library to your Home Screen</h2>
+    <app-install-steps />
+    <button type="button" class="bl-btn secondary" (click)="install.closeSteps()">Done</button>
+  </app-sheet>
+}
+
 <!--
   Full-screen venue map with a circled room or booth (opened from the Events tab).
   @defer keeps the viewer's code out of the first download; it loads the first

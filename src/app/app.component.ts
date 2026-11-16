@@ -4,6 +4,7 @@ import { RouterOutlet } from '@angular/router';
 import { HideNavService } from './service/hide-nav.service';
 import { WatchService } from './service/watch.service';
 import { InstallService } from './service/install.service';
+import { InstallStepsComponent } from './shared/install-steps.component';
 import { MapService } from './service/map.service';
 import { ConInfoService } from './service/con-info.service';
 import { FriendsService } from './service/friends.service';
@@ -19,7 +20,7 @@ import { ToastComponent } from './shared/toast.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, TabBarComponent, ToastComponent, SheetComponent, IconComponent, MapViewerComponent, NewsPromptComponent],
+  imports: [RouterOutlet, TabBarComponent, ToastComponent, SheetComponent, IconComponent, MapViewerComponent, NewsPromptComponent, InstallStepsComponent],
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnInit {
@@ -32,7 +33,7 @@ export class AppComponent implements OnInit {
   watch = inject(WatchService);
   // Created at startup because Android announces "installable" only once, early
   // (beforeinstallprompt); the Account tab uses it for its Install button.
-  private install = inject(InstallService);
+  install = inject(InstallService);
   /** The full-screen venue map is shown here so any tab can open it (MapService.show). */
   map = inject(MapService);
   /** BGG news posts: the Events tab's unread number and the new-post message. */

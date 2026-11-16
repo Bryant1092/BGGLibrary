@@ -31,6 +31,11 @@ export class InstallService {
   readonly canPrompt = signal(false);
   readonly installed = signal(this.isStandalone());
   readonly dismissed = signal(this.readDismissed());
+  /** The "Add to Home Screen" steps as a sheet (AppComponent), from "Show me how" anywhere. */
+  readonly sheetOpen = signal(false);
+
+  openSteps(): void { this.sheetOpen.set(true); }
+  closeSteps(): void { this.sheetOpen.set(false); }
 
   constructor() {
     window.addEventListener('beforeinstallprompt', (event: Event) => {

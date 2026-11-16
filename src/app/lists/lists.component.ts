@@ -21,6 +21,7 @@ import { FriendsPicksComponent } from '../shared/friends-picks.component';
 import { RatingControlsComponent } from '../shared/rating-controls.component';
 import { BuyListComponent } from '../shared/buy-list.component';
 import { ReactionsService } from '../service/reactions.service';
+import { InstallService } from '../service/install.service';
 import { Friend, FriendsService } from '../service/friends.service';
 import { ThumbComponent } from '../shared/thumb.component';
 import { dueInfo, shortDuration } from '../util/library-time';
@@ -100,6 +101,7 @@ export class ListsComponent implements OnInit, OnDestroy {
   private recent = inject(RecentService);
   friends = inject(FriendsService);
   private reactions = inject(ReactionsService);
+  install = inject(InstallService);
   filter = signal<ListFilter>('all');
   /** The game the "How was it?" prompt is about (after ticking Played). */
   rating = signal<Game | null>(null);
@@ -116,6 +118,12 @@ export class ListsComponent implements OnInit, OnDestroy {
   });
   /** One-time card asking to allow phone notifications, once there's a bell to alert about. */
   showNotifyCard = computed(() => this.watch.canNotify && this.watch.permission() === 'default'
+    && !this.watch.askDismissed() && this.watch.watched().size > 0);
+  /**
+   * iPhone in a regular Safari tab: notifications aren't possible there at all (Apple
+   * only allows them for Home Screen apps), so the card offers the install steps instead.
+   */
+  showInstallForNotify = computed(() => !this.watch.canNotify && this.install.help() === 'ios'
     && !this.watch.askDismissed() && this.watch.watched().size > 0);
 
   /** "Friends can see" for the open list (missing on old lists = on, the default). */

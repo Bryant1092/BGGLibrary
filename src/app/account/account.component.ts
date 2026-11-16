@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnIni
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FriendsCardComponent } from '../shared/friends-card.component';
+import { InstallStepsComponent } from '../shared/install-steps.component';
+import { IconComponent } from '../shared/icon.component';
 import { EMPTY, switchMap } from 'rxjs';
 import { CONVENTIONS, LibraryDay } from '../config/conventions';
 import { ThemeChoice, ThemeService } from '../service/theme.service';
@@ -18,7 +20,7 @@ import { currentOrNextConvention } from '../util/library-time';
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [RouterLink, FriendsCardComponent],
+  imports: [RouterLink, FriendsCardComponent, InstallStepsComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .card { margin: 16px; padding: 16px; border-radius: 16px; background: var(--bl-field); display: flex; flex-direction: column; gap: 12px; }
@@ -37,6 +39,11 @@ import { currentOrNextConvention } from '../util/library-time';
     .install li { display: flex; gap: 10px; align-items: center; }
     .step { width: 26px; height: 26px; border-radius: 13px; background: var(--bl-accent); color: var(--bl-on-accent); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: none; }
     .why { font-size: 13px; line-height: 18px; }
+    .install-row { margin: 16px; width: calc(100% - 32px); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px;
+      border: 0; background: var(--bl-field); color: inherit; font: inherit; text-align: left; }
+    .install-row img { border-radius: 8px; flex: none; }
+    .install-row span { flex: 1; display: flex; flex-direction: column; }
+    .install-row small { color: var(--bl-muted); font-size: 13px; }
     .alerts { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: transparent; padding: 0; text-align: left; color: inherit; font: inherit; }
     .alerts > span:first-child { flex: 1; display: flex; flex-direction: column; gap: 3px; }
     .alerts strong { font-size: 16px; }
@@ -55,37 +62,27 @@ import { currentOrNextConvention } from '../util/library-time';
       </header>
 
       <main>
-        <!-- Install help: hidden once installed, after "Not now", or where no install is possible. -->
-        @if (!install.dismissed()) {
-          @switch (install.help()) {
-            @case ('ios') {
-              <div class="card install">
-                <div class="install-head">
-                  <img src="icons/icon-72x72.png" alt="" width="44" height="44">
-                  <div><p class="name">Add BGG Library to your Home Screen</p><p class="muted">iPhone · takes 10 seconds</p></div>
-                </div>
-                <ol>
-                  <li><span class="step">1</span><span>Tap <strong>Share</strong> in Safari's toolbar</span></li>
-                  <li><span class="step">2</span><span>Scroll down, tap <strong>Add to Home Screen</strong></span></li>
-                  <li><span class="step">3</span><span>Tap <strong>Add</strong>, then open it from your Home Screen</span></li>
-                </ol>
-                <p class="muted why">Why: notifications when games come back, full-screen app, and iPhone won't clear your saved bells and recent games after a week away.</p>
-                <button type="button" class="bl-link-btn" style="align-self: flex-start" (click)="install.dismiss()">Not now</button>
+        <!--
+          Install help. The full card shows until "Not now"; after that a small row keeps the
+          steps one tap away (before, "Not now" hid them for good, and on iPhone they're needed
+          for notifications). Nothing shows once it's installed or where it can't be installed.
+        -->
+        @if (install.help() !== 'installed' && install.help() !== 'none') {
+          @if (!install.dismissed()) {
+            <div class="card install">
+              <div class="install-head">
+                <img src="icons/icon-72x72.png" alt="" width="44" height="44">
+                <div><p class="name">Add BGG Library to your Home Screen</p><p class="muted">{{ install.help() === 'ios' ? 'iPhone · takes 10 seconds' : 'Works offline, alerts when games return' }}</p></div>
               </div>
-            }
-            @case ('android-button') {
-              <div class="card install" style="flex-direction: row; align-items: center">
-                <img src="icons/icon-72x72.png" alt="" width="40" height="40">
-                <div style="flex: 1"><p class="name" style="font-size: 16px">Install BGG Library</p><p class="muted">Works offline, alerts when games return</p></div>
-                <button type="button" class="bl-btn" style="min-height: 44px; border-radius: 22px" (click)="install.install()">Install</button>
-              </div>
-            }
-            @case ('in-app-browser') {
-              <div class="card install">
-                <p class="name" style="font-size: 16px">Open in Safari or Chrome to install</p>
-                <p class="muted">This page is open inside another app, which can't add it to your home screen. Use that app's menu to open the link in your browser.</p>
-              </div>
-            }
+              <app-install-steps />
+              <button type="button" class="bl-link-btn" style="align-self: flex-start" (click)="install.dismiss()">Not now</button>
+            </div>
+          } @else {
+            <button type="button" class="install-row" (click)="install.openSteps()">
+              <img src="icons/icon-72x72.png" alt="" width="32" height="32">
+              <span><strong>Add to Home Screen</strong><small>For notifications and full-screen</small></span>
+              <bl-icon name="chevronRight" [size]="18" />
+            </button>
           }
         }
         <div class="card">

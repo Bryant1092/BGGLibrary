@@ -68,6 +68,17 @@
         </div>
       </div>
     }
+    @if (showInstallForNotify() && view() === 'lists') {
+      <div class="bl-notify-card" role="region" aria-label="Notifications">
+        <bl-icon name="bell" [size]="22" />
+        <div><strong>Want a notification when your games come back?</strong>
+          <small>On iPhone, notifications only work when the app is on your Home Screen. It takes 10 seconds.</small></div>
+        <div class="actions">
+          <button type="button" class="bl-btn" (click)="install.openSteps()">Show me how</button>
+          <button type="button" class="bl-link-btn" (click)="watch.dismissAsk()">Not now</button>
+        </div>
+      </div>
+    }
     @if (view() === 'picks') {
       <app-friends-picks />
     } @else if (view() === 'buy') {
