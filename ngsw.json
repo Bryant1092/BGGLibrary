@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1794805710888,
+  "timestamp": 1794808495767,
   "index": "/BGGLibrary/index.html",
   "assetGroups": [
     {
@@ -24,25 +24,25 @@
         "/BGGLibrary/chunk-FTT4ULVY.js",
         "/BGGLibrary/chunk-GZFII5MK.js",
         "/BGGLibrary/chunk-I6W2VBRN.js",
-        "/BGGLibrary/chunk-LWU57HCG.js",
+        "/BGGLibrary/chunk-IBJQWJ3M.js",
         "/BGGLibrary/chunk-O73MRVEJ.js",
         "/BGGLibrary/chunk-P73NCIF5.js",
         "/BGGLibrary/chunk-RYM6NHQZ.js",
         "/BGGLibrary/chunk-S2V2HIVH.js",
         "/BGGLibrary/chunk-THX2LZXU.js",
         "/BGGLibrary/chunk-U4AJ3X7O.js",
-        "/BGGLibrary/chunk-U5P4A4DZ.js",
         "/BGGLibrary/chunk-UJMIO7P4.js",
         "/BGGLibrary/chunk-USWAQWNK.js",
         "/BGGLibrary/chunk-VPC667VW.js",
+        "/BGGLibrary/chunk-YHD3QUMD.js",
         "/BGGLibrary/chunk-YOB57DQM.js",
         "/BGGLibrary/chunk-ZDZATCJP.js",
         "/BGGLibrary/favicon.ico",
         "/BGGLibrary/index.html",
-        "/BGGLibrary/main-M3NVZATX.js",
+        "/BGGLibrary/main-6HQ5YLWU.js",
         "/BGGLibrary/manifest.webmanifest",
         "/BGGLibrary/polyfills-RP2QB4T4.js",
-        "/BGGLibrary/styles-YL3Y4Y7K.css"
+        "/BGGLibrary/styles-DQFKEWEJ.css"
       ],
       "patterns": []
     },
@@ -197,17 +197,17 @@
     "/BGGLibrary/chunk-FTT4ULVY.js": "d32095b19fc642d568ec3d2c5725a52d856eacc4",
     "/BGGLibrary/chunk-GZFII5MK.js": "7be26c4f68d8d8b1c371b0c9825a40417bde8131",
     "/BGGLibrary/chunk-I6W2VBRN.js": "f615183cafc6f622ec3c703bf6cfd7bb33afa376",
-    "/BGGLibrary/chunk-LWU57HCG.js": "7e4c1d49f08c50b3e66c55a37602895b81ab9826",
+    "/BGGLibrary/chunk-IBJQWJ3M.js": "f454a31b36af891dd14f6709acc90508f96997a5",
     "/BGGLibrary/chunk-O73MRVEJ.js": "257c9942780749d1e3862d46ac601844e9070fc8",
     "/BGGLibrary/chunk-P73NCIF5.js": "12fd6f3139407fa4765ad8a1b74296f5f6d72017",
     "/BGGLibrary/chunk-RYM6NHQZ.js": "135176b310f01907cbb1821a146d041104bc0e19",
     "/BGGLibrary/chunk-S2V2HIVH.js": "03e51094511842ba26351728da427be2a7c1b0b1",
     "/BGGLibrary/chunk-THX2LZXU.js": "e0684c42247223d2f6ec2fdc036dd93271220c29",
     "/BGGLibrary/chunk-U4AJ3X7O.js": "e70ecfc858b58df3420c98ab96bdd3945ebe0064",
-    "/BGGLibrary/chunk-U5P4A4DZ.js": "12fa4b5436f73edee7ba42bec44bd409ec0fd411",
     "/BGGLibrary/chunk-UJMIO7P4.js": "b38b2fdca994674f2912ee16708f2abdc30a460e",
     "/BGGLibrary/chunk-USWAQWNK.js": "aaf7acecee6d5105bccfa2d7186f99f2dfe65250",
     "/BGGLibrary/chunk-VPC667VW.js": "284ec28a7f4bba315542b4839d81d546996b19df",
+    "/BGGLibrary/chunk-YHD3QUMD.js": "36ca6a5b9ba9115772dd124b22100cb9075f8721",
     "/BGGLibrary/chunk-YOB57DQM.js": "f75d36210ca20b469cbbd1742e5000e3ea823a1d",
     "/BGGLibrary/chunk-ZDZATCJP.js": "31498dd63357a4b815f0a395bdb477c093e02007",
     "/BGGLibrary/favicon.ico": "6603ccb19430f0aa1aaa57fcac7b6fbd21441556",
@@ -219,8 +219,8 @@
     "/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
     "/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
     "/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
-    "/BGGLibrary/index.html": "86f8d25ac7420bc6a48b27fc138e7ac791669108",
-    "/BGGLibrary/main-M3NVZATX.js": "fddbc48f8252a8bcfe03bf7b8739da25ebd02ab9",
+    "/BGGLibrary/index.html": "0e44c311a4027e7643e9c8f8ea439fec8dbd1244",
+    "/BGGLibrary/main-6HQ5YLWU.js": "bcaaf4b0f748305bca513e309b8bfcf054dfc660",
     "/BGGLibrary/manifest.webmanifest": "02fd681aa859fb7e11b7fcdf99d3a14607b751db",
     "/BGGLibrary/maps/bggcon-2026/floor-atrium.svg": "262ac9a949ed9a1c472dce0b630ad01745057a90",
     "/BGGLibrary/maps/bggcon-2026/floor-exhibition.svg": "e22a76e06b91fb3ee2e76e7868ee486b036018c2",
@@ -313,7 +313,7 @@
     "/BGGLibrary/shelves/x.json": "3391102789949917044ad1cbffc13020159ecee5",
     "/BGGLibrary/shelves/y.json": "9528571fb7a7eaccd76f027df00f3ccc3ad78aad",
     "/BGGLibrary/shelves/z.json": "38620c63080fca2068c07c468c9721218c50276e",
-    "/BGGLibrary/styles-YL3Y4Y7K.css": "2bbdbad1b10c5ff36244d1fa26b3cc8584754986"
+    "/BGGLibrary/styles-DQFKEWEJ.css": "bfc5113c312848d25721abc44367548a4a3c8f1e"
   },
   "navigationUrls": [
     {
