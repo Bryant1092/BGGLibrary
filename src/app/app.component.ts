@@ -6,6 +6,7 @@ import { WatchService } from './service/watch.service';
 import { InstallService } from './service/install.service';
 import { MapService } from './service/map.service';
 import { ConInfoService } from './service/con-info.service';
+import { FriendsService } from './service/friends.service';
 import { NewsPromptComponent } from './shared/news-prompt.component';
 import { MapViewerComponent } from './shared/map-viewer.component';
 import { IconComponent } from './shared/icon.component';
@@ -21,6 +22,7 @@ import { ToastComponent } from './shared/toast.component';
 })
 export class AppComponent implements OnInit {
   private hideNavService = inject(HideNavService);
+  private friends = inject(FriendsService);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
   watch = inject(WatchService);
@@ -57,6 +59,8 @@ export class AppComponent implements OnInit {
     this.watch.start(this.destroyRef);
     // Also here, so new BGG posts are noticed (badge + message) whichever tab is open.
     this.conInfo.start(this.destroyRef);
+    // Friends and requests, live, so a new request shows on the Account tab from any tab.
+    this.friends.start(this.destroyRef);
   }
 
   /**

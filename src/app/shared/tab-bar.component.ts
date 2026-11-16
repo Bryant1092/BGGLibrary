@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ConInfoService } from '../service/con-info.service';
+import { FriendsService } from '../service/friends.service';
 import { IconComponent } from './icon.component';
 
 /**
@@ -36,8 +37,13 @@ import { IconComponent } from './icon.component';
         </span>
         Events
       </a>
-      <a routerLink="/account" routerLinkActive="active" ariaCurrentWhenActive="page">
-        <bl-icon name="user" [size]="24" />Account
+      <!-- Friend requests waiting for an answer: same number badge as Events. -->
+      <a routerLink="/account" routerLinkActive="active" ariaCurrentWhenActive="page" [attr.aria-label]="accountLabel()">
+        <span class="bl-tab-icon">
+          <bl-icon name="user" [size]="24" />
+          @if (requests()) { <span class="bl-count" aria-hidden="true">{{ requests() > 9 ? '9+' : requests() }}</span> }
+        </span>
+        Account
       </a>
     </nav>
   `,
@@ -45,6 +51,12 @@ import { IconComponent } from './icon.component';
 export class TabBarComponent {
   private info = inject(ConInfoService);
   unread = this.info.unreadCount;
+  private friends = inject(FriendsService);
+  requests = computed(() => this.friends.incoming().length);
+  accountLabel = computed(() => {
+    const n = this.requests();
+    return n ? `Account, ${n} friend ${n === 1 ? 'request' : 'requests'}` : null;
+  });
   eventsLabel = computed(() => {
     const n = this.unread();
     return n ? `Events, ${n} unread news ${n === 1 ? 'post' : 'posts'}` : null;

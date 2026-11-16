@@ -3,7 +3,7 @@
     <div class="bl-title-row">
       <img src="icons/icon-72x72.png" alt="" width="30" height="30">
       <h1>My Lists</h1>
-      @if (selectedList()) {
+      @if (selectedList() && view() === 'lists') {
         <!-- Re-downloads availability for every game in the list. -->
         <button type="button" class="bl-icon-btn accent" aria-label="Refresh availability" [disabled]="refreshing()" (click)="refresh()">
           <bl-icon name="refresh" [size]="22" />
@@ -14,7 +14,14 @@
       }
     </div>
 
-    @if (lists()?.length) {
+    @if (uid()) {
+      <!-- Friends' picks lives here (not as a 5th tab): it's another way of looking at lists. -->
+      <div class="bl-view-switch" role="tablist" aria-label="Show">
+        <button type="button" role="tab" [attr.aria-selected]="view() === 'lists'" (click)="view.set('lists')">My lists</button>
+        <button type="button" role="tab" [attr.aria-selected]="view() === 'picks'" (click)="view.set('picks')">Friends' picks</button>
+      </div>
+    }
+    @if (lists()?.length && view() === 'lists') {
       <!--
         Same switcher and sheet as the Library. It replaced a row of chips: past ~5 lists most were
         off-screen, a mouse couldn't scroll them, and choosing a list worked differently per tab.
@@ -35,7 +42,9 @@
   </header>
 
   <main>
-    @if (lists() === null || (selectedId() && games() === null)) {
+    @if (view() === 'picks') {
+      <app-friends-picks />
+    } @else if (lists() === null || (selectedId() && games() === null)) {
       @for (n of [1, 2, 3, 4]; track n) {
         <div class="bl-row" aria-hidden="true">
           <div class="bl-row-main">
@@ -128,8 +137,15 @@
     <app-sheet [label]="selectedList()?.name || 'List options'" (closed)="sheet.set(null)">
       <h2>{{ selectedList()?.name }}</h2>
       <div>
+        @if (isOwner()) {
+          <!-- On by default for new lists (the group's wishlists combine in Friends' picks). -->
+          <button type="button" class="bl-choice" role="switch" [attr.aria-checked]="listVisible()" (click)="toggleVisible()">
+            <span class="text"><strong>Friends can see</strong><small>{{ listVisible() ? 'Your friends can view it, and it counts in Friends' picks' : 'Only people you share it with see it' }}</small></span>
+            <span class="bl-switch" aria-hidden="true"></span>
+          </button>
+        }
         <button type="button" class="bl-choice" (click)="openForm('share')">
-          <span class="text"><strong>Share</strong><small>Add a friend by the email they signed up with</small></span>
+          <span class="text"><strong>Edit together</strong><small>Pick a friend (or type an email) to add and tick games with you</small></span>
         </button>
         <button type="button" class="bl-choice" (click)="openForm('rename')">
           <span class="text"><strong>Rename</strong></span>
@@ -165,6 +181,14 @@
         <h2>{{ sheet() === 'create' ? 'New list' : sheet() === 'rename' ? 'Rename list' : 'Share ' + selectedList()?.name }}</h2>
         @if (sheet() === 'share') {
           <p class="bl-sheet-note">They'll see this list under My Lists and can add games to it too.</p>
+          @if (friends.accepted().length) {
+            <div class="bl-chips" style="flex-wrap: wrap; margin: 0; padding: 0">
+              @for (f of friends.accepted(); track f.uid) {
+                <button type="button" class="bl-chip" [disabled]="busy()" (click)="shareWithFriend(f)">+ {{ f.name }}</button>
+              }
+            </div>
+            <p class="bl-sheet-note">Or someone who isn't your friend yet:</p>
+          }
         }
         <form (ngSubmit)="submitForm()" style="display: flex; flex-direction: column; gap: 12px">
           <label class="visually-hidden" for="list-form-input">{{ sheet() === 'share' ? 'Friend\'s email' : 'List name' }}</label>

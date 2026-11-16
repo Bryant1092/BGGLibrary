@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FriendsCardComponent } from '../shared/friends-card.component';
 import { EMPTY, switchMap } from 'rxjs';
 import { CONVENTIONS, LibraryDay } from '../config/conventions';
 import { ThemeChoice, ThemeService } from '../service/theme.service';
@@ -16,7 +17,7 @@ import { currentOrNextConvention } from '../util/library-time';
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, FriendsCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .card { margin: 16px; padding: 16px; border-radius: 16px; background: var(--bl-field); display: flex; flex-direction: column; gap: 12px; }
@@ -89,11 +90,19 @@ import { currentOrNextConvention } from '../util/library-time';
               <p class="muted">{{ email() }}</p>
             </div>
             <button type="button" class="bl-btn secondary" (click)="signOut()">Sign out</button>
+          } @else if (sharedCode) {
+            <!-- Opened a friend's share link while signed out: sign in, then come back to "Add …?". -->
+            <p>A friend shared their Meeple code ({{ sharedCode }}). Sign in or sign up to add them.</p>
+            <a class="bl-btn" routerLink="/login" [queryParams]="{ redirectUrl: '/account?meeple=' + sharedCode }" style="text-decoration: none">Sign in or sign up</a>
           } @else {
             <p>Sign in to save games to lists and share them with friends.</p>
             <a class="bl-btn" routerLink="/login" [queryParams]="{ redirectUrl: '/library/user' }" style="text-decoration: none">Sign in or sign up</a>
           }
         </div>
+
+        @if (signedIn()) {
+          <app-friends-card />
+        }
 
         <!-- Appearance lives here, not on the Library screen: it's set once and rarely changed. -->
         <div class="card">
@@ -127,6 +136,8 @@ export class AccountComponent implements OnInit {
   private userService = inject(UserService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+  /** Meeple code from a friend's share link (…/account?meeple=MEEP-7K4Q), for the signed-out message. */
+  readonly sharedCode = inject(ActivatedRoute).snapshot.queryParamMap.get('meeple');
   theme = inject(ThemeService);
   install = inject(InstallService);
 

@@ -17,6 +17,8 @@ import { IconComponent } from '../shared/icon.component';
 import { SheetComponent } from '../shared/sheet.component';
 import { OfflineBarComponent } from '../shared/offline-bar.component';
 import { ListPickerSheetComponent } from '../shared/list-picker-sheet.component';
+import { FriendsPicksComponent } from '../shared/friends-picks.component';
+import { Friend, FriendsService } from '../service/friends.service';
 import { ThumbComponent } from '../shared/thumb.component';
 import { dueInfo, shortDuration } from '../util/library-time';
 import { minutesText, playersText, shelfText, statusText } from '../util/game-format';
@@ -72,7 +74,7 @@ interface ListRow {
 @Component({
   selector: 'app-lists',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent],
+  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent, FriendsPicksComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './lists.component.html',
 })
@@ -85,6 +87,12 @@ export class ListsComponent implements OnInit, OnDestroy {
   watch = inject(WatchService);
   private cache = inject(ListDetailsCache);
   private recent = inject(RecentService);
+  friends = inject(FriendsService);
+
+  /** "My lists" or "Friends' picks" (switch under the title). */
+  view = signal<'lists' | 'picks'>('lists');
+  /** "Friends can see" for the open list (missing on old lists = on, the default). */
+  listVisible = signal(true);
 
   now = signal(Date.now());
   private clock = setInterval(() => this.now.set(Date.now()), 60_000);
@@ -243,6 +251,9 @@ export class ListsComponent implements OnInit, OnDestroy {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(list => {
       this.games.set(this.selectedId() ? list?.gameList || [] : null);
+      this.listVisible.set(list?.visible !== false);
+      // Lists made before friends existed: the owner fills in owner/visible so friends can find it.
+      if (list && !list.owner && this.isOwner()) this.friends.backfill(this.selectedId()!, list);
       this.loadDetails();
     });
   }
@@ -292,6 +303,30 @@ export class ListsComponent implements OnInit, OnDestroy {
         console.error('Failed to create list', err);
         this.toast.error("Couldn't create the list. Check your connection and try again.");
       })
+      .finally(() => this.busy.set(false));
+  }
+
+  /** Owner only: turn "Friends can see" on or off for the open list. */
+  toggleVisible(): void {
+    const id = this.selectedId();
+    if (!id) return;
+    const next = !this.listVisible();
+    this.listVisible.set(next);
+    this.friends.setVisible(id, next).then(() => this.toast.show({ text: next ? 'Friends can see this list' : 'Hidden from friends' }))
+      .catch(() => {
+        this.listVisible.set(!next);
+        this.toast.error("Couldn't change that. Check your connection.");
+      });
+  }
+
+  /** "Edit together" with a friend, picked by name instead of typing their email. */
+  shareWithFriend(friend: Friend): void {
+    const list = this.selectedList();
+    if (!list || this.busy()) return;
+    this.busy.set(true);
+    this.gameService.shareWithUser(list, friend.uid)
+      .then(() => { this.sheet.set(null); this.toast.show({ text: `${friend.name} can now edit ${list.name}` }); })
+      .catch(() => this.toast.error("Couldn't share. Check your connection."))
       .finally(() => this.busy.set(false));
   }
 

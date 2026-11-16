@@ -74,6 +74,76 @@ service cloud.firestore {
         // Leave a list yourself, or the owner removes it from everyone when deleting.
         allow delete: if signedIn() && (request.auth.uid == uid || owns(listId));
       }
+
+      // ---------- Friends (Meeple codes) ----------
+      // users/{uid}/friends/{other}: uid's side of a friendship with `other`.
+      //   status: 'outgoing' (uid asked), 'incoming' (other asked uid), 'friends'.
+      // Both sides are always written together in one batch (FriendsService), so
+      // each rule checks the other side with getAfter.
+      match /friends/{other} {
+        // Only you see your own friends and requests.
+        allow read: if signedIn() && request.auth.uid == uid;
+
+        // Sending a request: you write "outgoing" on your side and "incoming" on theirs.
+        allow create: if signedIn() && uid != other && request.resource.data.keys().hasOnly(['status', 'name', 'code', 'at'])
+          && (
+            (request.auth.uid == uid && request.resource.data.status == 'outgoing'
+              && getAfter(friendDoc(other, uid)).data.status == 'incoming')
+            || (request.auth.uid == other && request.resource.data.status == 'incoming'
+              && getAfter(friendDoc(other, uid)).data.status == 'outgoing')
+          );
+
+        // Accepting: the person who received the request flips both sides to "friends".
+        allow update: if signedIn() && request.resource.data.status == 'friends'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'at'])
+          && (
+            (request.auth.uid == uid && resource.data.status == 'incoming')
+            || (request.auth.uid == other && resource.data.status == 'outgoing'
+              && getAfter(friendDoc(other, uid)).data.status == 'friends')
+          );
+
+        // Declining, cancelling or unfriending: either person can remove both sides.
+        allow delete: if signedIn() && (request.auth.uid == uid || request.auth.uid == other);
+      }
+    }
+
+    function friendDoc(a, b) {
+      return /databases/$(database)/documents/users/$(a)/friends/$(b);
+    }
+
+    // `owner` has accepted the signed-in person as a friend (owner's side decides).
+    function friendOf(owner) {
+      return get(friendDoc(owner, request.auth.uid)).data.status == 'friends';
+    }
+
+    // Public card for friend requests and friend lists: a display name and the code.
+    // No email. Readable one at a time by uid, never listed.
+    match /profiles/{uid} {
+      allow get: if signedIn();
+      // Created together with the code (same transaction, hence getAfter); the code
+      // can't be swapped later, only the name.
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'code'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && getAfter(/databases/$(database)/documents/codes/$(request.resource.data.code)).data.uid == uid;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'code'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && request.resource.data.code == resource.data.code;
+      allow delete: if false;
+    }
+
+    // Meeple codes: codes/{MEEP-XXXX} -> { uid }. Claimed once, in a transaction, so a
+    // code can never belong to two people. Looked up one code at a time, never listed.
+    match /codes/{code} {
+      allow get: if signedIn();
+      // One code per person: only while they have no profile yet (the profile is
+      // created in the same transaction).
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid
+        && code.matches('MEEP-[2-9A-HJKMNP-TV-Z]{4}')
+        && !exists(/databases/$(database)/documents/profiles/$(request.auth.uid));
+      allow update, delete: if false;
     }
 
     // "Who has this list?" (rename and delete look up every holder by list id).
@@ -86,10 +156,22 @@ service cloud.firestore {
       // A new list must arrive together with its creator's reference (same batch;
       // getAfter sees the batch's result).
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['name', 'gameList'])
+        && request.resource.data.keys().hasOnly(['name', 'gameList', 'owner', 'visible'])
+        && request.resource.data.get('owner', request.auth.uid) == request.auth.uid
         && getAfter(myRef(listId)).data.owner == request.auth.uid;
-      // Holders can see it and add/remove/tick games or rename it.
-      allow read, update: if signedIn() && holds(listId);
+      // Holders can open it. Friends of the owner can open it when the owner has
+      // "Friends can see" on (view only: friends can't update it unless it's shared with them).
+      allow get: if signedIn() && (holds(listId)
+        || (resource.data.get('visible', false) == true && friendOf(resource.data.owner)));
+      // A friend's visible lists (the app asks for owner == X and visible == true).
+      allow list: if signedIn() && resource.data.visible == true && friendOf(resource.data.owner);
+      // Holders add/remove/tick games or rename it. `owner` can only be filled in
+      // once, by the owner (lists made before friends existed have none), and only
+      // the owner turns "Friends can see" on or off.
+      allow update: if signedIn() && holds(listId)
+        && (request.resource.data.get('owner', null) == resource.data.get('owner', null)
+          || (resource.data.get('owner', null) == null && owns(listId) && request.resource.data.owner == request.auth.uid))
+        && (request.resource.data.get('visible', null) == resource.data.get('visible', null) || owns(listId));
       // Only the owner deletes it for everyone.
       allow delete: if signedIn() && owns(listId);
     }

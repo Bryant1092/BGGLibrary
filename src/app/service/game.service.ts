@@ -34,7 +34,9 @@ export class GameService {
     }
     return this.firestore.createWithRef(
       DATALIST_DB.DATA_LISTS,
-      { name: listName, gameList: !!game ? [game] : [] },
+      // owner + visible: friends can find the list ("Friends can see", on by default;
+      // FriendsService). The owner can switch it off per list.
+      { name: listName, gameList: !!game ? [game] : [], owner: uid, visible: true },
       id => [USERS_DB.USERS, uid, USERS_DB.GAME_LISTS, id],
       id => ({ id, name: listName, userId: uid, owner: uid }),
     );
@@ -159,6 +161,11 @@ export class GameService {
       }
       return this.createSpecifiedUserGameList(gameList, users[0].uid);
     });
+  }
+
+  /** "Edit together" with a friend picked from your friends list (no email needed). */
+  shareWithUser(gameList: UserGameListRef, uid: string): Promise<string> {
+    return this.createSpecifiedUserGameList(gameList, uid);
   }
 
   renameGameList(gameList: UserGameListRef, newGameListName: string): Promise<string> {
