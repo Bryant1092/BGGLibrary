@@ -41,7 +41,11 @@ type Filter = 'all' | 'most' | 'any';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     /* margin 0: .bl-chips normally bleeds into the header's padding; here there's none. */
-    .chips { padding: 12px 16px 0; margin: 0; }
+    /* Slightly tighter than other chip rows so label + three chips fit on one iPhone line (375pt+). */
+    .chips { padding: 12px 16px 0; margin: 0; align-items: center; gap: 6px; }
+    .chips .bl-chip { padding: 0 11px; }
+    /* A caption, not a button: small, muted, never wraps. */
+    .chips-label { flex: none; font-size: 13px; font-weight: 600; color: var(--bl-muted); white-space: nowrap; }
     /* Space between the filter rows and the first game. */
     .rows-gap { height: 4px; }
     .who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -74,7 +78,12 @@ type Filter = 'all' | 'most' | 'any';
     } @else {
       <!-- Whose games first, then players / time below: the same order as My lists
            (All / To play / Liked above, Players / Play time under it). -->
-      <div class="bl-chips chips" role="radiogroup" aria-label="Show games wanted by">
+      <!--
+        "Wanted by" says what the chips choose between, so the row reads as a sentence
+        ("Wanted by: All of us"). Without it, Everyone vs Anyone was unclear (feedback 2026-11-16).
+      -->
+      <div class="bl-chips chips" role="radiogroup" aria-labelledby="picks-wanted-by">
+        <span class="chips-label" id="picks-wanted-by">Wanted by</span>
         @for (f of filters(); track f.value) {
           <button type="button" class="bl-chip" role="radio" [class.on]="filter() === f.value" [attr.aria-checked]="filter() === f.value" (click)="filter.set(f.value)">{{ f.label }}</button>
         }
@@ -214,8 +223,11 @@ export class FriendsPicksComponent implements OnInit {
   /** "Most of us" = at least half the group (and at least 2), e.g. 4+ of 7. */
   private mostCount = computed(() => Math.max(2, Math.ceil((this.data()?.people.length || 0) / 2)));
   filters = computed(() => [
-    { value: 'all' as Filter, label: 'Everyone' },
-    { value: 'most' as Filter, label: `Most of us (${this.mostCount()}+)` },
+    // "All of us" (was "Everyone"): pairs with "Most of us" and doesn't look like "Anyone".
+    { value: 'all' as Filter, label: 'All of us' },
+    // "Most", not "Most of us": with the "Wanted by" label in front, the longer text pushed
+    // "Anyone" off the edge of an iPhone screen.
+    { value: 'most' as Filter, label: `Most (${this.mostCount()}+)` },
     { value: 'any' as Filter, label: 'Anyone' },
   ]);
   shown = computed(() => {
