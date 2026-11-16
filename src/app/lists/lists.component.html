@@ -115,20 +115,20 @@
         In the list rather than the pinned header, which already has four rows.
       -->
       <app-play-filters [(players)]="players" [(playTime)]="playTime" />
-      @for (section of sections(); track section.title) {
-        <h2 class="bl-section">{{ section.title }}</h2>
-        @for (row of section.rows; track row.game.id) {
+      <!-- One flat list tracked by game id (ListsComponent.entries): stops thumbnails reloading. -->
+      @for (e of entries(); track e.key) {
+        @if (e.row; as row) {
           <div class="bl-row" style="padding-right: 8px" [class.has-rate]="row.game.played || row.liked !== null || row.buy">
             <button type="button" class="bl-row-main" style="align-items: center" (click)="openGame(row)" [disabled]="!row.item">
               <!--
                 Box art first: at the shelf you're scanning for the box, so the picture is what you
                 match against. The shelf badge stays big on the right: which shelf, then which box.
               -->
-              <app-thumb [src]="row.item?.bgg_icon_uri || row.game.photo" [name]="row.game.name || ''" [size]="52" [style.opacity]="section.out ? 0.6 : 1" />
+              <app-thumb [src]="row.item?.bgg_icon_uri || row.game.photo" [name]="row.game.name || ''" [size]="52" [style.opacity]="e.out ? 0.6 : 1" />
               <span class="bl-row-text">
-                <span class="bl-name" [style.color]="section.out ? 'var(--bl-muted)' : null">{{ row.game.name }}</span>
+                <span class="bl-name" [style.color]="e.out ? 'var(--bl-muted)' : null">{{ row.game.name }}</span>
                 <span class="bl-meta">
-                  @if (section.out) {
+                  @if (e.out) {
                     <span class="bl-pill out">{{ row.status }}</span>
                   }
                   @if (row.item) {
@@ -145,14 +145,14 @@
 
               </span>
               @if (row.item) {
-                <span class="bl-shelf-badge" [class.out]="section.out" [class.long]="row.longShelf">
+                <span class="bl-shelf-badge" [class.out]="e.out" [class.long]="row.longShelf">
                   <small>Shelf</small><strong>{{ row.shelf }}</strong>
                 </span>
               } @else {
                 <span class="bl-shelf-badge" [class.bl-skel]="!row.failed"><small>Shelf</small><strong>?</strong></span>
               }
             </button>
-            @if (section.out) {
+            @if (e.out) {
               <!-- Only checked-out games get a bell; an available game has nothing to wait for. -->
               <button type="button" class="bl-bell" [attr.aria-pressed]="watch.isWatched(row.game.id!)"
                       [attr.aria-label]="'Notify me when ' + row.game.name + ' is back'" (click)="toggleWatch(row)">
@@ -181,6 +181,8 @@
               </div>
             }
           </div>
+        } @else {
+          <h2 class="bl-section">{{ e.head }}</h2>
         }
       } @empty {
         @if (players() || playTime()) {

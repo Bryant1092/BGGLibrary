@@ -204,11 +204,27 @@ export class ListsComponent implements OnInit, OnDestroy {
     const out = rows.filter(r => r.item?.is_checked_out).sort((a, b) => a.dueAt - b.dueAt || byName(a, b));
     const unknown = rows.filter(r => !r.item).sort(byName);
     return [
-      { title: `Available now · ${available.length}`, rows: available, out: false },
-      { title: `Checked out · ${out.length}`, rows: out, out: true },
-      { title: unknown.some(r => !r.failed) ? 'Checking availability…' : "Couldn't check availability", rows: unknown, out: false },
+      { key: 'available', title: `Available now · ${available.length}`, rows: available, out: false },
+      { key: 'out', title: `Checked out · ${out.length}`, rows: out, out: true },
+      { key: 'unknown', title: unknown.some(r => !r.failed) ? 'Checking availability…' : "Couldn't check availability", rows: unknown, out: false },
     ].filter(s => s.rows.length);
   });
+
+  /**
+   * The sections as one flat list of headings and rows, each with a stable key (the
+   * section name, or the game's id).
+   *
+   * Why: the list used to be drawn section by section, tracked by heading text. The
+   * heading includes the count ("Available now · 3"), so each time a game's status
+   * arrived the whole section was rebuilt, and a game moving from "Checking
+   * availability…" to "Available now" was rebuilt too: 53 thumbnail reloads for a
+   * 6-game list, seen as flickering (reported 2026-11-16). In one list tracked by
+   * game, a row just moves to its new place and its image stays put.
+   */
+  entries = computed(() => this.sections().flatMap(s => [
+    { key: 'head:' + s.key, head: s.title, out: s.out, row: null as ListRow | null },
+    ...s.rows.map(row => ({ key: 'game:' + row.game.id, head: '', out: s.out, row })),
+  ]));
 
   summary = computed(() => {
     const games = this.games() || [];
