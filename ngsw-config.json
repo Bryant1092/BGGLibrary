@@ -16,6 +16,16 @@
       }
     },
     {
+      "name": "maps",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/maps/**"
+        ]
+      }
+    },
+    {
       "name": "assets",
       "installMode": "lazy",
       "updateMode": "prefetch",

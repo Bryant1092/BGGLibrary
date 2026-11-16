@@ -40,7 +40,9 @@ import { NetworkHealth } from '../service/network-health';
       <div class="bar" role="status">
         <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.6a10 10 0 0 1 14 0M8.6 16.4a5 5 0 0 1 6.8 0M12 20h.01M2 8.8a15 15 0 0 1 20 0"/></svg>
-        <span><strong>Wi-Fi is struggling.</strong> Showing saved info where we have it. Turning off Wi-Fi to use cellular often helps.</span>
+        <!-- Hotel Wi-Fi often needs a sign-in page first; until then every request fails while
+             the phone still shows full Wi-Fi bars (captive portal). -->
+        <span><strong>Wi-Fi is struggling.</strong> Showing saved info where we have it. Just joined the hotel Wi-Fi? Open Safari to finish signing in. Turning off Wi-Fi to use cellular often helps too.</span>
       </div>
     }
   `,
