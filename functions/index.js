@@ -11,14 +11,22 @@
  *   users/{uid}/pushSubs/{id}      { sub, at }           a phone that allowed notifications
  *
  * Every 2 minutes:
- *   1. Read every bell (one collection-group query).
+ *   1. Read ONE summary document, meta/watchIndex, listing every bell ("uid__gameId").
+ *      It's kept up to date by syncWatchIndex below whenever a bell is added or
+ *      removed. (Reading every bell each run cost one read per bell, ~43,000 reads
+ *      a day for 10 people; the summary costs ~720.)
  *   2. Ask Tabletop.Events about each belled game once (not once per person).
- *   3. For games available again: notify everyone with a bell on it, then remove
- *      those bells (a bell fires once, like a "back in stock" alert).
+ *      Those requests are free; only Firestore reads count against the quota.
+ *   3. For games available again: read just those bells, notify their owners, and
+ *      remove the bells (a bell fires once, like a "back in stock" alert).
+ *   Paused 2-7 AM Dallas time while nothing moves at the library. 2 AM, not
+ *   midnight: volunteers keep checking in and shelving returns for a while after
+ *   closing, and start scanning the overnight front-desk drop-offs before opening.
+ *   Event reminders (sendEventReminders) run in the same job at all hours.
  *
  * Cost (Firebase Blaze free allowance, Nov 2026): ~22,000 runs a month vs 2,000,000
- * free; one Cloud Scheduler job (3 free); a few thousand Firestore reads a day vs
- * 50,000 free. Web push itself is free (browser push services). Expected: $0.
+ * free; one Cloud Scheduler job (3 free); ~1,500 Firestore reads a day vs 50,000
+ * free. Web push itself is free (browser push services). Expected: $0.
  *
  * Web push uses the standard Push API with our own VAPID keys (no Firebase Cloud
  * Messaging SDK in the app): it's what iPhone Home Screen apps support (iOS 16.4+),
@@ -26,6 +34,7 @@
  * app when one is tapped.
  */
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { defineSecret } = require('firebase-functions/params');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
@@ -43,6 +52,53 @@ const TTE_GAME = id => `https://tabletop.events/api/librarygame/${encodeURICompo
 /** Be gentle with Tabletop.Events: a few requests at a time. */
 const PARALLEL = 4;
 
+/** Summary of every bell: { bells: { "<uid>__<gameId>": true }, rebuiltAt }. Server-only (no client rule). */
+const WATCH_INDEX = 'meta/watchIndex';
+const KEY_SEP = '__';
+/** Rebuild the summary from the bells themselves once a day, in case a sync was ever missed. */
+const INDEX_REBUILD_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Keeps meta/watchIndex in step with users/{uid}/watches/{gameId}: adds the key when a
+ * bell appears, removes it when the bell is deleted. Writes only (no reads), a few
+ * hundred runs a day at most (2,000,000 free a month).
+ */
+exports.syncWatchIndex = onDocumentWritten({ document: 'users/{uid}/watches/{gameId}', region: 'us-central1' }, async event => {
+  const key = event.params.uid + KEY_SEP + event.params.gameId;
+  const ref = admin.firestore().doc(WATCH_INDEX);
+  if (event.data?.after?.exists) {
+    await ref.set({ bells: { [key]: true } }, { merge: true });
+  } else {
+    await ref.update(new admin.firestore.FieldPath('bells', key), admin.firestore.FieldValue.delete())
+      .catch(() => { /* summary doesn't exist yet: nothing to remove */ });
+  }
+});
+
+/** 2:00-6:59 AM in Dallas: the library is closed and no one is shelving. */
+function libraryQuietHours(now) {
+  const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hourCycle: 'h23' }).format(now));
+  return hour >= 2 && hour < 7;
+}
+
+/**
+ * The bells to check: from the summary (1 read). The summary is rebuilt from the bells
+ * themselves when missing or a day old (one read per bell, once a day). The rebuild only
+ * adds keys; stale keys are removed when their bell turns out not to exist.
+ */
+async function loadBellKeys(db, now) {
+  const ref = db.doc(WATCH_INDEX);
+  const snap = await ref.get();
+  const data = snap.data() || {};
+  const rebuiltAt = data.rebuiltAt?.toMillis?.() || 0;
+  if (snap.exists && now - rebuiltAt < INDEX_REBUILD_MS) return Object.keys(data.bells || {});
+  const all = await db.collectionGroup('watches').get();
+  const bells = {};
+  all.docs.forEach(d => { bells[d.ref.parent.parent.id + KEY_SEP + d.id] = true; });
+  await ref.set({ bells, rebuiltAt: admin.firestore.Timestamp.fromMillis(now) }, { merge: true });
+  logger.info(`watch summary rebuilt: ${all.size} bells`);
+  return [...new Set([...Object.keys(data.bells || {}), ...Object.keys(bells)])];
+}
+
 exports.checkWatchedGames = onSchedule({
   schedule: 'every 2 minutes',
   timeZone: 'America/Chicago',
@@ -55,17 +111,23 @@ exports.checkWatchedGames = onSchedule({
   retryCount: 0,
 }, async () => {
   const db = admin.firestore();
-  const bells = await db.collectionGroup('watches').get();
-  if (bells.empty) return;
-
+  const now = Date.now();
   webpush.setVapidDetails(APP_URL, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.value());
 
-  // gameId -> the bells on it (several people can watch the same game).
+  // Starred-event reminders: every run, day and night (late-night events exist).
+  await sendEventReminders(db, now).catch(err => logger.error('event reminders failed', err));
+
+  if (libraryQuietHours(now)) return;
+  const keys = await loadBellKeys(db, now);
+  if (!keys.length) return;
+
+  // gameId -> uids with a bell on it (several people can watch the same game).
   const byGame = new Map();
-  for (const doc of bells.docs) {
-    const list = byGame.get(doc.id) || [];
-    list.push(doc);
-    byGame.set(doc.id, list);
+  for (const key of keys) {
+    const at = key.indexOf(KEY_SEP);
+    if (at < 0) continue;
+    const uid = key.slice(0, at), gameId = key.slice(at + KEY_SEP.length);
+    byGame.set(gameId, [...(byGame.get(gameId) || []), uid]);
   }
 
   const gameIds = [...byGame.keys()];
@@ -74,15 +136,85 @@ exports.checkWatchedGames = onSchedule({
     await Promise.all(gameIds.slice(i, i + PARALLEL).map(async gameId => {
       const game = await fetchGame(gameId);
       if (!game || Number(game.is_checked_out) !== 0) return;
-      for (const bell of byGame.get(gameId)) {
+      for (const uid of byGame.get(gameId)) {
+        // Only now are the bells themselves read: one read per person to notify.
+        const bell = await db.doc(`users/${uid}/watches/${gameId}`).get();
+        if (!bell.exists) {
+          // Already gone (removed in the app): drop the stale summary entry.
+          await db.doc(WATCH_INDEX).update(new admin.firestore.FieldPath('bells', uid + KEY_SEP + gameId), admin.firestore.FieldValue.delete()).catch(() => {});
+          continue;
+        }
         sent += await notifyOwner(db, bell, game);
-        // Bell done: it fires once. The app sees the bell disappear and updates.
+        // Bell done: it fires once. The app sees the bell disappear and updates;
+        // syncWatchIndex removes it from the summary.
         await bell.ref.delete().catch(err => logger.warn('could not remove bell', err.message));
       }
     }));
   }
-  logger.info(`checked ${gameIds.length} belled games, sent ${sent} notifications`);
+  if (sent) logger.info(`checked ${gameIds.length} belled games, sent ${sent} notifications`);
 });
+
+/**
+ * Starred-event reminders.
+ *
+ * The app writes users/{uid}/eventStars/{eventId} { name, start, room, remindAt, at }
+ * for each starred event, with remindAt = start minus the person's reminder time
+ * (10/15/30 min; no remindAt when reminders are off). Each run asks only for
+ * reminders that are due (remindAt <= now), so it costs one read when none are,
+ * then clears remindAt so each reminder is sent once (Apple: don't send several
+ * notifications about the same thing).
+ *
+ * Skipped (cleared without sending) when the event started more than 5 minutes ago,
+ * e.g. the phone had no connection when it was due: a late "starting soon" is noise.
+ * Needs the collection-group index on eventStars.remindAt (firestore.indexes.json).
+ */
+async function sendEventReminders(db, now) {
+  const due = await db.collectionGroup('eventStars')
+    .where('remindAt', '<=', admin.firestore.Timestamp.fromMillis(now))
+    .limit(200).get();
+  if (due.empty) return;
+  let sent = 0;
+  for (const star of due.docs) {
+    const data = star.data();
+    const start = data.start?.toMillis?.() || 0;
+    if (start && start > now - 5 * 60 * 1000) sent += await remindOwner(db, star, start, now);
+    await star.ref.update({ remindAt: admin.firestore.FieldValue.delete() }).catch(() => {});
+  }
+  logger.info(`event reminders: ${due.size} due, ${sent} notifications sent`);
+}
+
+async function remindOwner(db, star, start, now) {
+  const uid = star.ref.parent.parent.id;
+  const subs = await db.collection('users').doc(uid).collection('pushSubs').get();
+  if (subs.empty) return 0;
+  const data = star.data();
+  const minutes = Math.round((start - now) / 60000);
+  const time = new Date(start).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+  const when = minutes > 0 ? `Starts in ${minutes} min (${time})` : `Starting now (${time})`;
+  const payload = JSON.stringify({
+    notification: {
+      // Apple: put the event name in the title; keep the body short and complete.
+      title: data.name || 'Your starred event',
+      body: `${when}${data.room ? ` · ${data.room}` : ''}.`,
+      icon: `${APP_URL}icons/icon-192x192.png`,
+      tag: `event-${star.id}`,
+      // Opens the event's details in the Events tab.
+      data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url: `${APP_URL}events?event=${encodeURIComponent(star.id)}` } } },
+    },
+  });
+  let sent = 0;
+  await Promise.all(subs.docs.map(async sub => {
+    try {
+      // TTL: no point delivering a "starts in 15 min" after the event began.
+      await webpush.sendNotification(sub.data().sub, payload, { TTL: 20 * 60, urgency: 'high' });
+      sent++;
+    } catch (err) {
+      if (err.statusCode === 404 || err.statusCode === 410) await sub.ref.delete().catch(() => {});
+      else logger.warn('reminder push failed', err.statusCode);
+    }
+  }));
+  return sent;
+}
 
 /** The game from Tabletop.Events, or null if the request failed (tried again next run). */
 async function fetchGame(id) {

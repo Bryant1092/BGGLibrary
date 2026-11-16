@@ -22,6 +22,7 @@ import { currentOrNextConvention, libraryStatus, shortDuration } from '../util/l
 import { isNewArrival, minutesText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
 import { isHotGame, matchHotGames } from '../util/hot-games';
 import { MapService } from '../service/map.service';
+import { UpNextComponent } from '../shared/up-next.component';
 import { InViewDirective } from '../shared/in-view.directive';
 import { RatingControlsComponent } from '../shared/rating-controls.component';
 
@@ -79,7 +80,7 @@ export class LibraryPageState {
 @Component({
   selector: 'app-library',
   standalone: true,
-  imports: [InViewDirective, RatingControlsComponent, IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent],
+  imports: [InViewDirective, RatingControlsComponent, IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent, UpNextComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './library.component.html',
 })

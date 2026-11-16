@@ -10,6 +10,7 @@ import { ConEvent, EventsService, Exhibitor, Prototype } from '../service/events
 import { MapRequest, MapService } from '../service/map.service';
 import { ToastService } from '../service/toast.service';
 import { IconComponent } from '../shared/icon.component';
+import { UpNextComponent } from '../shared/up-next.component';
 import { OfflineBarComponent } from '../shared/offline-bar.component';
 import { SheetComponent } from '../shared/sheet.component';
 import { currentOrNextConvention, dallasDateKey, formatLibraryTime, shortDuration } from '../util/library-time';
@@ -63,7 +64,7 @@ interface EventRow {
 @Component({
   selector: 'app-events',
   standalone: true,
-  imports: [IconComponent, SheetComponent, OfflineBarComponent, RichTextComponent, ConHtmlComponent],
+  imports: [IconComponent, SheetComponent, OfflineBarComponent, RichTextComponent, ConHtmlComponent, UpNextComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './events.component.html',
   styleUrl: './events.component.css',
@@ -266,12 +267,7 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   placeFor(e: ConEvent, label?: string): MapRequest | null {
     if (!this.hasMaps()) return null;
-    if (e.roomName === 'Marsalis') {
-      const booth = this.mapService.boothFor(e.spaceName);
-      if (booth) return this.mapService.boothRequest(booth, e.spaceName.replace(/-[A-Z]$/, ''));
-      return this.mapService.hallRequest();
-    }
-    return this.mapService.roomRequest(e.roomName, label || e.room);
+    return this.mapService.eventRequest(e, label);
   }
 
   showPlace(place: MapRequest | null): void {
@@ -360,7 +356,20 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.sheet.set('event');
   }
 
+  /** Event to open from a link (?event=), waiting for the schedule to load. */
+  private pendingEvent = signal<string | null>(null);
+
   constructor() {
+    effect(() => {
+      const id = this.pendingEvent();
+      const event = id ? (this.service.events() || []).find(e => e.id === id) : undefined;
+      if (!event) return;
+      untracked(() => {
+        this.pendingEvent.set(null);
+        this.day.set(event.day);
+        this.open(event);
+      });
+    });
     // While the news list is on screen there's nothing left to announce, so the
     // "New from BGG" message is dismissed (posts stay unread until opened).
     effect(() => {
@@ -373,6 +382,15 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     // The new-post message's "Read" opens /events?view=info&post=<id>. Watched
     // (not read once) because the page may already be open when it's tapped.
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      // /events?event=<id>: from the "Up next" card or a reminder notification. Opened
+      // once the schedule is here (see the effect in the constructor).
+      const eventId = params.get('event');
+      if (eventId) {
+        this.setView('schedule');
+        this.pendingEvent.set(eventId);
+        this.router.navigate([], { queryParams: { event: null }, queryParamsHandling: 'merge', replaceUrl: true });
+        return;
+      }
       if (params.get('view') !== 'info') return;
       this.setView('info');
       const id = params.get('post');

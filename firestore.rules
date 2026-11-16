@@ -102,6 +102,18 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['name', 'shelf', 'at'])
           && request.resource.data.name is string && request.resource.data.name.size() <= 200;
       }
+      // Starred events, for reminders sent by the server (functions/index.js,
+      // sendEventReminders). remindAt = start minus the person's reminder time; the
+      // server clears it once the reminder is sent. Only the owner reads or writes.
+      match /eventStars/{eventId} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['name', 'start', 'room', 'remindAt', 'at'])
+          && request.resource.data.name is string && request.resource.data.name.size() <= 200
+          && request.resource.data.start is timestamp
+          && (!('room' in request.resource.data) || (request.resource.data.room is string && request.resource.data.room.size() <= 200))
+          && (!('remindAt' in request.resource.data) || request.resource.data.remindAt is timestamp);
+      }
       match /pushSubs/{subId} {
         allow read, delete: if signedIn() && request.auth.uid == uid;
         allow create, update: if signedIn() && request.auth.uid == uid

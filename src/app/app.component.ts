@@ -10,6 +10,7 @@ import { MapService } from './service/map.service';
 import { ConInfoService } from './service/con-info.service';
 import { FriendsService } from './service/friends.service';
 import { FirestoreConnection } from './service/firestore-connection';
+import { EventRemindersService } from './service/event-reminders.service';
 import { ReactionsService } from './service/reactions.service';
 import { PushService } from './service/push.service';
 import { PrizeService } from './service/prize.service';
@@ -30,6 +31,7 @@ export class AppComponent implements OnInit {
   private hideNavService = inject(HideNavService);
   private friends = inject(FriendsService);
   private firestoreConnection = inject(FirestoreConnection);
+  private eventReminders = inject(EventRemindersService);
   private reactions = inject(ReactionsService);
   private push = inject(PushService);
   prize = inject(PrizeService);
@@ -81,6 +83,8 @@ export class AppComponent implements OnInit {
     // so the first tap doesn't wait on a dead connection (FirestoreConnection).
     this.firestoreConnection.start(this.destroyRef);
     this.friends.start(this.destroyRef);
+    // Saves starred events to the account so the server can send reminders.
+    this.eventReminders.start(this.destroyRef);
     // Your Liked / Want to buy marks, live (shown on every list a game is on).
     this.reactions.start(this.destroyRef);
     // Keeps this phone's push address saved, so "X is back" arrives with the app closed.

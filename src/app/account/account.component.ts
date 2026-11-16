@@ -10,6 +10,7 @@ import { CONVENTIONS, LibraryDay } from '../config/conventions';
 import { ThemeChoice, ThemeService } from '../service/theme.service';
 import { InstallService } from '../service/install.service';
 import { WatchService } from '../service/watch.service';
+import { EventRemindersService, REMINDER_CHOICES } from '../service/event-reminders.service';
 import { UserService } from '../service/user.service';
 import { currentOrNextConvention } from '../util/library-time';
 
@@ -116,6 +117,21 @@ import { currentOrNextConvention } from '../util/library-time';
               <span class="bl-switch" aria-hidden="true"></span>
             </button>
           </div>
+          <!--
+            Reminder time for starred events (EventRemindersService). Apple asks apps to let
+            people manage their notifications in the app; Off turns these reminders off.
+          -->
+          <div class="card">
+            <h2 id="event-reminders-label">Reminders for starred events</h2>
+            <div class="segmented" role="radiogroup" aria-labelledby="event-reminders-label">
+              @for (m of reminderChoices; track m) {
+                <button type="button" role="radio" [attr.aria-checked]="reminders.leadMin() === m" (click)="reminders.setLead(m)">
+                  {{ m ? m + ' min' : 'Off' }}
+                </button>
+              }
+            </div>
+            <p class="muted" style="font-size: 14px">A notification this long before each event you star, even when the app is closed.</p>
+          </div>
         }
 
         <!-- Badge number for BGG's daily prize drawings (works signed out too, on this phone). -->
@@ -158,6 +174,8 @@ export class AccountComponent implements OnInit {
   theme = inject(ThemeService);
   install = inject(InstallService);
   watch = inject(WatchService);
+  reminders = inject(EventRemindersService);
+  readonly reminderChoices = REMINDER_CHOICES;
 
   readonly themeOptions: { value: ThemeChoice; label: string }[] = [
     // "Auto" rather than "Match phone", which wrapped onto two lines at phone width.

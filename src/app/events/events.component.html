@@ -75,6 +75,8 @@
     </div>
 
     <main>
+      <!-- Your next starred event (within the hour), above the schedule. -->
+      <app-up-next />
       <!-- Opening hours for the day, from the schedule's "General Information" entries. Each opens its spot on the map. -->
       @if (hours().length) {
         <details class="hours">

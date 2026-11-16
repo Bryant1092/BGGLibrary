@@ -127,6 +127,20 @@ export class MapService {
     return room ? { select: ['room:' + room.id], label: `Hot Games tables · ${room.sub}` } : null;
   }
 
+  /**
+   * Where an event is: its room, or for exhibit-hall events the exhibitor's booth (or
+   * the hall). Shared by the Events tab and the "Up next" card.
+   */
+  eventRequest(e: { roomName: string; spaceName: string; room: string }, label?: string): MapRequest | null {
+    if (!this.maps()) return null;
+    if (e.roomName === 'Marsalis') {
+      const booth = this.boothFor(e.spaceName);
+      if (booth) return this.boothRequest(booth, e.spaceName.replace(/-[A-Z]$/, ''));
+      return this.hallRequest();
+    }
+    return this.roomRequest(e.roomName, label || e.room);
+  }
+
   homegrownRequest(): MapRequest | null {
     return this.maps() ? { select: HOMEGROWN, label: 'HomeGrown playtesting rooms' } : null;
   }

@@ -3,8 +3,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   collection, collectionData, doc, docData, Firestore, getDoc, getDocs, query, runTransaction, serverTimestamp, updateDoc, where, writeBatch,
 } from '@angular/fire/firestore';
-import { combineLatest, Observable, of } from 'rxjs';
-import { catchError, map, switchMap, tap } from 'rxjs/operators';
+import { combineLatest, Observable, of, Subject } from 'rxjs';
+import { catchError, map, shareReplay, switchMap, takeUntil, tap } from 'rxjs/operators';
 import { Game } from '../model/game.model';
 import { UserService } from './user.service';
 import { FirestoreConnection } from './firestore-connection';
@@ -98,8 +98,36 @@ export class FriendsService {
   readonly incoming = computed(() => this.list().filter(f => f.status === 'incoming'));
   readonly accepted = computed(() => this.list().filter(f => f.status === 'friends'));
 
+  /**
+   * Live Firestore connections kept open for the whole app session, one per key.
+   *
+   * Why: Firestore bills a read for every document a listener loads when it starts.
+   * Friends' picks opened fresh listeners each time the view was shown (switching
+   * My lists <-> Friends' picks re-read every friend's lists and ratings). Kept open,
+   * later visits cost nothing and only real changes are billed. Closed when the
+   * signed-in person changes. (Firestore pricing, "listeners"; plan of 2026-11-16 to
+   * stay under 50,000 reads a day.)
+   */
+  private live = new Map<string, Observable<unknown>>();
+  private endSession = new Subject<void>();
+  private sessionUid: string | null = null;
+
+  private keepLive<T>(key: string, make: () => Observable<T>): Observable<T> {
+    let stream = this.live.get(key) as Observable<T> | undefined;
+    if (!stream) {
+      stream = make().pipe(takeUntil(this.endSession), shareReplay({ bufferSize: 1, refCount: false }));
+      this.live.set(key, stream);
+    }
+    return stream;
+  }
+
   start(destroyRef: DestroyRef): void {
     this.userService.checkAuth().pipe(
+      tap(user => {
+        // Signed out or someone else signed in: close the previous person's connections.
+        const uid = user?.uid || null;
+        if (uid !== this.sessionUid) { this.endSession.next(); this.live.clear(); this.sessionUid = uid; }
+      }),
       tap(user => { if (user) this.backfillAll(user.uid); }),
       switchMap(user => user ? this.friends$() : of([] as Friend[])),
       takeUntilDestroyed(destroyRef),
@@ -270,6 +298,10 @@ export class FriendsService {
 
   /** A friend's lists with "Friends can see" on, live. */
   friendLists$(friendUid: string): Observable<FriendList[]> {
+    return this.keepLive('lists:' + friendUid, () => this.friendListsFresh$(friendUid));
+  }
+
+  private friendListsFresh$(friendUid: string): Observable<FriendList[]> {
     const q = query(collection(this.firestore, 'dataLists'), where('owner', '==', friendUid), where('visible', '==', true));
     return collectionData(q, { idField: 'id' }).pipe(
       map(rows => rows as FriendList[]),
@@ -298,6 +330,10 @@ export class FriendsService {
   myGames$(): Observable<Game[]> {
     const uid = this.userService.getCurrentUid();
     if (!uid) return of([]);
+    return this.keepLive('mine:' + uid, () => this.myGamesFresh$(uid));
+  }
+
+  private myGamesFresh$(uid: string): Observable<Game[]> {
     return collectionData(collection(this.firestore, 'users', uid, 'gameLists')).pipe(
       switchMap(refs => refs.length
         ? combineLatest(refs.map(r => docData(doc(this.firestore, 'dataLists', r['id'])).pipe(
@@ -317,6 +353,10 @@ export class FriendsService {
   picks$(): Observable<{ people: { uid: string; name: string }[]; games: GamePick[] }> {
     const uid = this.userService.getCurrentUid();
     if (!uid) return of({ people: [], games: [] });
+    return this.keepLive('picks:' + uid, () => this.picksFresh$(uid));
+  }
+
+  private picksFresh$(uid: string): Observable<{ people: { uid: string; name: string }[]; games: GamePick[] }> {
     return this.friends$().pipe(
       map(all => all.filter(f => f.status === 'friends')),
       // Each person's wanted games and their ratings (friends' ratings are empty if they

@@ -71,6 +71,8 @@
   </header>
 
   <main>
+    <!-- Your next starred event (within the hour): "Up next · starts in 12 min". -->
+    <app-up-next />
     @if (filters().shelf) {
       @if (shelfInfo(); as info) {
         <app-shelf-list [info]="info" [thumbHost]="shelfIndex()?.thumbHost || ''" [query]="filters().query"
