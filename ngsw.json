@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1794797964131,
+  "timestamp": 1794798223277,
   "index": "/BGGLibrary/index.html",
   "assetGroups": [
     {
@@ -17,8 +17,8 @@
         "/BGGLibrary/chunk-65ERAQF2.js",
         "/BGGLibrary/chunk-6AJHLK2B.js",
         "/BGGLibrary/chunk-6UZRPVZE.js",
-        "/BGGLibrary/chunk-B22MK7ZJ.js",
         "/BGGLibrary/chunk-B5LVQRDG.js",
+        "/BGGLibrary/chunk-CMCIPZVV.js",
         "/BGGLibrary/chunk-D6UGRE7N.js",
         "/BGGLibrary/chunk-DBZ2ECWL.js",
         "/BGGLibrary/chunk-E67PG66X.js",
@@ -29,7 +29,7 @@
         "/BGGLibrary/chunk-HAJ6HWQY.js",
         "/BGGLibrary/chunk-I6W2VBRN.js",
         "/BGGLibrary/chunk-IMPCRE46.js",
-        "/BGGLibrary/chunk-JTDPVFTV.js",
+        "/BGGLibrary/chunk-IT65P563.js",
         "/BGGLibrary/chunk-LSR3FQ2A.js",
         "/BGGLibrary/chunk-O73MRVEJ.js",
         "/BGGLibrary/chunk-S2V2HIVH.js",
@@ -39,10 +39,10 @@
         "/BGGLibrary/chunk-ZDZATCJP.js",
         "/BGGLibrary/favicon.ico",
         "/BGGLibrary/index.html",
-        "/BGGLibrary/main-SM72BAJS.js",
+        "/BGGLibrary/main-Z55H26YZ.js",
         "/BGGLibrary/manifest.webmanifest",
         "/BGGLibrary/polyfills-RP2QB4T4.js",
-        "/BGGLibrary/styles-DVV7V3XB.css"
+        "/BGGLibrary/styles-O7CKRU7X.css"
       ],
       "patterns": []
     },
@@ -190,8 +190,8 @@
     "/BGGLibrary/chunk-65ERAQF2.js": "3328c79854572373b2cf85c44c49018f03257db0",
     "/BGGLibrary/chunk-6AJHLK2B.js": "640774f5e58358c4c13c55e3c25a0f619d60d69e",
     "/BGGLibrary/chunk-6UZRPVZE.js": "7fcbed0fd1650af44e16a09e0539fe4f1bda4e0f",
-    "/BGGLibrary/chunk-B22MK7ZJ.js": "d52b570ed5d1822b40546c8cee87ebc1ec851365",
     "/BGGLibrary/chunk-B5LVQRDG.js": "e9603b423f7928b32e12ae98c11c78dec57c3221",
+    "/BGGLibrary/chunk-CMCIPZVV.js": "c06e4e7c64deaf15d185e9bce6cd9f593551a444",
     "/BGGLibrary/chunk-D6UGRE7N.js": "c9877e3c129c4ce73243904e0273cc88c0779f89",
     "/BGGLibrary/chunk-DBZ2ECWL.js": "66de4cf49b486f50a556a44e9f7c916844bb2af9",
     "/BGGLibrary/chunk-E67PG66X.js": "24f629395944252db81f52901c10256fd775dba1",
@@ -202,7 +202,7 @@
     "/BGGLibrary/chunk-HAJ6HWQY.js": "192e08d44c14f78f9f25c3fd98f56cee27fd5c3d",
     "/BGGLibrary/chunk-I6W2VBRN.js": "f615183cafc6f622ec3c703bf6cfd7bb33afa376",
     "/BGGLibrary/chunk-IMPCRE46.js": "71803fe8eaf0b792f5fec24aea29ea16475d5235",
-    "/BGGLibrary/chunk-JTDPVFTV.js": "452c10dfe390ec02d387c3762e29b721f78f009c",
+    "/BGGLibrary/chunk-IT65P563.js": "5ebf41b1cb61d5075afddd4b41a41293eb022981",
     "/BGGLibrary/chunk-LSR3FQ2A.js": "59f77f6f79201522ae6fb669364593e2b2654f42",
     "/BGGLibrary/chunk-O73MRVEJ.js": "257c9942780749d1e3862d46ac601844e9070fc8",
     "/BGGLibrary/chunk-S2V2HIVH.js": "03e51094511842ba26351728da427be2a7c1b0b1",
@@ -219,8 +219,8 @@
     "/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
     "/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
     "/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
-    "/BGGLibrary/index.html": "c5b5072c0a961cee8c82d44dd9a6e7bfc52ecb8e",
-    "/BGGLibrary/main-SM72BAJS.js": "67055efcf68d67fa539bf8a9e19481faf4487566",
+    "/BGGLibrary/index.html": "b8a61387701a901d0b3a3281bf9fe158f4bebfd0",
+    "/BGGLibrary/main-Z55H26YZ.js": "29cb7d1d356642c01638686a1f9d3223fc3fee2b",
     "/BGGLibrary/manifest.webmanifest": "02fd681aa859fb7e11b7fcdf99d3a14607b751db",
     "/BGGLibrary/maps/bggcon-2026/floor-atrium.svg": "262ac9a949ed9a1c472dce0b630ad01745057a90",
     "/BGGLibrary/maps/bggcon-2026/floor-exhibition.svg": "e22a76e06b91fb3ee2e76e7868ee486b036018c2",
@@ -313,7 +313,7 @@
     "/BGGLibrary/shelves/x.json": "a7315a749e19afb22d53fb6239518a5cda9da4c4",
     "/BGGLibrary/shelves/y.json": "61016ff9534e0f018302297fe54951237872429f",
     "/BGGLibrary/shelves/z.json": "97efa570d3b28893828c8c8f61d57fec717a9aab",
-    "/BGGLibrary/styles-DVV7V3XB.css": "c423b05a3556b58f6b355b99d9f3f29a191aee9d"
+    "/BGGLibrary/styles-O7CKRU7X.css": "91a1218e8445126609d8144ee8f278adbb40f3cc"
   },
   "navigationUrls": [
     {
