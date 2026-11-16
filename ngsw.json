@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1794840408604,
+  "timestamp": 1794840861418,
   "index": "/BGGLibrary/index.html",
   "assetGroups": [
     {
@@ -39,7 +39,7 @@
         "/BGGLibrary/chunk-ZH6JNLUE.js",
         "/BGGLibrary/favicon.ico",
         "/BGGLibrary/index.html",
-        "/BGGLibrary/main-AL3WI5RK.js",
+        "/BGGLibrary/main-S66EAE7E.js",
         "/BGGLibrary/manifest.webmanifest",
         "/BGGLibrary/polyfills-RP2QB4T4.js",
         "/BGGLibrary/styles-LOPCF7UU.css"
@@ -219,8 +219,8 @@
     "/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
     "/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
     "/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
-    "/BGGLibrary/index.html": "35a41a8e607a195667cdad8ef6289b3e7729ca12",
-    "/BGGLibrary/main-AL3WI5RK.js": "a0be84d338692ad8578c71e5102c3f330464299f",
+    "/BGGLibrary/index.html": "bc40014a735f21d7a616f5958f147af0667252a0",
+    "/BGGLibrary/main-S66EAE7E.js": "f9ecb833c48dd0e8d9244a9e1c499f4305c57553",
     "/BGGLibrary/manifest.webmanifest": "02fd681aa859fb7e11b7fcdf99d3a14607b751db",
     "/BGGLibrary/maps/bggcon-2026/floor-atrium.svg": "262ac9a949ed9a1c472dce0b630ad01745057a90",
     "/BGGLibrary/maps/bggcon-2026/floor-exhibition.svg": "e22a76e06b91fb3ee2e76e7868ee486b036018c2",
