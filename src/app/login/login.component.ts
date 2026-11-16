@@ -117,15 +117,9 @@ export class LoginComponent implements OnInit, OnDestroy {
     return null;
   }
 
-  togglePassword(toggleId: string, passwordId: string) {
-    const togglePassword: Element = document.querySelector(`#${toggleId}`)!;
-    const password = document.querySelector(`#${passwordId}`)!;
-    const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
-    password.setAttribute('type', type);
-    togglePassword.classList.toggle('bi-eye');
-  }
-
   toggleRegister() {
+    this.isReset = false;
+    this.clearMessages();
     if (this.isRegister) {
       this.createLoginForm();
       this.isRegister = !this.isRegister;
@@ -135,7 +129,96 @@ export class LoginComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ---------- Added with the redesign (Nov 2026) ----------
+
+  /** "Forgot password?" mode: just an email box and "Send reset link". */
+  isReset = false;
+  resetSent = false;
+  /** Show/Hide on the password boxes (was a DOM toggle tied to an icon font). */
+  showPassword = false;
+  /** One plain-language message for whatever went wrong, shown above the form. */
+  errorText = '';
+  busy = false;
+
+  private clearMessages(): void {
+    this.errorText = '';
+    this.cantLogin = false;
+    this.cantRegister = false;
+    this.resetSent = false;
+  }
+
+  openReset(): void {
+    const email = this.loginForm.value.email || '';
+    this.clearMessages();
+    this.isReset = true;
+    this.isRegister = false;
+    this.createLoginForm();
+    this.loginForm.patchValue({ email });
+  }
+
+  backToSignIn(): void {
+    const email = this.loginForm.value.email || '';
+    this.clearMessages();
+    this.isReset = false;
+    this.isRegister = false;
+    this.createLoginForm();
+    this.loginForm.patchValue({ email });
+  }
+
+  sendReset(): void {
+    const email = (this.loginForm.value.email || '').trim();
+    if (!email || this.loginForm.get('email')?.invalid) { this.errorText = 'Enter the email you signed up with.'; return; }
+    this.busy = true;
+    this.clearMessages();
+    this.userService.sendPasswordReset(email)
+      .then(() => this.resetSent = true)
+      .catch((error: any) => this.errorText = this.friendlyError(error?.code))
+      .finally(() => this.busy = false);
+  }
+
+  /**
+   * The sign-up password rules as a checklist that ticks off while typing, instead of
+   * one long error after a mistake. Same rules as createRegisterForm's pattern.
+   */
+  get passwordChecks(): { label: string; ok: boolean }[] {
+    const p: string = this.loginForm.get('password')?.value || '';
+    return [
+      { label: '8+ characters', ok: p.length >= 8 },
+      { label: 'Upper and lower case', ok: /[a-z]/.test(p) && /[A-Z]/.test(p) },
+      { label: 'A number', ok: /d/.test(p) },
+      { label: 'A symbol (like ! # ?)', ok: /[^A-Za-zd]/.test(p) },
+    ];
+  }
+
+  /** Firebase error codes in plain words. */
+  private friendlyError(code: string | undefined): string {
+    switch (code) {
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+      case 'auth/invalid-login-credentials':
+        return "That email and password don't match. Try again, or tap \"Forgot password?\"";
+      case 'auth/email-already-in-use':
+        return 'That email already has an account. Sign in instead.';
+      case 'auth/invalid-email':
+        return "That email address doesn't look right.";
+      case 'auth/weak-password':
+        return 'Choose a longer password.';
+      case 'auth/too-many-requests':
+        return 'Too many tries. Wait a few minutes, then try again.';
+      case 'auth/network-request-failed':
+        return "Couldn't connect. Check your Wi-Fi or cellular and try again.";
+      case 'auth/popup-blocked':
+        return 'Your browser blocked the Google window. Allow pop-ups for this site, or use email.';
+      default:
+        return 'Something went wrong. Try again.';
+    }
+  }
+
   onSubmit() {
+    if (this.loginForm.invalid || this.busy) return;
+    this.busy = true;
+    this.clearMessages();
     this.userService.signUserIn(this.loginForm.value.email, this.loginForm.value.password).then((userCredential: any) => {
       this.signingIn = true;
       // navigateByUrl, not navigate([url]): navigate treats the whole string as
@@ -144,10 +227,14 @@ export class LoginComponent implements OnInit, OnDestroy {
       this.router.navigateByUrl(this.redirectUrl);
       }).catch((error: any) => {
         this.cantLogin = true;
-      });
+        this.errorText = this.friendlyError(error?.code);
+      }).finally(() => this.busy = false);
   }
 
   onSubmitRegister() {
+    if (this.loginForm.invalid || this.busy) return;
+    this.busy = true;
+    this.clearMessages();
     this.userService.createUser(this.loginForm.value.email, this.loginForm.value.password).then((userCredential: any) => {
       let additionalInfo = getAdditionalUserInfo(userCredential);
       // Wait for the profile to save so pages that need it don't load first.
@@ -164,10 +251,12 @@ export class LoginComponent implements OnInit, OnDestroy {
     }).catch((error: any) => {
       console.error('Error registering:', error);
       this.cantRegister = true;
-    });
+      this.errorText = this.friendlyError(error?.code);
+    }).finally(() => this.busy = false);
   }
 
   googleLogin() {
+    this.clearMessages();
     this.userService.signUserInWithGoogle().then((userCredential: any) => {
       this.signingIn = true;
       const googleUser = userCredential.user;
@@ -188,6 +277,10 @@ export class LoginComponent implements OnInit, OnDestroy {
     }).catch(error => {
       this.signingIn = false;
       console.error('Error logging in with Google:', error);
+      // Closing the Google window isn't an error worth a message.
+      if (error?.code !== 'auth/popup-closed-by-user' && error?.code !== 'auth/cancelled-popup-request') {
+        this.errorText = this.friendlyError(error?.code);
+      }
     });
   }
 

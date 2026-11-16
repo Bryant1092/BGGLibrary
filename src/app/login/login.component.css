@@ -1,48 +1,44 @@
-.custom-divider {
-    display: flex;
-    flex-direction: row;
-    gap: 0.5em;
-}
+/* Sign-in screen in the app's design (tokens from styles.css, so light and dark both work). */
+.login { position: relative; max-width: 440px; margin: 0 auto; padding: 20px 16px 32px; display: flex; flex-direction: column; gap: 14px; }
+.lead { margin: 0; color: var(--bl-muted); font-size: 15px; line-height: 21px; }
 
-.custom-divider:before, .custom-divider:after {
-    content: "";
-    flex: 1 1;
-    border-bottom: 1px solid;
-    --bs-table-bg-type: var(--bs-table-striped-bg);
-    margin: auto;
-}
+form { display: flex; flex-direction: column; gap: 8px; }
+label { font-size: 14px; font-weight: 600; color: var(--bl-text); margin-top: 6px; }
+form .bl-btn { margin-top: 12px; }
+.label-row { display: flex; align-items: flex-end; justify-content: space-between; }
+.label-row .small { font-size: 14px; min-height: 32px; }
+.center { align-self: center; }
 
-.grey-color {
-    color: #888;
-}
+.google { min-height: 52px; border-radius: 14px; border: 1.5px solid var(--bl-control-border); background: var(--bl-surface); color: var(--bl-text);
+  font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
-.login-container {
-  display: flex;
-  /* Fills the screen above the bottom tab bar (--bl-tabbar-h, in styles.css). */
-  height: calc(100vh - var(--bl-tabbar-h));
-  /* On mobile, 100vh is the height with the browser toolbar hidden, so while
-     the toolbar shows the page was taller than the screen and the bottom of
-     the card was cut off. dvh tracks the visible height; browsers without
-     dvh keep the 100vh line above. */
-  height: calc(100dvh - var(--bl-tabbar-h) - env(safe-area-inset-bottom));
-}
+.divider { display: flex; align-items: center; gap: 12px; color: var(--bl-muted); font-size: 13px; }
+.divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--bl-hair); }
 
-@media (max-width: 449px) {
-  .login-card {
-    margin: auto .5rem !important;
-    width: 100%;
-  }
-}
+.password { position: relative; }
+.password .bl-input { width: 100%; padding-right: 72px; box-sizing: border-box; }
+.show { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); min-height: 36px; padding: 0 10px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--bl-accent-text); font-weight: 700; font-size: 14px; }
 
-@media (min-width: 450px) {
-  .login-card {
-    /* margin-left: auto !important;
-    margin-right: auto !important; */
-    margin: auto !important;
-    width: 450px;
-  }
-}
+.names { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.names > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.names .bl-input { width: 100%; box-sizing: border-box; }
+.hint { color: var(--bl-muted); font-size: 13px; }
+.field-error { color: var(--bl-danger); font-size: 13px; }
+
+.checks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 13px; color: var(--bl-muted); }
+.checks li.ok { color: var(--bl-avail-text); font-weight: 600; }
+
+.note { border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 20px; }
+.note strong { display: block; font-size: 15px; margin-bottom: 2px; }
+.note.error { background: var(--bl-late-bg); color: var(--bl-late-fg); border: 1px solid var(--bl-late-border); }
+.note.ok { background: var(--bl-accent-soft); color: var(--bl-text); }
+
+.switch { margin: 6px 0 0; text-align: center; color: var(--bl-muted); font-size: 15px; }
 
 /* "Signing you in…" over the form while the profile saves after sign-in. */
 .signing-in { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 10px;
-  border-radius: inherit; background: var(--bs-body-bg); font-size: 18px; font-weight: 600; }
+  background: var(--bl-bg, var(--bl-surface)); color: var(--bl-text); font-size: 18px; font-weight: 600; }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--bl-hair); border-top-color: var(--bl-accent); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }

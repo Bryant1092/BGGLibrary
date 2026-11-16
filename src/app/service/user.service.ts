@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { User } from '../model/user.model';
 import { Observable, tap } from 'rxjs';
 import { traceUntilFirst } from '@angular/fire/performance';
-import { Auth, authState, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signOut, UserCredential } from '@angular/fire/auth';
+import { Auth, authState, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, sendPasswordResetEmail, signInWithPopup, signOut, UserCredential } from '@angular/fire/auth';
 import { FirestoreService } from './firestore.service';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
 
@@ -122,6 +122,17 @@ export class UserService {
 
   signUserIn(email: string, password: string): Promise<UserCredential> {
     return signInWithEmailAndPassword(this.auth, email, password);
+  }
+
+  /**
+   * "Forgot password?": Firebase emails a link to set a new password. Without this,
+   * anyone who signed up with email and forgot their password was locked out.
+   * After resetting, Firebase's page offers a "Continue" link back to the sign-in
+   * screen. With email enumeration protection on (Firebase's default), this
+   * succeeds even for unknown emails, so the app's message stays neutral.
+   */
+  sendPasswordReset(email: string): Promise<void> {
+    return sendPasswordResetEmail(this.auth, email, { url: new URL('login', document.baseURI).href });
   }
 
   signUserInWithGoogle(): Promise<UserCredential> {
