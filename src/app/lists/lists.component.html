@@ -80,7 +80,7 @@
       </div>
     }
     @if (view() === 'picks') {
-      <app-friends-picks />
+      <app-friends-picks [lists]="lists() || []" [uid]="uid()" (listChosen)="pickList($event)" />
     } @else if (view() === 'buy') {
       <app-buy-list />
     } @else if (lists() === null || (selectedId() && games() === null)) {
