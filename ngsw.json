@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1794787957041,
+  "timestamp": 1794789062630,
   "index": "/BGGLibrary/index.html",
   "assetGroups": [
     {
@@ -11,6 +11,7 @@
         "ignoreVary": true
       },
       "urls": [
+        "/BGGLibrary/chunk-4NQUOHMT.js",
         "/BGGLibrary/chunk-546G55EL.js",
         "/BGGLibrary/chunk-65ERAQF2.js",
         "/BGGLibrary/chunk-6M2ZIE5G.js",
@@ -26,12 +27,11 @@
         "/BGGLibrary/chunk-IIDV2WLX.js",
         "/BGGLibrary/chunk-IX55V534.js",
         "/BGGLibrary/chunk-LJM3WLXP.js",
-        "/BGGLibrary/chunk-LL3CFC7K.js",
         "/BGGLibrary/chunk-O73MRVEJ.js",
         "/BGGLibrary/chunk-OBJNG3LV.js",
-        "/BGGLibrary/chunk-ODWEARTP.js",
         "/BGGLibrary/chunk-R3GEF6UL.js",
         "/BGGLibrary/chunk-S2V2HIVH.js",
+        "/BGGLibrary/chunk-SD5ZZOMC.js",
         "/BGGLibrary/chunk-SN2P3IES.js",
         "/BGGLibrary/chunk-U4AJ3X7O.js",
         "/BGGLibrary/chunk-ULCCP4RG.js",
@@ -39,7 +39,7 @@
         "/BGGLibrary/chunk-XTJBYK2V.js",
         "/BGGLibrary/favicon.ico",
         "/BGGLibrary/index.html",
-        "/BGGLibrary/main-ADGGWQZK.js",
+        "/BGGLibrary/main-4SJ7265H.js",
         "/BGGLibrary/manifest.webmanifest",
         "/BGGLibrary/polyfills-RP2QB4T4.js",
         "/BGGLibrary/styles-6HN7TFKT.css"
@@ -184,6 +184,7 @@
     }
   ],
   "hashTable": {
+    "/BGGLibrary/chunk-4NQUOHMT.js": "163188197bc82961d6bdfe05ca1109477fcc6d60",
     "/BGGLibrary/chunk-546G55EL.js": "0494ab8da138a839eea19a81bf79704d9965eb3f",
     "/BGGLibrary/chunk-65ERAQF2.js": "3328c79854572373b2cf85c44c49018f03257db0",
     "/BGGLibrary/chunk-6M2ZIE5G.js": "80d348f8e82df8a7aaedd37e535798f8f640d450",
@@ -199,12 +200,11 @@
     "/BGGLibrary/chunk-IIDV2WLX.js": "0f37ab940ec1276902da89a70542ba7bd79eb7e4",
     "/BGGLibrary/chunk-IX55V534.js": "a718e912b9e01b8a59f4aaa51f8ab66c9d23b718",
     "/BGGLibrary/chunk-LJM3WLXP.js": "78eefbaa9e1db2958526e70d0f70ad3c2110239f",
-    "/BGGLibrary/chunk-LL3CFC7K.js": "82c92c01c9dd4dd3f2ed0ff1f64037a2c0d9773d",
     "/BGGLibrary/chunk-O73MRVEJ.js": "257c9942780749d1e3862d46ac601844e9070fc8",
     "/BGGLibrary/chunk-OBJNG3LV.js": "e8db34e2bfa1d28c4d6f50ed0a75464a1d4bb6eb",
-    "/BGGLibrary/chunk-ODWEARTP.js": "30c4811df3f3f8ebdd83a25d8240207c28312bc9",
     "/BGGLibrary/chunk-R3GEF6UL.js": "f1b31d3f377a23b505f3419dbdeeb4492b2ec6e8",
     "/BGGLibrary/chunk-S2V2HIVH.js": "03e51094511842ba26351728da427be2a7c1b0b1",
+    "/BGGLibrary/chunk-SD5ZZOMC.js": "04565f186cd0b582c5f894d8f3f67d2729da54e0",
     "/BGGLibrary/chunk-SN2P3IES.js": "1bf49a5911568cc2b5203d15310279d92d7ede6f",
     "/BGGLibrary/chunk-U4AJ3X7O.js": "e70ecfc858b58df3420c98ab96bdd3945ebe0064",
     "/BGGLibrary/chunk-ULCCP4RG.js": "9d07372ea73b0841d8caf9a9d31d4765e75fd28a",
@@ -219,8 +219,8 @@
     "/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
     "/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
     "/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
-    "/BGGLibrary/index.html": "da120080944cdf4d172fe1aa80492806e712acc2",
-    "/BGGLibrary/main-ADGGWQZK.js": "8c216fbc3cfc062541d8894f43a7b4772d641c1f",
+    "/BGGLibrary/index.html": "f5b496020ba5ceb3794da3bc15e2a5626bc8bdd7",
+    "/BGGLibrary/main-4SJ7265H.js": "46358af6c221170e4625a576ae47640bb41079b3",
     "/BGGLibrary/manifest.webmanifest": "02fd681aa859fb7e11b7fcdf99d3a14607b751db",
     "/BGGLibrary/maps/bggcon-2026/floor-atrium.svg": "262ac9a949ed9a1c472dce0b630ad01745057a90",
     "/BGGLibrary/maps/bggcon-2026/floor-exhibition.svg": "e22a76e06b91fb3ee2e76e7868ee486b036018c2",
