@@ -8,6 +8,7 @@ import { catchError, map, switchMap, tap } from 'rxjs/operators';
 import { Game } from '../model/game.model';
 import { UserService } from './user.service';
 import { GameService } from './game.service';
+import { ReactionsService } from './reactions.service';
 
 /**
  * Friends and Meeple codes.
@@ -40,6 +41,9 @@ export interface Friend {
 export interface GamePick {
   game: Game;
   wantedBy: { uid: string; name: string }[];
+  /** People who played it and gave a thumbs up / thumbs down (only those sharing ratings). */
+  likedBy: string[];
+  dislikedBy: string[];
 }
 
 export interface FriendList {
@@ -77,6 +81,7 @@ export class FriendsService {
   private firestore = inject(Firestore);
   private userService = inject(UserService);
   private gameService = inject(GameService);
+  private reactions = inject(ReactionsService);
 
   /** My friends and requests, kept live while signed in (started once by AppComponent). */
   readonly list = signal<Friend[]>([]);
@@ -211,6 +216,16 @@ export class FriendsService {
     return (snap.data() as { name: string; code: string }) || { name: 'Player', code: '' };
   }
 
+  /** "Friends can see my ratings" (on unless switched off; stored on the public profile). */
+  async shareRatings(): Promise<boolean> {
+    const uid = this.uid();
+    return (await getDoc(doc(this.firestore, 'profiles', uid))).data()?.['shareRatings'] !== false;
+  }
+
+  setShareRatings(on: boolean): Promise<void> {
+    return updateDoc(doc(this.firestore, 'profiles', this.uid()), { shareRatings: on });
+  }
+
   /** Name for a code, for the "Add Alex?" confirmation before sending. */
   async lookup(input: string): Promise<{ uid: string; name: string } | null> {
     const code = normalizeCode(input);
@@ -272,18 +287,32 @@ export class FriendsService {
     if (!uid) return of({ people: [], games: [] });
     return this.friends$().pipe(
       map(all => all.filter(f => f.status === 'friends')),
+      // Each person's wanted games and their ratings (friends' ratings are empty if they
+      // turned "Friends can see my ratings" off).
       switchMap(friends => combineLatest([
-        this.myGames$().pipe(map(games => ({ uid, name: 'You', games }))),
-        ...friends.map(f => this.friendLists$(f.uid).pipe(map(lists => ({ uid: f.uid, name: f.name, games: lists.flatMap(l => l.gameList || []) })))),
+        combineLatest([this.myGames$(), this.reactions.friendReactions$(uid)])
+          .pipe(map(([games, ratings]) => ({ uid, name: 'You', games, ratings }))),
+        ...friends.map(f => combineLatest([this.friendLists$(f.uid), this.reactions.friendReactions$(f.uid)])
+          .pipe(map(([lists, ratings]) => ({ uid: f.uid, name: f.name, games: lists.flatMap(l => l.gameList || []), ratings })))),
       ])),
       map(people => {
         const byGame = new Map<string, GamePick>();
         for (const person of people) {
           for (const game of person.games) {
             if (!game?.id) continue;
-            const pick = byGame.get(game.id) ?? { game, wantedBy: [] };
+            const pick = byGame.get(game.id) ?? { game, wantedBy: [], likedBy: [], dislikedBy: [] };
             if (!pick.wantedBy.some(p => p.uid === person.uid)) pick.wantedBy.push({ uid: person.uid, name: person.name });
             byGame.set(game.id, pick);
+          }
+        }
+        // Ratings count for any game in the picks, even if that person didn't list it
+        // (e.g. they played it with the group from someone else's list).
+        for (const person of people) {
+          for (const [gameId, r] of person.ratings) {
+            const pick = byGame.get(gameId);
+            if (!pick) continue;
+            if (r.liked === true) pick.likedBy.push(person.name);
+            if (r.liked === false) pick.dislikedBy.push(person.name);
           }
         }
         const games = [...byGame.values()].sort((a, b) => b.wantedBy.length - a.wantedBy.length || (a.game.name || '').localeCompare(b.game.name || ''));

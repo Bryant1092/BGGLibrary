@@ -19,6 +19,7 @@ import { OfflineBarComponent } from '../shared/offline-bar.component';
 import { ListPickerSheetComponent } from '../shared/list-picker-sheet.component';
 import { FriendsPicksComponent } from '../shared/friends-picks.component';
 import { RatingControlsComponent } from '../shared/rating-controls.component';
+import { BuyListComponent } from '../shared/buy-list.component';
 import { ReactionsService } from '../service/reactions.service';
 import { Friend, FriendsService } from '../service/friends.service';
 import { ThumbComponent } from '../shared/thumb.component';
@@ -82,7 +83,7 @@ type ListFilter = 'all' | 'toplay' | 'liked' | 'buy';
 @Component({
   selector: 'app-lists',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent, FriendsPicksComponent, RatingControlsComponent],
+  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent, FriendsPicksComponent, RatingControlsComponent, BuyListComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './lists.component.html',
 })
@@ -102,7 +103,7 @@ export class ListsComponent implements OnInit, OnDestroy {
   rating = signal<Game | null>(null);
 
   /** "My lists" or "Friends' picks" (switch under the title). */
-  view = signal<'lists' | 'picks'>('lists');
+  view = signal<'lists' | 'picks' | 'buy'>('lists');
   /** "Friends can see" for the open list (missing on old lists = on, the default). */
   listVisible = signal(true);
 
@@ -405,6 +406,12 @@ export class ListsComponent implements OnInit, OnDestroy {
 
   toggleWatchItem(item: BggItem): void {
     this.watch.toggle({ id: item.id, name: item.name, shelf: shelfText(item) });
+  }
+
+  /** Opens "How was it?" for a game (the row's rating line). */
+  rate(game: Game): void {
+    this.rating.set(game);
+    this.sheet.set('rate');
   }
 
   /** Counts for the filter chips. */

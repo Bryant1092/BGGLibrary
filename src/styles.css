@@ -319,13 +319,17 @@ body {
 [role="switch"][aria-checked="true"] .bl-switch { background: var(--bl-accent); }
 [role="switch"][aria-checked="true"] .bl-switch::after { transform: translateX(18px); }
 /* Your rating on a My Lists row (Liked / Not for me / Want to buy). */
-.bl-rated { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; font-weight: 600; }
+.bl-row.has-rate { flex-wrap: wrap; row-gap: 2px; }
+/* Second line under the game (lines up with the name, past the 52px picture). */
+.bl-row-rate { flex-basis: 100%; padding-left: 64px; }
+.bl-rated { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; min-height: 32px; align-items: center; border: 0; background: transparent; padding: 0; font-size: 13px; font-weight: 600; color: inherit; }
+.bl-rated .ask { color: var(--bl-accent-text); text-decoration: underline; text-underline-offset: 3px; }
 .bl-rated span { display: inline-flex; align-items: center; gap: 4px; }
 .bl-rated .up { color: var(--bl-avail-text); }
 .bl-rated .down { color: var(--bl-muted); }
 .bl-rated .buy { color: var(--bl-accent-text); }
 /* "My lists | Friends' picks" switch on My Lists. */
-.bl-view-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--bl-field); }
+.bl-view-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 12px; background: var(--bl-field); }
 .bl-view-switch button { min-height: 38px; border: 0; border-radius: 9px; background: transparent; color: var(--bl-muted); font-size: 15px; font-weight: 600; }
 .bl-view-switch button[aria-selected="true"] { background: var(--bl-surface); color: var(--bl-text); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 .bl-choice[aria-pressed="true"] .bl-radio { border: 7px solid var(--bl-accent); }

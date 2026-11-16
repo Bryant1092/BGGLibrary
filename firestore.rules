@@ -78,9 +78,13 @@ service cloud.firestore {
       // ---------- Your own ratings ----------
       // users/{uid}/reactions/{gameId}: liked (true = liked it, false = not for me),
       // buy (want to buy). Personal, unlike Played, which is on the shared list:
-      // one person's thumbs-down mustn't overwrite everyone else's. Only you see them.
+      // one person's thumbs-down mustn't overwrite everyone else's. You can change
+      // them; accepted friends can see them unless you switch "Friends can see my
+      // ratings" off (profiles/{uid}.shareRatings, on when missing).
       match /reactions/{gameId} {
-        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow read: if signedIn() && (request.auth.uid == uid
+          || (friendOf(uid) && get(/databases/$(database)/documents/profiles/$(uid)).data.get('shareRatings', true) == true));
+        allow delete: if signedIn() && request.auth.uid == uid;
         allow create, update: if signedIn() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['liked', 'buy', 'name', 'photo', 'at'])
           && (!('liked' in request.resource.data) || request.resource.data.liked == null || request.resource.data.liked is bool)
@@ -135,11 +139,11 @@ service cloud.firestore {
       // Created together with the code (same transaction, hence getAfter); the code
       // can't be swapped later, only the name.
       allow create: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['name', 'code'])
+        && request.resource.data.keys().hasOnly(['name', 'code', 'shareRatings'])
         && request.resource.data.name is string && request.resource.data.name.size() <= 60
         && getAfter(/databases/$(database)/documents/codes/$(request.resource.data.code)).data.uid == uid;
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['name', 'code'])
+        && request.resource.data.keys().hasOnly(['name', 'code', 'shareRatings'])
         && request.resource.data.name is string && request.resource.data.name.size() <= 60
         && request.resource.data.code == resource.data.code;
       allow delete: if false;

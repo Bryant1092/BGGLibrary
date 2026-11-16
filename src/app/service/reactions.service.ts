@@ -1,16 +1,19 @@
-import { DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { collection, collectionData, deleteDoc, doc, Firestore, serverTimestamp, setDoc } from '@angular/fire/firestore';
-import { catchError, of, switchMap } from 'rxjs';
+import { catchError, map, Observable, of, switchMap } from 'rxjs';
 import { Game } from '../model/game.model';
 import { UserService } from './user.service';
 
-/** How you felt about a game after playing it. Personal: only you see it. */
+/** How you felt about a game after playing it. Only you change it; accepted friends can see it unless you turn that off. */
 export interface Reaction {
   /** true = liked it, false = not for me, null/missing = not rated. */
   liked?: boolean | null;
   /** On your buy list (exhibit hall, Bazaar, later). */
   buy?: boolean;
+  /** Kept with the rating so the Buy list can show games that aren't on any list. */
+  name?: string;
+  photo?: string;
 }
 
 /**
@@ -40,7 +43,24 @@ export class ReactionsService {
         ? collectionData(collection(this.firestore, 'users', user.uid, 'reactions'), { idField: 'id' }).pipe(catchError(() => of([])))
         : of([])),
       takeUntilDestroyed(destroyRef),
-    ).subscribe(rows => this.byGame.set(new Map((rows as any[]).map(r => [r.id, { liked: r.liked ?? null, buy: !!r.buy }]))));
+    ).subscribe(rows => this.byGame.set(new Map((rows as any[]).map(r => [r.id, { liked: r.liked ?? null, buy: !!r.buy, name: r.name, photo: r.photo }]))));
+  }
+
+  /** Every game you marked Want to buy, A–Z: from any list or the Library (Buy list view). */
+  readonly buyList = computed(() => [...this.byGame()]
+    .filter(([, r]) => r.buy)
+    .map(([id, r]) => ({ id, name: r.name || '', photo: r.photo || '', liked: r.liked ?? null }))
+    .sort((a, b) => a.name.localeCompare(b.name)));
+
+  /**
+   * A friend's ratings, live. Empty if they switched "Friends can see my ratings"
+   * off or aren't friends any more (the rules refuse; that's not an error here).
+   */
+  friendReactions$(uid: string): Observable<Map<string, Reaction>> {
+    return collectionData(collection(this.firestore, 'users', uid, 'reactions'), { idField: 'id' }).pipe(
+      map(rows => new Map((rows as any[]).map(r => [r.id as string, { liked: r.liked ?? null, buy: !!r.buy }]))),
+      catchError(() => of(new Map<string, Reaction>())),
+    );
   }
 
   get(gameId: string | undefined): Reaction {
@@ -55,7 +75,7 @@ export class ReactionsService {
   set(game: Game, change: Reaction): Promise<void> {
     const uid = this.userService.getCurrentUid();
     if (!uid || !game.id) return Promise.reject(new Error('Not signed in'));
-    const next = { ...this.get(game.id), ...change };
+    const next = { ...this.get(game.id), ...change, name: game.name || '', photo: game.photo || '' };
     this.byGame.update(m => new Map(m).set(game.id!, next));
     const ref = doc(this.firestore, 'users', uid, 'reactions', game.id);
     // Nothing left to remember: remove the record instead of keeping an empty one.

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Friend, FriendList, FriendsService } from '../service/friends.service';
+import { Reaction, ReactionsService } from '../service/reactions.service';
 import { ToastService } from '../service/toast.service';
 import { Game } from '../model/game.model';
 import { SheetComponent } from './sheet.component';
@@ -24,6 +25,8 @@ import { IconComponent } from './icon.component';
     h3 { margin: 4px 0 0; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bl-muted); }
     .game { display: flex; align-items: center; gap: 12px; min-height: 56px; border-bottom: 1px solid var(--bl-hair); }
     .game span { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+    .their { font-weight: 500; color: var(--bl-muted); }
+    .their.up { color: var(--bl-avail-text); }
     .both { color: var(--bl-avail-text); font-size: 13px; font-weight: 700; }
     .none { margin: 0; color: var(--bl-muted); }
     .remove { align-self: center; }
@@ -44,7 +47,7 @@ import { IconComponent } from './icon.component';
           <h3>You both want · {{ both().length }}</h3>
           <div>
             @for (g of both(); track g.id) {
-              <div class="game"><app-thumb [src]="g.photo" [name]="g.name || ''" [size]="44" /><span>{{ g.name }}</span><span class="both" style="flex: none">✓ both</span></div>
+              <div class="game"><app-thumb [src]="g.photo" [name]="g.name || ''" [size]="44" /><span>{{ g.name }}@if (theirRatings().get(g.id!)?.liked === true) { <small class="their up"> · 👍 they liked it</small> } @else if (theirRatings().get(g.id!)?.liked === false) { <small class="their"> · 👎 not for them</small> }</span><span class="both" style="flex: none">✓ both</span></div>
             }
           </div>
         }
@@ -53,7 +56,7 @@ import { IconComponent } from './icon.component';
           <div>
             @for (g of rest(); track g.id) {
               <div class="game">
-                <app-thumb [src]="g.photo" [name]="g.name || ''" [size]="44" /><span>{{ g.name }}</span>
+                <app-thumb [src]="g.photo" [name]="g.name || ''" [size]="44" /><span>{{ g.name }}@if (theirRatings().get(g.id!)?.liked === true) { <small class="their up"> · 👍 they liked it</small> } @else if (theirRatings().get(g.id!)?.liked === false) { <small class="their"> · 👎 not for them</small> }</span>
                 <!-- "Me too" adds it to your current list (the one the Library's + uses). -->
                 <button type="button" class="bl-add" [class.on]="added().has(g.id!)" [disabled]="busy().has(g.id!)"
                         [attr.aria-label]="added().has(g.id!) ? g.name + ' added to your list' : 'Me too: add ' + g.name + ' to your list'" (click)="meToo(g)">
@@ -78,6 +81,9 @@ export class FriendSheetComponent implements OnInit {
   friend = input.required<Friend>();
   closed = output<void>();
   private friends = inject(FriendsService);
+  private reactionsService = inject(ReactionsService);
+  /** Their thumbs (empty if they don't share ratings). */
+  theirRatings = signal<Map<string, Reaction>>(new Map());
   private toast = inject(ToastService);
   private destroyRef = inject(DestroyRef);
 
@@ -104,6 +110,7 @@ export class FriendSheetComponent implements OnInit {
 
   ngOnInit(): void {
     this.friends.friendLists$(this.friend().uid).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(l => this.lists.set(l));
+    this.reactionsService.friendReactions$(this.friend().uid).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => this.theirRatings.set(r));
     this.friends.myGames$().pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(games => this.mine.set(new Set(games.map(g => g.id!).filter(Boolean))));
   }

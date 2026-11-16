@@ -39,6 +39,10 @@ type Filter = 'all' | 'most' | 'any';
       background: var(--bl-accent-soft); color: var(--bl-accent-text); box-shadow: 0 0 0 2px var(--bl-surface); }
     .dot + .dot { margin-left: -5px; }
     .dot.me { background: var(--bl-accent); color: var(--bl-on-accent); }
+    .verdict { display: flex; gap: 10px; font-size: 13px; font-weight: 600; }
+    .verdict span { display: inline-flex; align-items: center; gap: 4px; }
+    .verdict .up { color: var(--bl-avail-text); }
+    .verdict .down { color: var(--bl-muted); }
     .line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--bl-muted); }
   `,
   template: `
@@ -69,6 +73,13 @@ type Filter = 'all' | 'most' | 'any';
                   @for (w of p.wantedBy; track w.uid) { <span class="dot" [class.me]="w.name === 'You'">{{ initial(w.name) }}</span> }
                 </span>
               </span>
+              @if (p.likedBy.length || p.dislikedBy.length) {
+                <!-- After playing: who liked it. Names are in the label for screen readers. -->
+                <span class="verdict" [attr.aria-label]="verdict(p)">
+                  @if (p.likedBy.length) { <span class="up"><bl-icon name="thumbUp" [size]="14" /> {{ p.likedBy.length }} liked</span> }
+                  @if (p.dislikedBy.length) { <span class="down"><bl-icon name="thumbDown" [size]="14" /> {{ p.dislikedBy.length }} not for them</span> }
+                </span>
+              }
               <span class="line">
                 @if (details().get(p.game.id!); as item) {
                   <span class="bl-pill" [class.out]="item.is_checked_out">{{ status(item) }}</span>
@@ -142,6 +153,10 @@ export class FriendsPicksComponent implements OnInit {
 
   initial(name: string): string {
     return (name.match(/[\p{L}\p{N}]/u)?.[0] || '?').toUpperCase();
+  }
+
+  verdict(p: GamePick): string {
+    return [p.likedBy.length ? 'Liked by ' + p.likedBy.join(', ') : '', p.dislikedBy.length ? 'Not for ' + p.dislikedBy.join(', ') : ''].filter(Boolean).join('. ');
   }
 
   names(p: GamePick): string {

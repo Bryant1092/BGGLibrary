@@ -40,6 +40,9 @@ import { IconComponent } from './icon.component';
     .row .bl-btn { width: auto; min-height: 40px; padding: 0 14px; border-radius: 20px; font-size: 14px; }
     button.row { width: 100%; border: 0; border-bottom: 1px solid var(--bl-hair); background: transparent; padding: 0; text-align: left; color: inherit; font: inherit; }
     .muted { color: var(--bl-muted); font-size: 14px; margin: 0; }
+    .share-ratings { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: transparent; padding: 4px 0; text-align: left; color: inherit; font: inherit; }
+    .share-ratings > span:first-child { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .share-ratings small { color: var(--bl-muted); font-size: 13px; }
   `,
   template: `
     <div class="card">
@@ -53,6 +56,11 @@ import { IconComponent } from './icon.component';
         </div>
       </div>
       <p class="muted">Friends add you with this code. They see your lists that have "Friends can see" on, and you see theirs.</p>
+      <!-- On by default (the group says "liked it" out loud anyway); one switch turns it off. -->
+      <button type="button" class="share-ratings" role="switch" [attr.aria-checked]="shareRatings()" (click)="toggleShareRatings()">
+        <span><strong>Friends can see my ratings</strong><small>Your 👍 / 👎 show in Friends' picks and on your friend page</small></span>
+        <span class="bl-switch" aria-hidden="true"></span>
+      </button>
 
       <form (submit)="$event.preventDefault(); lookUp(codeInput.value)">
         <label class="visually-hidden" for="friend-code">Friend's Meeple code</label>
@@ -122,13 +130,14 @@ export class FriendsCardComponent implements OnInit {
   private router = inject(Router);
 
   code = signal('');
+  shareRatings = signal(true);
   busy = signal(false);
   confirm = signal<{ code: string; name: string } | null>(null);
   open = signal<Friend | null>(null);
   outgoing = computed(() => this.friends.list().filter(f => f.status === 'outgoing'));
 
   ngOnInit(): void {
-    this.friends.myCode().then(c => this.code.set(c.code))
+    this.friends.myCode().then(c => { this.code.set(c.code); return this.friends.shareRatings(); }).then(on => this.shareRatings.set(on))
       .catch(() => this.toast.error("Couldn't load your Meeple code. Check your connection."));
     // A shared link: …/account?meeple=MEEP-7K4Q opens "Add Alex G.?". The parameter is
     // dropped right away so a reload doesn't ask again.
@@ -186,6 +195,14 @@ export class FriendsCardComponent implements OnInit {
   remove(f: Friend, done: string): void {
     this.friends.remove(f.uid).then(() => this.toast.show({ text: done }))
       .catch(() => this.toast.error("That didn't work. Check your connection."));
+  }
+
+  toggleShareRatings(): void {
+    const next = !this.shareRatings();
+    this.shareRatings.set(next);
+    this.friends.setShareRatings(next)
+      .then(() => this.toast.show({ text: next ? 'Friends can see your ratings' : 'Your ratings are private' }))
+      .catch(() => { this.shareRatings.set(!next); this.toast.error("Couldn't change that. Check your connection."); });
   }
 
   copy(): void {
