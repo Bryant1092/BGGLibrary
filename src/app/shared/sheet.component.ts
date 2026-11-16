@@ -3,6 +3,32 @@ import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, HostList
 /** Sheets currently open, oldest first. Only the last one is "on top". */
 const openSheets: SheetComponent[] = [];
 
+/**
+ * Page scroll lock while any sheet is open.
+ *
+ * Why not just overflow: hidden on <body> (what this did before): iPhone Safari ignores
+ * it, so the page behind a sheet kept scrolling, and after the keyboard had been open
+ * the sheet and the tab bar drifted with the page (reported 2026-11-16 on "Add Evan G.?").
+ * Pinning <body> with position: fixed at the current scroll offset is the lock iOS
+ * honours; on close the page is put back exactly where it was.
+ */
+let pageLock: { y: number } | null = null;
+
+function lockPage(): void {
+  if (pageLock) return;
+  pageLock = { y: window.scrollY };
+  Object.assign(document.body.style, { position: 'fixed', top: `-${pageLock.y}px`, left: '0', right: '0', overflow: 'hidden' });
+}
+
+function unlockPage(): void {
+  if (!pageLock) return;
+  const { y } = pageLock;
+  pageLock = null;
+  Object.assign(document.body.style, { position: '', top: '', left: '', right: '', overflow: '' });
+  // 'instant': Bootstrap sets scroll-behavior: smooth on the page, which would animate this.
+  window.scrollTo({ top: y, behavior: 'instant' as ScrollBehavior });
+}
+
 /** iOS's own sheet curve: starts fast and settles gently, so the panel doesn't snap into place. */
 const SETTLE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 /** Accelerates away when closing. */
@@ -55,7 +81,7 @@ export class SheetComponent implements AfterViewInit, OnDestroy {
     // Stop the page behind from scrolling while a sheet is open, and move
     // toasts to the top of the screen (styles.css) so they don't cover the
     // sheet's buttons.
-    document.body.style.overflow = 'hidden';
+    lockPage();
     document.body.classList.add('bl-sheet-open');
     this.panel().nativeElement.focus({ preventScroll: true });
     if (this.animate) {
@@ -71,7 +97,7 @@ export class SheetComponent implements AfterViewInit, OnDestroy {
     openSheets.splice(openSheets.indexOf(this), 1);
     // Only unlock the page once the last open sheet closes.
     if (openSheets.length === 0) {
-      document.body.style.overflow = '';
+      unlockPage();
       document.body.classList.remove('bl-sheet-open');
     }
     this.returnFocusTo?.focus?.({ preventScroll: true });

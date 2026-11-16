@@ -112,7 +112,19 @@ export class AppComponent implements OnInit {
     const onIn = (e: FocusEvent) => { if (isTextField(e.target)) { clearTimeout(timer); root.classList.add('bl-typing'); } };
     const onOut = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => { if (!isTextField(document.activeElement)) root.classList.remove('bl-typing'); }, 150);
+      timer = setTimeout(() => {
+        if (isTextField(document.activeElement)) return;
+        root.classList.remove('bl-typing');
+        // iOS: after the keyboard closes, fixed elements (tab bar, sheets) can stay offset
+        // and move with the page until it scrolls (seen 2026-11-16 after "Add friend").
+        // A 1px scroll and back makes Safari place them again. Skipped while a sheet has
+        // the page locked (SheetComponent), where the page can't scroll anyway.
+        setTimeout(() => {
+          if (document.body.style.position === 'fixed' || isTextField(document.activeElement)) return;
+          window.scrollBy({ top: 1, behavior: 'instant' as ScrollBehavior });
+          window.scrollBy({ top: -1, behavior: 'instant' as ScrollBehavior });
+        }, 150);
+      }, 150);
     };
     document.addEventListener('focusin', onIn);
     document.addEventListener('focusout', onOut);

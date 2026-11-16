@@ -163,6 +163,9 @@ export class FriendsCardComponent implements OnInit {
     const code = normalizeCode(input);
     if (!code) { this.toast.error('That doesn\'t look like a Meeple code. It\'s 4 letters/numbers, like MEEP-7K4Q.'); return; }
     if (code === this.code()) { this.toast.error("That's your own code."); return; }
+    // Close the keyboard before the "Add …?" sheet opens: on iPhone, a keyboard closing
+    // underneath a sheet is what left the sheet and tab bar drifting with the page.
+    (document.activeElement as HTMLElement | null)?.blur?.();
     this.busy.set(true);
     try {
       const found = await this.friends.lookup(code);
