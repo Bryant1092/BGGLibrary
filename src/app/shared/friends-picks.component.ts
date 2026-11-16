@@ -40,7 +40,9 @@ type Filter = 'all' | 'most' | 'any';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     /* margin 0: .bl-chips normally bleeds into the header's padding; here there's none. */
-    .chips { padding: 12px 16px 4px; margin: 0; }
+    .chips { padding: 12px 16px 0; margin: 0; }
+    /* Space between the filter rows and the first game. */
+    .rows-gap { height: 4px; }
     .who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .count { font-size: 13px; font-weight: 700; color: var(--bl-accent-text); }
     .dots { display: flex; }
@@ -69,13 +71,16 @@ type Filter = 'all' | 'most' | 'any';
         <a class="bl-btn outline" routerLink="/account" style="text-decoration: none">Add friends</a>
       </div>
     } @else {
-      <!-- "5 of us, about an hour": same filters as My lists (values shared with it). -->
-      <app-play-filters [(players)]="players" [(playTime)]="playTime" />
+      <!-- Whose games first, then players / time below: the same order as My lists
+           (All / To play / Liked above, Players / Play time under it). -->
       <div class="bl-chips chips" role="radiogroup" aria-label="Show games wanted by">
         @for (f of filters(); track f.value) {
           <button type="button" class="bl-chip" role="radio" [class.on]="filter() === f.value" [attr.aria-checked]="filter() === f.value" (click)="filter.set(f.value)">{{ f.label }}</button>
         }
       </div>
+      <!-- "5 of us, about an hour": same filters as My lists (values shared with it). -->
+      <app-play-filters [(players)]="players" [(playTime)]="playTime" />
+      <div class="rows-gap"></div>
       @for (p of shown(); track p.game.id) {
         <div class="bl-row" (blInView)="wantCopies(p)">
           <!-- Tapping opens the same details sheet as Library / My Lists (players, BGG link, add to a list, who wants it). -->
