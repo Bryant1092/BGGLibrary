@@ -254,8 +254,20 @@ export class ConPopularComponent {
   }
 
   status(item: BggItem): string { return statusText(item, this.now()); }
-  /** Every copy's loaded record (for the missing-pieces tag; unloaded copies are skipped). */
-  copyDetails(ids: string[]): (BggItem | undefined)[] { return ids.map(id => this.details().get(id)); }
+  /**
+   * Every copy's loaded record (for the missing-pieces tag; unloaded copies are skipped).
+   * The same array is returned until details change, so the tag isn't handed a "new"
+   * input on every redraw of the page.
+   */
+  copyDetails(ids: string[]): (BggItem | undefined)[] {
+    const details = this.details();
+    if (details !== this.copyCacheFor) { this.copyCache = new WeakMap(); this.copyCacheFor = details; }
+    let copies = this.copyCache.get(ids);
+    if (!copies) { copies = ids.map(id => details.get(id)); this.copyCache.set(ids, copies); }
+    return copies;
+  }
+  private copyCache = new WeakMap<object, (BggItem | undefined)[]>();
+  private copyCacheFor?: Map<string, BggItem>;
   shelf(item: BggItem): string { return shelfText(item); }
   playersOf(item: BggItem): string { return playersText(item); }
   minutesOf(item: BggItem): string { return minutesText(item); }

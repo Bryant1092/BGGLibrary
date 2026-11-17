@@ -79,7 +79,7 @@ export class OfflineReadyService {
     if (saved >= this.urls.length) {
       if (!this.readFlag()) {
         // Once per phone; later app updates download quietly without another message.
-        this.toast.show({ text: 'Saved for offline use. Search and maps now work without a signal.' }, 6000);
+        this.announceReady();
         this.writeFlag();
       }
       this.state.set('ready');
@@ -93,6 +93,20 @@ export class OfflineReadyService {
     }
     this.state.set('saving');
     this.timer = setTimeout(() => this.count(), POLL_MS);
+  }
+
+  /**
+   * The one-time "Saved for offline use" message, but never on top of another message:
+   * it replaced "No account uses that email…" in testing (2026-11-16), and that one
+   * matters more. It waits until the message bar is free (checks every 2 s, gives up
+   * after a minute; the Account tab still says "Ready offline").
+   */
+  private announceReady(tries = 0): void {
+    if (this.toast.current()) {
+      if (tries < 30) setTimeout(() => this.announceReady(tries + 1), 2000);
+      return;
+    }
+    this.toast.show({ text: 'Saved for offline use. Search and maps now work without a signal.' }, 6000);
   }
 
   // localStorage can throw (private mode, blocked storage); the status still works without it.

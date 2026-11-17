@@ -374,10 +374,20 @@ export class FriendsPicksComponent implements OnInit {
    * go get), otherwise the first copy once all have been checked. Undefined = still
    * checking, so a row doesn't flash "Checked out" while another copy is loading.
    */
-  /** Every copy's loaded record (for the missing-pieces tag; unloaded copies are skipped). */
+  /**
+   * Every copy's loaded record (for the missing-pieces tag; unloaded copies are skipped).
+   * The same array is returned until details change, so the tag isn't handed a "new"
+   * input on every redraw of the page.
+   */
   copyDetails(p: GamePick): (BggItem | undefined)[] {
-    return p.copies.map(c => this.details().get(c.id!));
+    const details = this.details();
+    if (details !== this.copyCacheFor) { this.copyCache = new WeakMap(); this.copyCacheFor = details; }
+    let copies = this.copyCache.get(p.copies);
+    if (!copies) { copies = p.copies.map(c => details.get(c.id!)); this.copyCache.set(p.copies, copies); }
+    return copies;
   }
+  private copyCache = new WeakMap<object, (BggItem | undefined)[]>();
+  private copyCacheFor?: Map<string, BggItem>;
 
   best(p: GamePick): BggItem | undefined {
     const loaded = p.copies.map(c => this.details().get(c.id!)).filter((i): i is BggItem => !!i);
