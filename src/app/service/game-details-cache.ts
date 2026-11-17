@@ -28,15 +28,23 @@ const MAX_SAVED_AGE_MS = 7 * 24 * 60 * 60_000;
 @Injectable({ providedIn: 'root' })
 export class GameDetailsCache {
   private entries = new Map<string, { item: BggItem; at: number }>(this.load());
+  /** Ids loaded from the phone's storage and not re-checked yet this session (see isFresh). */
+  private fromStorage = new Set(this.entries.keys());
   private saveTimer?: ReturnType<typeof setTimeout>;
 
   items(): Map<string, BggItem> {
     return new Map([...this.entries].map(([id, entry]) => [id, entry.item]));
   }
 
+  /**
+   * Fetched in the last 2 minutes *while the app was open*. Details saved on the phone are
+   * shown at once but never count as fresh: reopening the app always re-checks them. Without
+   * this, tapping a "Kalypso is back" notification within 2 min of the last check reopened
+   * My Lists still saying "Out" (found in testing, 2026-11-16).
+   */
   isFresh(id: string): boolean {
     const entry = this.entries.get(id);
-    return !!entry && Date.now() - entry.at < DETAILS_FRESH_MS;
+    return !!entry && !this.fromStorage.has(id) && Date.now() - entry.at < DETAILS_FRESH_MS;
   }
 
   /** When this game was last checked (ms), or undefined if never. */
@@ -47,6 +55,7 @@ export class GameDetailsCache {
   set(id: string, item: BggItem): void {
     // Re-insert so Map order stays oldest-first, for trimming in save().
     this.entries.delete(id);
+    this.fromStorage.delete(id);
     this.entries.set(id, { item, at: Date.now() });
     // A list's games all arrive within a second or two: write once after they settle.
     clearTimeout(this.saveTimer);
