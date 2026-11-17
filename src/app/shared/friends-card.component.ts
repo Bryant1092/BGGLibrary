@@ -39,7 +39,13 @@ import { initialsOf } from '../service/person-badges.service';
     h3 { margin: 4px 0 0; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bl-muted); }
     .fr-row { display: flex; align-items: center; gap: 10px; min-height: 52px; border-bottom: 1px solid var(--bl-hair); }
     .fr-row:last-child { border-bottom: 0; }
-    .avatar { width: 36px; height: 36px; border-radius: 18px; background: var(--bl-accent-soft); color: var(--bl-accent-text); display: flex; align-items: center; justify-content: center; font-weight: 800; flex: none; }
+    /*
+      Pending requests (not friends yet): a dashed ring with plain text, the usual "invited"
+      look. It was a pale orange disc on a pale card (1.05:1 in light, 1.12:1 in dark): hard to
+      see (reported 2026-11-17). Now 15:1 text and a 3.3:1 / 4.4:1 ring. Friends get their color.
+    */
+    .avatar { width: 36px; height: 36px; border-radius: 18px; box-sizing: border-box; background: transparent; color: var(--bl-text);
+      border: 2px dashed var(--bl-pending-border); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex: none; }
     .fr-row .who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .fr-row .who small { color: var(--bl-muted); font-size: 13px; }
     .fr-row .bl-btn { width: auto; min-height: 40px; padding: 0 14px; border-radius: 20px; font-size: 14px; }

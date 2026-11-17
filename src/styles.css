@@ -56,7 +56,6 @@
    * Friend colors (PersonBadgeComponent): one per friend, so you learn who's who. From the
    * color-blind-safe Okabe-Ito set, minus its red-orange (too close to the orange accent,
    * which is "You"), plus a slate. Text color picked per color for at least 4.5:1.
-   * Light mode adds a thin dark edge: yellow, sky, amber and pink are faint on white.
    */
   --bl-p0-bg: #0072B2; --bl-p0-fg: #ffffff;
   --bl-p1-bg: #F0E442; --bl-p1-fg: #1c1b1a;
@@ -65,7 +64,16 @@
   --bl-p4-bg: #56B4E9; --bl-p4-fg: #1c1b1a;
   --bl-p5-bg: #E69F00; --bl-p5-fg: #1c1b1a;
   --bl-p6-bg: #6B7280; --bl-p6-fg: #ffffff;
-  --bl-p-edge: rgba(0, 0, 0, .28);
+  /*
+   * Edges (light mode): each color 45% darker, 2px. Circles sit on the page (#fff) and on cards
+   * (#f1efec); the pale ones (yellow 1.15:1 on a card) vanished, so each gets its own darker
+   * ring, at least 3.7:1 against both (WCAG 1.4.11's 3:1 for shapes). Checked 2026-11-17.
+   */
+  --bl-p0-edge: #003f62; --bl-p1-edge: #847d24; --bl-p2-edge: #00573f; --bl-p3-edge: #70435c;
+  --bl-p4-edge: #2f6380; --bl-p5-edge: #7f5700; --bl-p6-edge: #3b3f46;
+  /* "You": the accent. Pending friend requests: a dashed ring (invited, not joined yet). */
+  --bl-me-bg: #c2410c; --bl-me-fg: #ffffff;
+  --bl-pending-border: #8a837d;
   --bl-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -112,7 +120,13 @@
     --bl-p4-bg: #7CC6F0; --bl-p4-fg: #1c1b1a;
     --bl-p5-bg: #F0AD1E; --bl-p5-fg: #1c1b1a;
     --bl-p6-bg: #A3AAB4; --bl-p6-fg: #1c1b1a;
-    --bl-p-edge: transparent;
+    /* Every friend color is 5:1 or more against the dark page and cards: no edge needed. */
+    --bl-p0-edge: transparent; --bl-p1-edge: transparent; --bl-p2-edge: transparent; --bl-p3-edge: transparent;
+    --bl-p4-edge: transparent; --bl-p5-edge: transparent; --bl-p6-edge: transparent;
+    /* The accent orange was 2.95:1 on dark cards; this lighter orange is 5.2:1, with dark text (5.8:1). */
+    --bl-me-bg: #E8763F; --bl-me-fg: #1c1b1a;
+    /* 4.4:1 on dark cards (the usual control border was under 3:1 there). */
+    --bl-pending-border: #8f8983;
 }
 
 /* Bootstrap's system font stack, not Roboto from Google Fonts: no download, no

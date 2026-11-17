@@ -14,11 +14,12 @@ import { PersonBadges } from '../service/person-badges.service';
     :host { display: inline-flex; flex: none; }
     .b { width: var(--size); height: var(--size); border-radius: 50%; box-sizing: border-box; display: flex; align-items: center; justify-content: center;
       font-weight: 800; font-size: calc(var(--size) * .42); letter-spacing: -.02em; line-height: 1;
-      /* Thin dark edge in light mode only (--bl-p-edge), so pale colors keep an outline on white. */
-      box-shadow: inset 0 0 0 1px var(--bl-p-edge); }
-    .me { background: var(--bl-accent); color: var(--bl-on-accent); box-shadow: none; }
+      /* Each color's own darker ring in light mode (--bl-pN-edge in styles.css), so pale colors
+         like yellow keep a clear outline on white pages and grey cards; none in dark mode. */
+      box-shadow: inset 0 0 0 2px var(--edge, transparent); }
+    .me { background: var(--bl-me-bg); color: var(--bl-me-fg); }
   `,
-  template: `<span class="b" [class.me]="badge().color === 'me'" [style.background]="bg()" [style.color]="fg()">{{ badge().initials }}</span>`,
+  template: `<span class="b" [class.me]="badge().color === 'me'" [style.background]="bg()" [style.color]="fg()" [style.--edge]="edge()">{{ badge().initials }}</span>`,
 })
 export class PersonBadgeComponent {
   private badges = inject(PersonBadges);
@@ -28,4 +29,5 @@ export class PersonBadgeComponent {
   badge = computed(() => this.badges.badge(this.uid(), this.name()));
   bg = computed(() => { const c = this.badge().color; return c === 'me' ? null : `var(--bl-p${c}-bg)`; });
   fg = computed(() => { const c = this.badge().color; return c === 'me' ? null : `var(--bl-p${c}-fg)`; });
+  edge = computed(() => { const c = this.badge().color; return c === 'me' ? null : `var(--bl-p${c}-edge)`; });
 }
