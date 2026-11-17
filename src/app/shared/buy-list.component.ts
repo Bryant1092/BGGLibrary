@@ -41,7 +41,8 @@ import { IconComponent } from './icon.component';
               @if (g.liked === true) { <span class="up"><bl-icon name="thumbUp" [size]="14" /> Liked</span> }
               @if (details().get(g.id); as item) {
                 <span class="bl-pill" [class.out]="item.is_checked_out">{{ status(item) }}</span>
-                <span>Shelf {{ shelf(item) }}</span>
+                <!-- Same pin icon as every other game row (was the word "Shelf"). -->
+                <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ shelf(item) }}</span>
               }
             </span>
           </span>

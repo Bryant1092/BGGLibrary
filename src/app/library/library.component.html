@@ -128,7 +128,8 @@
               } @else {
                 <span class="bl-pill" [class.out]="r.out">{{ r.status }}</span>
               }
-              <span class="bl-shelf">Shelf {{ r.shelf }}</span>
+              <!-- Same pin icon as the other rows (was the word "Shelf"); "Shelf" stays for screen readers. -->
+              <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ r.shelf }}</span>
               @if (r.hot) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
               <!-- Missing pieces / damage on this copy (util/game-notice.ts). -->
               <app-notice-tag [game]="r.item" />
