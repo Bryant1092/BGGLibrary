@@ -80,6 +80,9 @@
             },
             "development": {
               "buildTarget": "BGGLibrary:build:development"
+            },
+            "fork": {
+              "buildTarget": "BGGLibrary:build:development,fork"
             }
           },
           "defaultConfiguration": "development"
