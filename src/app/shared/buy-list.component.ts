@@ -27,7 +27,7 @@ import { IconComponent } from './icon.component';
   styles: `
     .line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--bl-muted); }
     .up { color: var(--bl-avail-text); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
-    .remove { flex: none; width: 44px; height: 44px; border: 0; border-radius: 22px; background: var(--bl-accent-soft); color: var(--bl-accent-text);
+    .remove { flex: none; width: 44px; height: 44px; border: 0; border-radius: 22px; background: var(--bl-tonal); color: var(--bl-on-tonal);
       display: flex; align-items: center; justify-content: center; }
   `,
   template: `

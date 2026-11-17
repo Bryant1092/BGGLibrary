@@ -8,7 +8,8 @@
 .days button strong { font-size: 18px; }
 .days button.on { background: var(--bl-accent); border-color: var(--bl-accent); color: var(--bl-on-accent); }
 .days button.on span { color: var(--bl-on-accent); }
-.bl-link-btn.inline { margin: 0; padding: 0 2px; min-height: 0; font-size: inherit; }
+/* Inside a line of text: 44px tall to tap (was 21, under even WCAG's 24), with negative margins so the line keeps its height. */
+.bl-link-btn.inline { margin: -12px 0; padding: 0 2px; min-height: 44px; font-size: inherit; vertical-align: middle; }
 
 /* Opening hours for the day, collapsed to one line by default. */
 .hours { margin: 12px 16px 4px; border-radius: 12px; background: var(--bl-field); }

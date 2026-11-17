@@ -77,8 +77,6 @@ type ListFilter = 'all' | 'toplay' | 'liked' | 'buy';
     .list-tools app-play-filters { flex: 1; min-width: 0; }
     .select-btn { flex: none; width: 60px; margin: 12px 4px 0 0; padding: 0; min-height: 44px; font-size: 16px; font-weight: 700; text-align: center; }
     .bl-row.picked { background: var(--bl-accent-soft); }
-    /* The shelf badge is the same soft color as a picked row; give it the page color so it still reads as a box. */
-    .bl-row.picked .bl-shelf-badge:not(.out) { background: var(--bl-surface); }
     /* 44px tap target around a 26px circle: empty when not picked, filled with a check when picked. */
     .pick { flex: none; width: 52px; height: 52px; /* same box as the Played column it replaces */ border: 0; background: transparent; display: flex; align-items: center; justify-content: center; }
     .pick .circle { width: 26px; height: 26px; border-radius: 13px; box-sizing: border-box; border: 2px solid var(--bl-control-border);

@@ -8,7 +8,7 @@ html {
 
 body{
     font-family: 'Lato', sans-serif;
-    color: #888;
+    /* App palette (light + dark): #888 on white was 3.5:1, under the 4.5:1 minimum for text. */ color: var(--bl-text);
     margin: 0;
 }
 
@@ -34,6 +34,6 @@ body{
 }
 
 @keyframes type{
-	  from{box-shadow: inset -3px 0px 0px #888;}
+	  from{box-shadow: inset -3px 0px 0px var(--bl-muted);}
 	  to{box-shadow: inset -3px 0px 0px transparent;}
 }

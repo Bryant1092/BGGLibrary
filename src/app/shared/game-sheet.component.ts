@@ -27,7 +27,7 @@ import { ThumbComponent } from './thumb.component';
     .head h2 { overflow-wrap: anywhere; }
     .head .bl-pill { align-self: flex-start; }
     .head-actions { display: flex; flex-direction: column; gap: 4px; margin: -6px -10px 0 0; }
-    .head-actions .share { color: var(--bl-accent-text); background: var(--bl-accent-soft); }
+    .head-actions .share { color: var(--bl-on-tonal); background: var(--bl-tonal); }
     .note-box { display: flex; gap: 12px; align-items: center; border-radius: 12px; padding: 12px 14px; border: 1.5px solid var(--bl-control-border); }
     .note-box bl-icon { color: var(--bl-muted); }
     .note-box div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -37,9 +37,9 @@ import { ThumbComponent } from './thumb.component';
     /* Label and value both centered: three equal tiles read as a row of stats, and
        keeping label and value on one alignment keeps each tile easy to scan. */
     .tile { border-radius: 12px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; background: var(--bl-field); min-width: 0; }
-    .tile.accent { background: var(--bl-accent-soft); }
+    .tile.accent { background: var(--bl-tonal); color: var(--bl-on-tonal); }
     .tile small { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--bl-muted); }
-    .tile.accent small { color: var(--bl-accent-text); }
+    .tile.accent small { color: var(--bl-on-tonal); }
     .tile strong { font-size: 20px; font-weight: 700; line-height: 24px; overflow-wrap: anywhere; }
     .due { border-radius: 14px; padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start; background: var(--bl-due-bg); border: 1.5px solid var(--bl-due-border); --fg: var(--bl-due-fg); }
     .due.late { background: var(--bl-late-bg); border-color: var(--bl-late-border); --fg: var(--bl-late-fg); }
@@ -61,7 +61,7 @@ import { ThumbComponent } from './thumb.component';
     .hot { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--bl-accent-soft); font-size: 14px; line-height: 19px; display: flex; gap: 10px; align-items: flex-start; }
     .hot > bl-icon { color: var(--bl-accent-text); }
     .hot-text { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
-    .hot-text .bl-link-btn { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 -6px -2px; }
+    .hot-text .bl-link-btn { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 -14px -2px; /* -14: same footprint with the 44px tap height */ }
     .bgg { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; font-weight: 600; text-decoration: none; color: var(--bl-accent-text); }
   `,
   template: `

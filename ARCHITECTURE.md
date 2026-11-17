@@ -265,6 +265,12 @@ via the hotel front desk. Convention days and hours come from `config/convention
   focus return).
 - Colors are CSS variables in `src/styles.css`, defined twice: light (`:root`) and dark
   (`:root[data-theme="dark"]`). Text meets 4.5:1 and shapes 3:1 contrast in both.
+- Emphasis levels: solid orange (`--bl-accent`) only for the main action; the tinted style
+  (`--bl-tonal` / `--bl-on-tonal`) for medium-importance boxes such as shelf badges, the Location
+  tile, share and bell buttons, Hot Games tags and booth numbers; the soft wash
+  (`--bl-accent-soft`) only for large cards and highlights.
+- Everything tappable is at least 44×44 points (Apple's minimum); small text links get the height
+  from padding and a matching negative margin so the layout doesn't grow. Labels are at least 11px.
 - Bootstrap is loaded app-wide: don't name custom classes `.row`, `.card`, `.mark` and similar, or
   Bootstrap styles leak in.
 - Code comments explain *why*, so a reviewer can follow decisions without the chat history.

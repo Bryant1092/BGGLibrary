@@ -51,6 +51,15 @@
   --bl-danger: #b42318;
   /* Red fills with white text (error toast, Delete button); the same in both modes. */
   --bl-danger-fill: #b42318;
+  /*
+   * Tinted boxes: shelf badges, the Location tile, the share button, a bell that's on, Hot Games
+   * tags, booth numbers, the Buy list remove button. The standard "tinted" / "filled tonal" style
+   * (Apple's tinted button, Material 3's tonal container) for medium-importance items, at the
+   * strength those systems use. The old peach (--bl-accent-soft) was too faint on white (1.09:1)
+   * and the dark brown too dark (1.30:1, muddy); researched 2026-11-17. Letters 6.0:1 light,
+   * 7.1:1 dark. --bl-accent-soft stays for large cards and highlights, where a light wash is right.
+   */
+  --bl-tonal: #fbd0b9; --bl-on-tonal: #8a2f0e;
   --bl-tabbar-h: 64px;
   /*
    * Friend colors (PersonBadgeComponent): one per friend, so you learn who's who. From the
@@ -125,6 +134,9 @@
     --bl-p4-edge: transparent; --bl-p5-edge: transparent; --bl-p6-edge: transparent;
     /* The accent orange was 2.95:1 on dark cards; this lighter orange is 5.2:1, with dark text (5.8:1). */
     --bl-me-bg: #E8763F; --bl-me-fg: #1c1b1a;
+    /* Tinted boxes: a warm orange-brown like Material's dark tonal container (1.9:1 on the page),
+       pale peach letters 7.1:1. Replaces #482414, which read as muddy brown. */
+    --bl-tonal: #7a3212; --bl-on-tonal: #ffdbcc;
     /* 4.4:1 on dark cards (the usual control border was under 3:1 there). */
     --bl-pending-border: #8f8983;
 }
@@ -243,7 +255,7 @@ body {
 .bl-list-switch .label { flex: none; font-size: 13px; color: var(--bl-muted); }
 .bl-list-switch strong { flex: 1; min-width: 0; font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bl-list-switch bl-icon { color: var(--bl-accent-text); }
-.bl-link-btn { border: 0; background: transparent; padding: 4px 6px; margin: -4px 0; min-height: 36px; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--bl-accent-text); }
+.bl-link-btn { border: 0; background: transparent; padding: 4px 6px; margin: -8px 0; min-height: 44px; /* 44pt tap target (Apple HIG); the -8px margin keeps the same footprint as before */ display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--bl-accent-text); }
 
 .bl-btn {
   min-height: 52px; border-radius: 14px; font-size: 16px; font-weight: 700; padding: 0 20px;
@@ -297,13 +309,13 @@ body {
 .bl-hot-card .kicker { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-accent-text); }
 .bl-hot-card strong { font-size: 18px; line-height: 23px; }
 .bl-hot-card .body { font-size: 14px; line-height: 19px; color: var(--bl-muted); }
-.bl-hot-card .bl-link-btn { align-self: flex-start; margin: 2px 0 -6px -2px; display: inline-flex; align-items: center; gap: 4px; }
+.bl-hot-card .bl-link-btn { align-self: flex-start; margin: 2px 0 -14px -2px; /* -14: same footprint with the 44px tap height */ display: inline-flex; align-items: center; gap: 4px; }
 /*
   Small "Hot Games" tag on game rows (Library, Browse a shelf, My Lists, Friends' picks).
   Why: a game on the Hot Games tables can be played there without checking it out, which
   matters most when the library's copy is checked out (the tag sits next to "Checked out").
 */
-.bl-hot-tag { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 6px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 18px; white-space: nowrap; background: var(--bl-accent-soft); color: var(--bl-accent-text); }
+.bl-hot-tag { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 6px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 18px; white-space: nowrap; background: var(--bl-tonal); color: var(--bl-on-tonal); }
 .bl-add {
   flex: none; width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; padding: 0;
   border: 1.5px solid var(--bl-accent-text); background: transparent; color: var(--bl-accent-text);
@@ -312,15 +324,16 @@ body {
 .bl-add:disabled { opacity: .6; }
 
 /* Shelf badge on My Lists: where to walk to is the first thing you need there. */
-.bl-shelf-badge { flex: none; width: 56px; height: 56px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; text-align: center; background: var(--bl-accent-soft); color: var(--bl-accent-text); }
+.bl-shelf-badge { flex: none; width: 56px; height: 56px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; text-align: center; background: var(--bl-tonal); color: var(--bl-on-tonal); }
 .bl-shelf-badge.out { background: var(--bl-field); color: var(--bl-muted); }
-.bl-shelf-badge small { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
+/* 11px at full strength: 10px and 85% opacity put "SHELF" under 4.5:1 on the tinted badge (UX audit 2026-11-17). */
+.bl-shelf-badge small { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .bl-shelf-badge strong { font-size: 22px; font-weight: 800; line-height: 24px; }
 .bl-shelf-badge.long strong { font-size: 12px; line-height: 13px; padding: 0 4px; }
 
 /* "Notify me when it's back" bell on checked-out games: orange when on, grey when off. */
 .bl-bell { flex: none; width: 44px; height: 44px; border: 0; border-radius: 22px; background: transparent; color: var(--bl-muted); display: flex; align-items: center; justify-content: center; padding: 0; }
-.bl-bell[aria-pressed="true"] { color: var(--bl-accent-text); background: var(--bl-accent-soft); }
+.bl-bell[aria-pressed="true"] { color: var(--bl-on-tonal); background: var(--bl-tonal); }
 .bl-check { flex: none; width: 52px; min-height: 52px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 600; color: var(--bl-muted); padding: 0; }
 .bl-box { width: 24px; height: 24px; border-radius: 7px; box-sizing: border-box; border: 2px solid var(--bl-muted); display: flex; align-items: center; justify-content: center; }
 .bl-check[aria-checked="true"] .bl-box { background: var(--bl-accent); border: 0; color: var(--bl-on-accent); }
@@ -389,10 +402,10 @@ body {
 .bl-notify-card > bl-icon { color: var(--bl-accent-text); margin-top: 2px; }
 .bl-notify-card small { display: block; color: var(--bl-muted); font-size: 13px; margin-top: 2px; }
 .bl-notify-card .actions { grid-column: 2; display: flex; align-items: center; gap: 12px; }
-.bl-notify-card .bl-btn { width: auto; min-height: 40px; padding: 0 18px; border-radius: 20px; font-size: 15px; }
+.bl-notify-card .bl-btn { width: auto; min-height: 44px; /* 44pt tap target */ padding: 0 18px; border-radius: 20px; font-size: 15px; }
 /* "My lists | Friends' picks" switch on My Lists. */
 .bl-view-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 12px; background: var(--bl-field); }
-.bl-view-switch button { min-height: 38px; border: 0; border-radius: 9px; background: transparent; color: var(--bl-muted); font-size: 15px; font-weight: 600; }
+.bl-view-switch button { min-height: 44px; /* was 38: below the 44pt tap target */ border: 0; border-radius: 9px; background: transparent; color: var(--bl-muted); font-size: 15px; font-weight: 600; }
 .bl-view-switch button[aria-selected="true"] { background: var(--bl-surface); color: var(--bl-text); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 /* Dark mode: the selected option has to be lighter than the bar (as on iPhone), not darker. */
 :root[data-theme="dark"] .bl-view-switch button[aria-selected="true"] { background: #4a4643; box-shadow: none; }
@@ -431,7 +444,7 @@ body {
 
 /* Schedule / Exhibitors switch in the Events title row. */
 .view-switch { flex: 1; display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: var(--bl-field); max-width: 260px; }
-.view-switch button { flex: 1; min-height: 38px; border: 0; border-radius: 9px; background: transparent; color: var(--bl-text); font-size: 14px; font-weight: 600; }
+.view-switch button { flex: 1; min-height: 44px; /* was 38: below the 44pt tap target */ border: 0; border-radius: 9px; background: transparent; color: var(--bl-text); font-size: 14px; font-weight: 600; }
 .view-switch button.on { background: var(--bl-surface); color: var(--bl-accent-text); box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
 .bl-title-row .view-switch + .bl-icon-btn { margin-left: auto; }
 /* Pin button on Hours rows that opens the map. */
@@ -440,9 +453,9 @@ body {
 /* flex: 1 + min-width: 0 keeps a long room name wrapping beside its pin icon instead of dropping below it. */
 .room-link { flex: 1; min-width: 0; padding: 0; margin: 0; min-height: 0; text-align: left; font-size: 15px; text-decoration: underline; text-underline-offset: 2px; }
 .ex-row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 16px; border: 0; border-bottom: 1px solid var(--bl-hair); background: transparent; color: inherit; text-align: left; }
-.ex-row .booth { flex: none; width: 56px; height: 52px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bl-accent-soft); color: var(--bl-accent-text); }
+.ex-row .booth { flex: none; width: 56px; height: 52px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bl-tonal); color: var(--bl-on-tonal); }
 .ex-row .booth.none { background: var(--bl-field); color: var(--bl-muted); }
-.ex-row .booth small { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.ex-row .booth small { font-size: 11px; /* 11px minimum, as the shelf badge */ font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 .ex-row .booth strong { font-size: 20px; font-weight: 800; line-height: 22px; }
 .ex-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .ex-desc { font-size: 13px; color: var(--bl-muted); line-height: 17px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -508,8 +521,8 @@ body {
 
 /* ---------- Browse a shelf (ShelfListComponent) ---------- */
 .shelf-head { display: flex; align-items: center; gap: 12px; padding: 12px 12px 10px 16px; border-bottom: 1px solid var(--bl-hair); }
-.shelf-badge { flex: none; width: 52px; height: 52px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: var(--bl-accent-soft); color: var(--bl-accent-text); }
-.shelf-badge small { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.shelf-badge { flex: none; width: 52px; height: 52px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: var(--bl-tonal); color: var(--bl-on-tonal); }
+.shelf-badge small { font-size: 11px; /* 11px minimum, as the shelf badge */ font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .shelf-badge strong { font-size: 20px; font-weight: 800; line-height: 22px; }
 .shelf-badge strong.long { font-size: 10px; line-height: 11px; padding: 0 3px; }
 .shelf-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
