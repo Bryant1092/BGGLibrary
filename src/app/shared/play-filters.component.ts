@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, model, signal } from '@angular/core';
-import { PLAY_TIME_CHOICES, PLAYER_CHOICES, PlayTimeChoice } from '../util/game-format';
+import { PLAY_TIME_CHOICES, PLAYER_CHOICES, PlayTimeChoice, playerChoiceText, playersFilterText } from '../util/game-format';
 import { IconComponent } from './icon.component';
 import { SheetComponent } from './sheet.component';
 
@@ -48,7 +48,7 @@ import { SheetComponent } from './sheet.component';
         <p class="bl-sheet-note">Shows games that support this many players.</p>
         <div class="bl-option-grid" style="grid-template-columns: repeat(5, minmax(0, 1fr))">
           @for (n of playerChoices; track n) {
-            <button type="button" class="bl-option" [attr.aria-pressed]="players() === n" (click)="setPlayers(n)">{{ n }}</button>
+            <button type="button" class="bl-option" [attr.aria-pressed]="players() === n" (click)="setPlayers(n)">{{ choiceText(n) }}</button>
           }
         </div>
       </app-sheet>
@@ -74,12 +74,14 @@ export class PlayFiltersComponent {
   playTime = model<PlayTimeChoice | null>(null);
 
   readonly playerChoices = PLAYER_CHOICES;
+  /** "10+" for the top choice (util/game-format.ts). */
+  choiceText = playerChoiceText;
   readonly timeChoices = PLAY_TIME_CHOICES;
   open = signal<'players' | 'time' | null>(null);
 
   playersLabel = computed(() => {
     const p = this.players();
-    return p ? `${p} ${p === 1 ? 'player' : 'players'}` : 'Players';
+    return p ? playersFilterText(p) : 'Players';
   });
   playTimeLabel = computed(() => PLAY_TIME_CHOICES.find(c => c.value === this.playTime())?.label || 'Play time');
 

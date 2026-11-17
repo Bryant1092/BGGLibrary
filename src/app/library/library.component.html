@@ -271,7 +271,7 @@
       <p class="bl-sheet-note">Shows games that support this many players.</p>
       <div class="bl-option-grid" style="grid-template-columns: repeat(5, minmax(0, 1fr))">
         @for (n of playerOptions; track n) {
-          <button type="button" class="bl-option" [attr.aria-pressed]="filters().players === n" (click)="setPlayers(n)">{{ n }}</button>
+          <button type="button" class="bl-option" [attr.aria-pressed]="filters().players === n" (click)="setPlayers(n)">{{ choiceText(n) }}</button>
         }
       </div>
     </app-sheet>

@@ -25,7 +25,7 @@ import { InstallService } from '../service/install.service';
 import { Friend, FriendsService } from '../service/friends.service';
 import { ThumbComponent } from '../shared/thumb.component';
 import { dueInfo, shortDuration } from '../util/library-time';
-import { checkedInText, fitsPlayers, fitsPlayTime, minutesText, PLAY_TIME_CHOICES, PlayTimeChoice, playersText, shelfText, statusText } from '../util/game-format';
+import { checkedInText, fitsPlayers, fitsPlayTime, minutesText, PLAY_TIME_CHOICES, PlayTimeChoice, playersFilterText, playersText, shelfText, statusText } from '../util/game-format';
 import { PlayFiltersComponent } from '../shared/play-filters.component';
 import { GameDetailsCache } from '../service/game-details-cache';
 import { isHotGame } from '../util/hot-games';
@@ -212,7 +212,7 @@ export class ListsComponent implements OnInit, OnDestroy {
   /** "4 players and up to 1 hour", for the no-matches message. */
   playFilterText = computed(() => {
     const p = this.players(), t = this.playTime();
-    return [p ? `${p} ${p === 1 ? 'player' : 'players'}` : '', t ? PLAY_TIME_CHOICES.find(c => c.value === t)!.label.toLowerCase() : ''].filter(Boolean).join(' and ');
+    return [p ? playersFilterText(p) : '', t ? PLAY_TIME_CHOICES.find(c => c.value === t)!.label.toLowerCase() : ''].filter(Boolean).join(' and ');
   });
 
   /** Available games first (what you can grab now), then checked-out ones by soonest due back. */

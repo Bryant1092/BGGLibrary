@@ -271,7 +271,7 @@
         @if (isOwner()) {
           <!-- On by default for new lists (the group's wishlists combine in Friends' picks). -->
           <button type="button" class="bl-choice" role="switch" [attr.aria-checked]="listVisible()" (click)="toggleVisible()">
-            <span class="text"><strong>Friends can see</strong><small>{{ listVisible() ? 'Your friends can view it, and it counts in Friends' picks' : 'Only people you share it with see it' }}</small></span>
+            <span class="text"><strong>Friends can see</strong><small>@if (listVisible()) { Your friends can view it, and it counts in Friends' picks } @else { Only people you share it with see it }</small></span>
             <span class="bl-switch" aria-hidden="true"></span>
           </button>
         }

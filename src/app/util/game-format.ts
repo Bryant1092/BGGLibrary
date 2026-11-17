@@ -23,9 +23,21 @@ export const PLAY_TIME_CHOICES: { value: PlayTimeChoice; label: string }[] = [
 ];
 export const PLAYER_CHOICES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-/** True when the game plays with exactly this many people (min ≤ n ≤ max). */
+/**
+ * The last choice is "10+": games that play with 10 or more. Plain "10" only matched games
+ * whose range includes exactly 10, so a game for 12–20 players would fit no choice at all
+ * (none in the library on 2026-11-17, but new arrivals could). Same top label as BGG uses.
+ */
+export const PLAYERS_TOP = 10;
+export function playerChoiceText(n: number): string { return n >= PLAYERS_TOP ? `${PLAYERS_TOP}+` : `${n}`; }
+/** "1 player", "4 players", "10+ players". */
+export function playersFilterText(n: number): string { return `${playerChoiceText(n)} ${n === 1 ? 'player' : 'players'}`; }
+
+/** True when the game plays with this many people (min ≤ n ≤ max), or for "10+", with 10 or more. */
 export function fitsPlayers(game: Pick<BggItem, 'min_players' | 'max_players'>, players: number | null): boolean {
-  return !players || (game.min_players <= players && players <= game.max_players);
+  if (!players) return true;
+  if (players >= PLAYERS_TOP) return Number(game.max_players) >= PLAYERS_TOP;
+  return game.min_players <= players && players <= game.max_players;
 }
 
 export function fitsPlayTime(game: Pick<BggItem, 'max_play_time'>, choice: PlayTimeChoice | null): boolean {

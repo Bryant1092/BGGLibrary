@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BggItem } from '../model/bgg.model';
+import { PLAYERS_TOP } from '../util/game-format';
 
 export interface SearchResult {
   result: {
@@ -88,7 +89,10 @@ export class BggService {
       params = params.append('availability', 'available');
     }
     if (search.players) {
-      params = params.append('preferred_players', search.players);
+      // "10+" = plays with 10 or more (max_players >= 10), so games for 12+ aren't left out.
+      params = Number(search.players) >= PLAYERS_TOP
+        ? params.append('max_players', `>=${PLAYERS_TOP}`)
+        : params.append('preferred_players', search.players);
     }
     if (search.playTime) {
       params = params.append('max_play_time', PLAY_TIME_CONDITIONS[search.playTime]);

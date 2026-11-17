@@ -19,7 +19,7 @@ import { OfflineBarComponent } from '../shared/offline-bar.component';
 import { ShelfIndex, ShelfInfo, ShelfService } from '../service/shelf.service';
 import { ShelfListComponent } from './shelf-list.component';
 import { currentOrNextConvention, libraryStatus, shortDuration } from '../util/library-time';
-import { isNewArrival, minutesText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
+import { isNewArrival, minutesText, playerChoiceText, playersFilterText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
 import { isHotGame, matchHotGames } from '../util/hot-games';
 import { MapService } from '../service/map.service';
 import { UpNextComponent } from '../shared/up-next.component';
@@ -174,9 +174,11 @@ export class LibraryComponent implements OnInit, OnDestroy {
   shelfChip = computed(() => this.filters().shelf ? `Shelf: ${this.filters().shelf}` : 'Shelf');
   hasHotGames = computed(() => currentOrNextConvention(this.now())?.hasHotGames ?? false);
   hasMore = computed(() => this.items().length < this.total());
+  /** "10+" for the top choice (util/game-format.ts). */
+  choiceText = playerChoiceText;
   playersChip = computed(() => {
     const p = this.filters().players;
-    return p ? `${p} ${p === 1 ? 'player' : 'players'}` : 'Players';
+    return p ? playersFilterText(p) : 'Players';
   });
   sortChip = computed(() => this.conMode() ? 'This con' : SORT_OPTIONS.find(o => o.value === this.filters().sort)?.chip || 'A–Z');
 
