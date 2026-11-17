@@ -45,6 +45,14 @@
       (#191817 is --bl-surface in dark mode, see styles.css).
     ThemeService calls window.blApplyTheme when the setting changes.
   -->
+  <!--
+    Always open at the top. On a reload (e.g. tapping Update) iPhone put the screen back
+    where you'd scrolled to, before the app had drawn anything that tall: the Home Screen
+    app showed a blank page until you touched it (reported 2026-11-17).
+  -->
+  <script>
+    try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) { /* older browsers */ }
+  </script>
   <script>
     (function () {
       var media = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');

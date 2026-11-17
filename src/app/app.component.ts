@@ -61,6 +61,15 @@ export class AppComponent implements OnInit {
   isHideNav = false;
 
   ngOnInit(): void {
+    // Safety net for the blank-after-update screen (see index.html): once the first screen
+    // has drawn, if the phone is showing a spot past the end of the page, go to the top and
+    // nudge iPhone into repainting (same 1px trick as after the keyboard closes).
+    setTimeout(() => {
+      const maxY = document.documentElement.scrollHeight - window.innerHeight;
+      if (window.scrollY > Math.max(0, maxY)) window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+      window.scrollBy({ top: 1, behavior: 'instant' as ScrollBehavior });
+      window.scrollBy({ top: -1, behavior: 'instant' as ScrollBehavior });
+    }, 300);
     // A mouse wheel only scrolls up and down, so the sideways chip rows (filters, map categories)
     // couldn't be scrolled without a touchscreen. Over a chip row that can scroll sideways, turn
     // vertical wheel movement into horizontal scrolling. Touch and trackpad swipes are unaffected.

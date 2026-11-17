@@ -68,6 +68,9 @@ export class AppUpdateService {
   /** Switches to the new version: activates it, then reloads (about a second). */
   async update(): Promise<void> {
     await this.sw.activateUpdate().catch(() => undefined);
+    // Back to the top first: reloading while scrolled down (Update is at the bottom of
+    // Account) left the iPhone Home Screen app blank until touched (see index.html).
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     location.reload();
   }
 
