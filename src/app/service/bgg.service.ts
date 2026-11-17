@@ -2,6 +2,8 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BggItem } from '../model/bgg.model';
 import { PLAYERS_TOP } from '../util/game-format';
+import { correctGame } from '../util/game-corrections';
+import { map } from 'rxjs';
 
 export interface SearchResult {
   result: {
@@ -97,7 +99,9 @@ export class BggService {
     if (search.playTime) {
       params = params.append('max_play_time', PLAY_TIME_CONDITIONS[search.playTime]);
     }
-    return this.http.get<SearchResult>(this.libraryUrl, {params});
+    // correctGame: fills player counts / times the library left blank (util/game-corrections.ts).
+    return this.http.get<SearchResult>(this.libraryUrl, {params}).pipe(
+      map((r: any) => r?.result?.items ? { ...r, result: { ...r.result, items: r.result.items.map(correctGame) } } : r));
   }
 
   // Only the game's own fields are used. The related library object and
@@ -106,6 +110,7 @@ export class BggService {
   getBggGameInfo(id: string) {
     const params = new HttpParams()
         .append('_include', 'bgg_icon_uri');
-    return this.http.get<BggItem>(this.itemUrl(id), {params});
+    return this.http.get<BggItem>(this.itemUrl(id), {params}).pipe(
+      map((r: any) => r?.result ? { ...r, result: correctGame(r.result) } : r));
   }
 }

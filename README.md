@@ -103,7 +103,8 @@ $ms  = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
 # 1. Build against the fork's Firebase, stamped with the build time (shown on Account as "Version …").
 npx ng build --configuration production,fork --base-href=/BGGLibrary/ --define "BUILD_TIME=$ms" --output-path="$out"
 
-# 2. Check the base href (a wrong one = blank white site).
+# 2. STOP here if the build printed any ERROR. Publishing after a failed build publishes an
+#    empty folder and takes the site down. Then check the base href (a wrong one = blank site):
 Select-String -Path "$out\browser\index.html" -Pattern '<base href="/BGGLibrary/">'
 
 # 3. Keep files byte-for-byte (otherwise git turns CRLF into LF, the service worker's

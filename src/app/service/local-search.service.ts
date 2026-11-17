@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
+import { correctRow } from '../util/game-corrections';
 
 /** One game in the saved search list (public/shelves/search.json). */
 export interface SearchGame {
@@ -59,7 +60,8 @@ export class LocalSearchService {
     this.http.get<{ thumbHost: string; games: [string, string, number, number, number, number, string, string, number, number][] }>('shelves/search.json')
       .subscribe({
         next: file => {
-          this.games = file.games.map(([id, name, minPlayers, maxPlayers, minMinutes, maxMinutes, thumb, shelf, added, checkouts]) => ({
+          // correctRow: fills player counts / times the library left blank (util/game-corrections.ts).
+          this.games = file.games.map(([id, name, minPlayers, maxPlayers, minMinutes, maxMinutes, thumb, shelf, added, checkouts]) => correctRow({
             id, name, minPlayers, maxPlayers, minMinutes, maxMinutes, shelf,
             thumb: thumb.startsWith('~') ? file.thumbHost + thumb.slice(1) : thumb,
             added: (added || 0) * 1000, checkouts: checkouts || 0, key: searchKey(name),

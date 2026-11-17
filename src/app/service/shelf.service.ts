@@ -3,6 +3,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { catchError, map, mergeMap, Observable, of, shareReplay, Subject } from 'rxjs';
 import { BggItem } from '../model/bgg.model';
 import { BggService } from './bgg.service';
+import { correctRow } from '../util/game-corrections';
 
 /** One game from a shelf list (built at deploy by scripts/build-shelf-index.mjs). */
 export interface ShelfGame {
@@ -88,7 +89,8 @@ export class ShelfService {
     let games$ = this.shelves.get(info.slug);
     if (!games$) {
       games$ = this.http.get<{ games: [string, string, number, number, number, number, string][] }>(`shelves/${info.slug}.json`).pipe(
-        map(file => file.games.map(([id, name, minPlayers, maxPlayers, minMinutes, maxMinutes, thumb]) => ({
+        // correctRow: fills player counts / times the library left blank (util/game-corrections.ts).
+        map(file => file.games.map(([id, name, minPlayers, maxPlayers, minMinutes, maxMinutes, thumb]) => correctRow({
           id, name, minPlayers, maxPlayers, minMinutes, maxMinutes,
           // "~" stands for BGG's image host (stored once to keep the files small).
           thumb: thumb.startsWith('~') ? thumbHost + thumb.slice(1) : thumb,
