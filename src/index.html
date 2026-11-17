@@ -14,6 +14,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <!--
+    Home Screen icon on iPhone. Without it iPhone made a plain letter tile ("B"); it doesn't use
+    the manifest's icons for this. 180x180 with a solid white background, because iPhone shows
+    transparent areas as black. Made from icons/icon-512x512.png (2026-11-17).
+  -->
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <!--
     manifest.webmanifest (JSON can't hold comments):
     - theme_color is white to match the page header, so the phone's status bar
       blends into the app. The two theme-color tags below do the same per
