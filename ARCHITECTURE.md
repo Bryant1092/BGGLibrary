@@ -257,8 +257,8 @@ via the hotel front desk. Convention days and hours come from `config/convention
   removed, internal bookkeeping dropped.
 - Ratings are visible to friends only while "Friends can see my ratings" is on; lists only when
   "Friends can see" is on (per list).
-- The app never reads Tabletop.Events' purchase-related endpoints (carts, order lines, discounts),
-  even though some answer without a login.
+- The app only reads public library, schedule and news data from Tabletop.Events, never anything
+  about other people's purchases or accounts.
 
 ### UI conventions
 
