@@ -37,8 +37,8 @@ const EXIT = 'cubic-bezier(0.4, 0, 1, 1)';
 /**
  * Bottom sheet used for game details, filters and list actions. It replaces
  * the Bootstrap modals, which opened mid-screen and depended on Bootstrap's
- * JavaScript; a sheet slides up within thumb reach and closes by tapping the
- * dimmed background, the Escape key, or a close button.
+ * JavaScript; a sheet slides up within thumb reach and closes by swiping it
+ * down, tapping the dimmed background, the Escape key, or a close button.
  *
  * Sheets can stack (e.g. the "turn on notifications?" sheet over game
  * details): each new one gets a higher z-index so its dimmed background
@@ -78,6 +78,7 @@ export class SheetComponent implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
+    this.listenForSwipe();
     // Stop the page behind from scrolling while a sheet is open, and move
     // toasts to the top of the screen (styles.css) so they don't cover the
     // sheet's buttons.
@@ -90,7 +91,81 @@ export class SheetComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  /**
+   * Swipe down to close, like iPhone's own sheets.
+   *
+   * Why: the grab bar at the top says "drag me" on iPhone (Apple HIG, sheets), and people
+   * tried it; before, only × and tapping outside closed a sheet. The panel follows the
+   * finger; letting go past a third of its height, or with a quick flick down, closes it
+   * (the closing slide carries on from where it was let go); otherwise it springs back.
+   *
+   * It never fights scrolling: the drag only starts when the sheet's content is scrolled
+   * to the top and the finger moves mostly downward, so scrolling a long sheet, sideways
+   * chip rows and pulling back up all work as before. × and tap-outside still work.
+   */
+  private swipeCleanup?: () => void;
+
+  private listenForSwipe(): void {
+    const panel = this.panel().nativeElement;
+    const scrim = this.scrim().nativeElement;
+    let startX = 0, startY = 0, dragging = false, ignore = false, lastY = 0, lastT = 0, speed = 0;
+
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) { ignore = true; return; }
+      const t = e.touches[0];
+      startX = t.clientX; startY = lastY = t.clientY; lastT = e.timeStamp;
+      dragging = false; speed = 0;
+      // Typing in a field, or the content isn't at its top: leave the touch to the page.
+      ignore = panel.scrollTop > 0 || !!(e.target as HTMLElement).closest?.('input, textarea, select');
+    };
+    const onMove = (e: TouchEvent) => {
+      if (ignore || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const dx = t.clientX - startX, dy = t.clientY - startY;
+      if (!dragging) {
+        if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
+        // Sideways (chip rows) or upward (scrolling the sheet): not a close gesture.
+        if (dy <= 0 || Math.abs(dx) > Math.abs(dy)) { ignore = true; return; }
+        dragging = true;
+        panel.style.transition = scrim.style.transition = 'none';
+      }
+      e.preventDefault(); // stop the sheet's own scroll / bounce while dragging it
+      const dt = e.timeStamp - lastT;
+      if (dt > 0) speed = (t.clientY - lastY) / dt; // px per ms, for the flick
+      lastY = t.clientY; lastT = e.timeStamp;
+      const y = Math.max(0, dy);
+      panel.style.transform = `translateY(${y}px)`;
+      scrim.style.opacity = String(Math.max(0, 1 - y / panel.offsetHeight));
+    };
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      const y = Math.max(0, lastY - startY);
+      if (y > panel.offsetHeight / 3 || (speed > 0.5 && y > 20)) {
+        this.closed.emit(); // playCloseAnimation continues the slide from here
+        return;
+      }
+      // Spring back.
+      const ease = this.animate ? `transform 280ms ${SETTLE}, opacity 280ms ease-out` : 'none';
+      panel.style.transition = ease; scrim.style.transition = ease;
+      panel.style.transform = ''; scrim.style.opacity = '';
+    };
+
+    panel.addEventListener('touchstart', onStart, { passive: true });
+    // Not passive: preventDefault is what stops the sheet from scrolling while it's dragged.
+    panel.addEventListener('touchmove', onMove, { passive: false });
+    panel.addEventListener('touchend', onEnd);
+    panel.addEventListener('touchcancel', onEnd);
+    this.swipeCleanup = () => {
+      panel.removeEventListener('touchstart', onStart);
+      panel.removeEventListener('touchmove', onMove);
+      panel.removeEventListener('touchend', onEnd);
+      panel.removeEventListener('touchcancel', onEnd);
+    };
+  }
+
   ngOnDestroy(): void {
+    this.swipeCleanup?.();
     if (this.animate) {
       this.playCloseAnimation();
     }
@@ -119,13 +194,17 @@ export class SheetComponent implements AfterViewInit, OnDestroy {
     const panelCopy = panel.cloneNode(true) as HTMLElement;
     for (const copy of [scrimCopy, panelCopy]) {
       copy.style.pointerEvents = 'none';
+      copy.style.transition = 'none';
       copy.removeAttribute('id');
     }
     ghost.append(scrimCopy, panelCopy);
     document.body.append(ghost);
     panelCopy.scrollTop = panel.scrollTop;
-    scrimCopy.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
-    const slide = panelCopy.animate([{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: 240, easing: EXIT, fill: 'forwards' });
+    // After a swipe down the panel is part-way down and the background part-faded: carry on from there.
+    const fromY = panel.style.transform || 'none';
+    const fromOpacity = scrim.style.opacity || '1';
+    scrimCopy.animate([{ opacity: fromOpacity }, { opacity: 0 }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
+    const slide = panelCopy.animate([{ transform: fromY }, { transform: 'translateY(100%)' }], { duration: 240, easing: EXIT, fill: 'forwards' });
     slide.onfinish = () => ghost.remove();
     setTimeout(() => ghost.remove(), 600); // in case the animation is interrupted
   }
