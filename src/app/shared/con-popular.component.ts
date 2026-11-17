@@ -125,12 +125,12 @@ const COLLAPSED_KEY = 'bgglibrary.conTopCollapsed';
               }
             </span>
           </button>
-          @if (r.item; as item) {
-            <button type="button" class="bl-add" [class.on]="inList().has(item.id)" [disabled]="busy().has(item.id)" [attr.aria-pressed]="inList().has(item.id)"
-                    [attr.aria-label]="(inList().has(item.id) ? 'Remove ' : 'Add ') + r.game.name" (click)="toggle.emit(item)">
-              <bl-icon [name]="inList().has(item.id) ? 'check' : 'plus'" [stroke]="2.5" />
-            </button>
-          }
+          <!-- Shown at once (it used to pop in once details arrived); a tap before then fetches them first (addTap). -->
+          <button type="button" class="bl-add" [class.on]="!!r.item && inList().has(r.item.id)" [disabled]="(!!r.item && busy().has(r.item.id)) || fetching().has(r.game.name)"
+                  [attr.aria-pressed]="!!r.item && inList().has(r.item.id)"
+                  [attr.aria-label]="(r.item && inList().has(r.item.id) ? 'Remove ' : 'Add ') + r.game.name" (click)="addTap(r.game, r.item)">
+            <bl-icon [name]="r.item && inList().has(r.item.id) ? 'check' : 'plus'" [stroke]="2.5" />
+          </button>
         </div>
       } @empty {
         @if (!checkingCount()) {
@@ -254,6 +254,20 @@ export class ConPopularComponent {
   }
 
   status(item: BggItem): string { return statusText(item, this.now()); }
+
+  /** Games whose details are being fetched because + was tapped before they arrived. */
+  fetching = signal<Set<string>>(new Set());
+
+  /** The + button: adds now if the details are here, otherwise fetches the first copy, then adds. */
+  addTap(game: ConGame, item: BggItem | undefined): void {
+    if (item) { this.toggle.emit(item); return; }
+    const mark = (on: boolean) => this.fetching.update(s => { const n = new Set(s); if (on) n.add(game.name); else n.delete(game.name); return n; });
+    mark(true);
+    this.bgg.getBggGameInfo(game.ids[0]).subscribe({
+      next: (r: any) => { mark(false); if (r?.result?.id) this.toggle.emit(r.result); },
+      error: () => mark(false),
+    });
+  }
   /**
    * Every copy's loaded record (for the missing-pieces tag; unloaded copies are skipped).
    * The same array is returned until details change, so the tag isn't handed a "new"

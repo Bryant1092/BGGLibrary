@@ -3,6 +3,7 @@ import { BggItem } from '../model/bgg.model';
 import { BggService, LibrarySort, PlayTimeFilter } from '../service/bgg.service';
 import { SearchGame } from '../service/local-search.service';
 import { ShelfService } from '../service/shelf.service';
+import { ToastService } from '../service/toast.service';
 import { IconComponent } from '../shared/icon.component';
 import { InViewDirective } from '../shared/in-view.directive';
 import { ThumbComponent } from '../shared/thumb.component';
@@ -56,13 +57,16 @@ const STATUS_ALL_MAX = 120;
             </span>
           </span>
         </button>
-        @if (live().get(g.id); as item) {
-          <button type="button" class="bl-add" [class.on]="listIds().has(g.id)" [disabled]="busyIds().has(g.id)" [attr.aria-pressed]="listIds().has(g.id)"
-                  [attr.aria-label]="(listIds().has(g.id) ? 'Remove ' : 'Add ') + g.name + (listName() ? (listIds().has(g.id) ? ' from ' : ' to ') + listName() : '')"
-                  (click)="toggle.emit(item)">
-            <bl-icon [name]="listIds().has(g.id) ? 'check' : 'plus'" [stroke]="2.5" />
-          </button>
-        }
+        <!--
+          Shown at once, not after the live record arrives: rows used to appear without
+          their + and it popped in half a second later (reported 2026-11-16). A tap before
+          the record has arrived fetches it first (addTap).
+        -->
+        <button type="button" class="bl-add" [class.on]="listIds().has(g.id)" [disabled]="busyIds().has(g.id) || fetching().has(g.id)" [attr.aria-pressed]="listIds().has(g.id)"
+                [attr.aria-label]="(listIds().has(g.id) ? 'Remove ' : 'Add ') + g.name + (listName() ? (listIds().has(g.id) ? ' from ' : ' to ') + listName() : '')"
+                (click)="addTap(g)">
+          <bl-icon [name]="listIds().has(g.id) ? 'check' : 'plus'" [stroke]="2.5" />
+        </button>
       </div>
     } @empty {
       @if (!checkingCount()) {
@@ -83,6 +87,7 @@ const STATUS_ALL_MAX = 120;
 export class LocalResultsComponent {
   shelf = inject(ShelfService);
   private bgg = inject(BggService);
+  private toast = inject(ToastService);
 
   /** Matches for the search, A–Z (LocalSearchService.search). */
   games = input.required<SearchGame[]>();
@@ -151,6 +156,25 @@ export class LocalResultsComponent {
     const item = this.live().get(g.id);
     if (item) { this.open.emit(item); return; }
     this.bgg.getBggGameInfo(g.id).subscribe({ next: (r: any) => { if (r?.result?.id) this.open.emit(r.result); }, error: () => { /* offline: nothing to open */ } });
+  }
+
+  /** Games whose record is being fetched because + was tapped before it arrived. */
+  fetching = signal<Set<string>>(new Set());
+
+  /**
+   * The + button. Adding saves the game's BoardGameGeek id too (Friends' picks groups
+   * copies by it), which the on-phone search list doesn't have, so a tap before the live
+   * record arrives fetches that one game first (about 0.3 s), then adds.
+   */
+  addTap(g: SearchGame): void {
+    const item = this.live().get(g.id);
+    if (item) { this.toggle.emit(item); return; }
+    const mark = (on: boolean) => this.fetching.update(s => { const n = new Set(s); if (on) n.add(g.id); else n.delete(g.id); return n; });
+    mark(true);
+    this.bgg.getBggGameInfo(g.id).subscribe({
+      next: (r: any) => { mark(false); if (r?.result?.id) this.toggle.emit(r.result); },
+      error: () => { mark(false); this.toast.error("Couldn't add the game. Check your connection."); },
+    });
   }
 
   status(item: BggItem): string { return statusText(item, this.now()); }
