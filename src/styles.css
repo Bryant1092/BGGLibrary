@@ -296,6 +296,10 @@ body {
 .bl-section-head { display: flex; align-items: center; justify-content: space-between; padding-right: 10px; }
 .bl-row-compact { width: 100%; padding: 9px 16px; gap: 12px; background: transparent; border: 0; border-bottom: 1px solid var(--bl-hair); text-align: left; color: inherit; }
 .bl-row-compact .bl-row-text { gap: 3px; }
+/* Section gap band (grey, full width), as between sections in iPhone's grouped lists. The row just
+   above loses its thin line so the band is the only edge. Grey card color works in both modes. */
+.bl-section-gap { height: 12px; background: var(--bl-field); }
+.bl-row-compact:has(+ .bl-section-gap) { border-bottom: 0; }
 .bl-row-compact .bl-name { font-size: 15px; }
 .bl-when { flex: none; font-size: 12px; color: var(--bl-muted); }
 /* Last known status shown while the fresh one loads. */

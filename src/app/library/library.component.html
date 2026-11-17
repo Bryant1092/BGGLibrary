@@ -138,6 +138,13 @@
           <span class="bl-when">{{ r.when }}</span>
         </button>
       }
+      <!--
+        Grey band between the two lists, like the gap between sections in iPhone's grouped lists
+        (Settings). Before, Recently viewed ended with the same thin line as every row and the
+        "All games" heading was easy to scroll past (asked 2026-11-17). Spacing over a thicker
+        line: NN/g and Material both prefer space to extra dividers, which add clutter.
+      -->
+      <div class="bl-section-gap" aria-hidden="true"></div>
       <h2 class="bl-section">All games · {{ sortChip() }}</h2>
     }
     @if (localMode()) {
