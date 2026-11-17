@@ -22,6 +22,7 @@ import { InViewDirective } from './in-view.directive';
 import { ThumbComponent } from './thumb.component';
 import { IconComponent } from './icon.component';
 import { NoticeTagComponent } from './notice-tag.component';
+import { PersonBadgeComponent } from './person-badge.component';
 
 type Filter = 'all' | 'most' | 'any';
 
@@ -38,7 +39,7 @@ type Filter = 'all' | 'most' | 'any';
 @Component({
   selector: 'app-friends-picks',
   standalone: true,
-  imports: [NoticeTagComponent, RouterLink, InViewDirective, ThumbComponent, IconComponent, GameSheetComponent, ListPickerSheetComponent, RatingControlsComponent, PlayFiltersComponent],
+  imports: [PersonBadgeComponent, NoticeTagComponent, RouterLink, InViewDirective, ThumbComponent, IconComponent, GameSheetComponent, ListPickerSheetComponent, RatingControlsComponent, PlayFiltersComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     /* margin 0: .bl-chips normally bleeds into the header's padding; here there's none. */
@@ -51,11 +52,22 @@ type Filter = 'all' | 'most' | 'any';
     .rows-gap { height: 4px; }
     .who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .count { font-size: 13px; font-weight: 700; color: var(--bl-accent-text); }
-    .dots { display: flex; }
-    .dot { width: 22px; height: 22px; border-radius: 11px; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;
-      background: var(--bl-accent-soft); color: var(--bl-accent-text); box-shadow: 0 0 0 2px var(--bl-surface); }
-    .dot + .dot { margin-left: -5px; }
-    .dot.me { background: var(--bl-accent); color: var(--bl-on-accent); }
+    /*
+      Side by side, not overlapping: with two initials in each circle, overlapping hid part of
+      the letters ("OT" under "FT"). Microsoft Fluent calls this a pile (vs. a stack for photos).
+    */
+    .dots { display: flex; gap: 3px; }
+    .dot.more { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800;
+      background: var(--bl-field); color: var(--bl-muted); }
+    /*
+      The key: everyone's circle with their first name, so the colors and initials can be learned
+      without opening each game. One line that scrolls sideways if the group is big.
+    */
+    .group-key { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; padding: 10px 16px 2px; }
+    .group-key::-webkit-scrollbar { display: none; }
+    .group-key .person { display: inline-flex; align-items: center; gap: 6px; flex: none; font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .people .person { display: inline-flex; align-items: center; gap: 8px; }
+    .people .names { display: flex; flex-wrap: wrap; gap: 6px 14px; }
     .verdict { display: flex; gap: 10px; font-size: 13px; font-weight: 600; }
     .verdict span { display: inline-flex; align-items: center; gap: 4px; }
     .verdict .up { color: var(--bl-avail-text); }
@@ -83,6 +95,12 @@ type Filter = 'all' | 'most' | 'any';
         "Wanted by" says what the chips choose between, so the row reads as a sentence
         ("Wanted by: All of us"). Without it, Everyone vs Anyone was unclear (feedback 2026-11-16).
       -->
+      <!-- Who's who: each circle with a first name (screen readers already get names on every row). -->
+      <div class="group-key" aria-hidden="true">
+        @for (person of data()!.people; track person.uid) {
+          <span class="person"><app-person-badge [uid]="person.uid" [name]="person.name" [size]="24" />{{ firstName(person.name) }}</span>
+        }
+      </div>
       <div class="bl-chips chips" role="radiogroup" aria-labelledby="picks-wanted-by">
         <span class="chips-label" id="picks-wanted-by">Wanted by</span>
         @for (f of filters(); track f.value) {
@@ -101,9 +119,14 @@ type Filter = 'all' | 'most' | 'any';
               <span class="bl-name">{{ p.game.name }}</span>
               <span class="who">
                 <span class="count">{{ p.wantedBy.length }} of {{ data()!.people.length }} want this</span>
-                <!-- Initials, you first; names are in the label for screen readers. -->
+                <!--
+                  Each person's two initials on their color (PersonBadges), you first. At most 5,
+                  then "+N" (Microsoft Fluent's face-pile guidance), so rows don't overflow on small
+                  iPhones. Names are in the label for screen readers and in the details sheet.
+                -->
                 <span class="dots" [attr.aria-label]="names(p)" role="img">
-                  @for (w of p.wantedBy; track w.uid) { <span class="dot" [class.me]="w.name === 'You'">{{ initial(w.name) }}</span> }
+                  @for (w of p.wantedBy.slice(0, 5); track w.uid) { <app-person-badge class="dot" [uid]="w.uid" [name]="w.name" /> }
+                  @if (p.wantedBy.length > 5) { <span class="dot more">+{{ p.wantedBy.length - 5 }}</span> }
                 </span>
               </span>
               @if (p.likedBy.length || p.dislikedBy.length) {
@@ -162,7 +185,12 @@ type Filter = 'all' | 'most' | 'any';
                       (toggle)="sheet.set('lists')" (closed)="close()">
         <div class="people">
           <small>Who wants this</small>
-          <span>{{ wantNames(s.pick) }}</span>
+          <!-- Same circles as the row, each with the full name: ties the row's circles to people. -->
+          <span class="names">
+            @for (w of s.pick.wantedBy; track w.uid) {
+              <span class="person"><app-person-badge [uid]="w.uid" [name]="w.name" [size]="24" />{{ w.name }}</span>
+            }
+          </span>
           @if (s.pick.likedBy.length) { <span class="up"><bl-icon name="thumbUp" [size]="15" /> Liked: {{ s.pick.likedBy.join(', ') }}</span> }
           @if (s.pick.dislikedBy.length) { <span class="down"><bl-icon name="thumbDown" [size]="15" /> Not for them: {{ s.pick.dislikedBy.join(', ') }}</span> }
         </div>
@@ -403,8 +431,9 @@ export class FriendsPicksComponent implements OnInit {
     return p.wantedBy.some(w => w.name === 'You') || this.added().has(p.game.id!);
   }
 
-  initial(name: string): string {
-    return (name.match(/[\p{L}\p{N}]/u)?.[0] || '?').toUpperCase();
+  /** "Bryant G." -> "Bryant", for the key (the circle already carries the last initial). */
+  firstName(name: string): string {
+    return name.trim().split(/\s+/)[0] || name;
   }
 
   verdict(p: GamePick): string {

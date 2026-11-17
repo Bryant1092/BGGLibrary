@@ -6,6 +6,8 @@ import { ToastService } from '../service/toast.service';
 import { FriendSheetComponent } from './friend-sheet.component';
 import { SheetComponent } from './sheet.component';
 import { IconComponent } from './icon.component';
+import { PersonBadgeComponent } from './person-badge.component';
+import { initialsOf } from '../service/person-badges.service';
 
 /**
  * Friends on the Account tab: your Meeple code to give out, adding a friend by
@@ -18,7 +20,7 @@ import { IconComponent } from './icon.component';
 @Component({
   selector: 'app-friends-card',
   standalone: true,
-  imports: [FriendSheetComponent, SheetComponent, IconComponent],
+  imports: [PersonBadgeComponent, FriendSheetComponent, SheetComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: contents; }
@@ -103,7 +105,8 @@ import { IconComponent } from './icon.component';
         <div>
           @for (f of friends.accepted(); track f.uid) {
             <button type="button" class="fr-row" (click)="open.set(f)">
-              <span class="avatar" aria-hidden="true">{{ initial(f) }}</span>
+              <!-- Same circle and color as in Friends' picks (PersonBadges). -->
+              <app-person-badge [uid]="f.uid" [name]="f.name" [size]="36" />
               <span class="who"><strong>{{ f.name }}</strong><small>See what you both want</small></span>
               <bl-icon name="chevronRight" [size]="18" />
             </button>
@@ -154,8 +157,9 @@ export class FriendsCardComponent implements OnInit {
     }
   }
 
+  /** Two initials; pending requests stay neutral grey until they join the group (then they get a color). */
   initial(f: Friend): string {
-    return (f.name.match(/[\p{L}\p{N}]/u)?.[0] || '?').toUpperCase();
+    return initialsOf(f.name, 0);
   }
 
   /** Checks the code and shows who it belongs to before sending anything. */

@@ -7,6 +7,7 @@ import { Game } from '../model/game.model';
 import { SheetComponent } from './sheet.component';
 import { ThumbComponent } from './thumb.component';
 import { IconComponent } from './icon.component';
+import { PersonBadgeComponent } from './person-badge.component';
 
 /**
  * A friend's page: what you both want first (the games worth grabbing together),
@@ -16,7 +17,7 @@ import { IconComponent } from './icon.component';
 @Component({
   selector: 'app-friend-sheet',
   standalone: true,
-  imports: [SheetComponent, ThumbComponent, IconComponent],
+  imports: [PersonBadgeComponent, SheetComponent, ThumbComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .head { display: flex; align-items: center; gap: 12px; }
@@ -34,7 +35,8 @@ import { IconComponent } from './icon.component';
   template: `
     <app-sheet [label]="friend().name" (closed)="closed.emit()">
       <div class="head">
-        <span class="avatar" aria-hidden="true">{{ initial() }}</span>
+        <!-- Same circle and color as in Friends' picks (PersonBadges). -->
+        <app-person-badge [uid]="friend().uid" [name]="friend().name" [size]="48" />
         <div><h2>{{ friend().name }}</h2><small>{{ friend().code }} · {{ listCount() }}</small></div>
       </div>
 

@@ -52,6 +52,20 @@
   /* Red fills with white text (error toast, Delete button); the same in both modes. */
   --bl-danger-fill: #b42318;
   --bl-tabbar-h: 64px;
+  /*
+   * Friend colors (PersonBadgeComponent): one per friend, so you learn who's who. From the
+   * color-blind-safe Okabe-Ito set, minus its red-orange (too close to the orange accent,
+   * which is "You"), plus a slate. Text color picked per color for at least 4.5:1.
+   * Light mode adds a thin dark edge: yellow, sky, amber and pink are faint on white.
+   */
+  --bl-p0-bg: #0072B2; --bl-p0-fg: #ffffff;
+  --bl-p1-bg: #F0E442; --bl-p1-fg: #1c1b1a;
+  --bl-p2-bg: #009E73; --bl-p2-fg: #1c1b1a;
+  --bl-p3-bg: #CC79A7; --bl-p3-fg: #1c1b1a;
+  --bl-p4-bg: #56B4E9; --bl-p4-fg: #1c1b1a;
+  --bl-p5-bg: #E69F00; --bl-p5-fg: #1c1b1a;
+  --bl-p6-bg: #6B7280; --bl-p6-fg: #ffffff;
+  --bl-p-edge: rgba(0, 0, 0, .28);
   --bl-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -89,6 +103,16 @@
     /* Lighter red reads well as text on the dark page; fills use --bl-danger-fill, since
        white on this lighter red was only 2.8:1. */
     --bl-danger: #f97066;
+    /* Friend colors, a little lighter so they stand out on the dark page (all 5.8:1 or more);
+       dark text on every one (5.7:1 or more). No edge needed on dark. */
+    --bl-p0-bg: #3D9BDB; --bl-p0-fg: #1c1b1a;
+    --bl-p1-bg: #F0E442; --bl-p1-fg: #1c1b1a;
+    --bl-p2-bg: #12B886; --bl-p2-fg: #1c1b1a;
+    --bl-p3-bg: #D98DB8; --bl-p3-fg: #1c1b1a;
+    --bl-p4-bg: #7CC6F0; --bl-p4-fg: #1c1b1a;
+    --bl-p5-bg: #F0AD1E; --bl-p5-fg: #1c1b1a;
+    --bl-p6-bg: #A3AAB4; --bl-p6-fg: #1c1b1a;
+    --bl-p-edge: transparent;
 }
 
 /* Bootstrap's system font stack, not Roboto from Google Fonts: no download, no
