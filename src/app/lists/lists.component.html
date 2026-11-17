@@ -141,6 +141,8 @@
                 </span>
                 <!-- Own line: the shelf badge on the right leaves too little room beside players / time. -->
                 @if (row.hot) { <span class="bl-hot-tag" style="align-self: flex-start"><bl-icon name="flame" [size]="13" />Hot Games</span> }
+                <!-- Missing pieces / damage on this copy (util/game-notice.ts). -->
+                <app-notice-tag [game]="row.item" />
                 @if (row.checkedIn) { <span class="bl-checked-in">{{ row.checkedIn }}</span> }
 
               </span>

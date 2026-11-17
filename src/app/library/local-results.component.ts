@@ -8,6 +8,7 @@ import { InViewDirective } from '../shared/in-view.directive';
 import { ThumbComponent } from '../shared/thumb.component';
 import { fitsPlayers, fitsPlayTime, statusText } from '../util/game-format';
 import { isHotGame } from '../util/hot-games';
+import { NoticeTagComponent } from '../shared/notice-tag.component';
 
 /** Rows drawn at first; more as the end of the list scrolls into view. */
 const PAGE = 40;
@@ -24,7 +25,7 @@ const STATUS_ALL_MAX = 120;
 @Component({
   selector: 'app-local-results',
   standalone: true,
-  imports: [IconComponent, InViewDirective, ThumbComponent],
+  imports: [NoticeTagComponent, IconComponent, InViewDirective, ThumbComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: block; }
@@ -46,6 +47,8 @@ const STATUS_ALL_MAX = 120;
               }
               <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ g.shelf || '?' }}</span>
               @if (hot(g)) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
+              <!-- From the live record, once it has loaded (util/game-notice.ts). -->
+              <app-notice-tag [game]="live().get(g.id)" />
             </span>
             <span class="bl-meta">
               <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ range(g.minPlayers, g.maxPlayers) }}</span>

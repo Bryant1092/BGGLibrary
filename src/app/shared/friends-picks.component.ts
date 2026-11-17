@@ -21,6 +21,7 @@ import { RatingControlsComponent } from './rating-controls.component';
 import { InViewDirective } from './in-view.directive';
 import { ThumbComponent } from './thumb.component';
 import { IconComponent } from './icon.component';
+import { NoticeTagComponent } from './notice-tag.component';
 
 type Filter = 'all' | 'most' | 'any';
 
@@ -37,7 +38,7 @@ type Filter = 'all' | 'most' | 'any';
 @Component({
   selector: 'app-friends-picks',
   standalone: true,
-  imports: [RouterLink, InViewDirective, ThumbComponent, IconComponent, GameSheetComponent, ListPickerSheetComponent, RatingControlsComponent, PlayFiltersComponent],
+  imports: [NoticeTagComponent, RouterLink, InViewDirective, ThumbComponent, IconComponent, GameSheetComponent, ListPickerSheetComponent, RatingControlsComponent, PlayFiltersComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     /* margin 0: .bl-chips normally bleeds into the header's padding; here there's none. */
@@ -118,6 +119,8 @@ type Filter = 'all' | 'most' | 'any';
                   <span class="bl-pill" [class.out]="item.is_checked_out">{{ status(item) }}</span>
                   <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ shelf(item) }}</span>
                   @if (hot(p)) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
+                  <!-- All copies: "1 of 2 copies: missing pieces" when only some have a problem. -->
+                  <app-notice-tag [copies]="copyDetails(p)" />
                 </span>
                 <span class="bl-meta">
                   <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ playersOf(item) }}</span>
@@ -371,6 +374,11 @@ export class FriendsPicksComponent implements OnInit {
    * go get), otherwise the first copy once all have been checked. Undefined = still
    * checking, so a row doesn't flash "Checked out" while another copy is loading.
    */
+  /** Every copy's loaded record (for the missing-pieces tag; unloaded copies are skipped). */
+  copyDetails(p: GamePick): (BggItem | undefined)[] {
+    return p.copies.map(c => this.details().get(c.id!));
+  }
+
   best(p: GamePick): BggItem | undefined {
     const loaded = p.copies.map(c => this.details().get(c.id!)).filter((i): i is BggItem => !!i);
     return loaded.find(i => !i.is_checked_out) ?? (loaded.length === p.copies.length ? loaded[0] : undefined);

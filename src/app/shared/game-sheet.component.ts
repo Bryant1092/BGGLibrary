@@ -4,6 +4,7 @@ import { BggItem } from '../model/bgg.model';
 import { dueInfo, formatLibraryDate, formatLibraryTime, shortDuration } from '../util/library-time';
 import { bggUrl, checkedInText, howToPlayUrl, minutesText, playersText, shelfText } from '../util/game-format';
 import { isHotGame } from '../util/hot-games';
+import { gameNotice } from '../util/game-notice';
 import { MapService } from '../service/map.service';
 import { IconComponent } from './icon.component';
 import { SheetComponent } from './sheet.component';
@@ -49,6 +50,14 @@ import { ThumbComponent } from './thumb.component';
     .sooner { font-size: 15px; font-weight: 700; line-height: 20px; color: var(--fg); }
     .detail { font-size: 14px; line-height: 19px; color: var(--bl-muted); }
     .note { font-size: 13px; line-height: 18px; color: var(--bl-muted); }
+    /* Condition note: amber like "Past due" (the --bl-late colors) when something's wrong, plain outline when it's just good to know. */
+    .cond { display: flex; gap: 12px; align-items: flex-start; border-radius: 12px; padding: 12px 14px; border: 1.5px solid var(--bl-control-border); }
+    .cond.warn { background: var(--bl-late-bg); border-color: var(--bl-late-border); }
+    .cond > bl-icon { color: var(--bl-muted); flex: none; margin-top: 1px; }
+    .cond.warn > bl-icon, .cond.warn small { color: var(--bl-late-fg); }
+    .cond div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .cond small { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-muted); }
+    .cond span { font-size: 15px; line-height: 20px; overflow-wrap: anywhere; }
     .hot { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--bl-accent-soft); font-size: 14px; line-height: 19px; display: flex; gap: 10px; align-items: flex-start; }
     .hot > bl-icon { color: var(--bl-accent-text); }
     .hot-text { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
@@ -77,6 +86,22 @@ import { ThumbComponent } from './thumb.component';
         <div class="tile"><small>Players</small><strong>{{ players() }}</strong></div>
         <div class="tile"><small>Play time</small><strong>{{ minutes() }}m</strong></div>
       </div>
+
+      <!--
+        Know before you check it out: missing pieces, no rulebook, damage, or a helpful
+        extra (util/game-notice.ts: names removed, staff bookkeeping dropped). Shown above
+        everything else, since it can change whether you take this copy. The copy number
+        tells copies apart: with two copies, the other one may be complete.
+      -->
+      @if (notice(); as n) {
+        <div class="cond" [class.warn]="n.level === 'warn'" role="note">
+          <bl-icon [name]="n.level === 'warn' ? 'warning' : 'info'" [size]="22" />
+          <div>
+            <small>{{ n.level === 'warn' ? n.tag : 'Good to know' }}{{ n.copy ? ' · copy ' + n.copy : '' }}</small>
+            <span>{{ n.text }}</span>
+          </div>
+        </div>
+      }
 
       <!--
         The library's own note on the box, e.g. "Includes Marine Worlds" (about 1
@@ -179,6 +204,8 @@ export class GameSheetComponent {
   bgg = computed(() => bggUrl(this.game()));
   howToPlay = computed(() => howToPlayUrl(this.game()));
   hot = computed(() => isHotGame(this.game().name, this.now()));
+  /** Missing pieces / damage / helpful extras for this copy (null when there's nothing to say). */
+  notice = computed(() => gameNotice(this.game()));
   private map = inject(MapService);
   /** Where the Hot Games room is on this convention's venue map (null if no map). */
   hotMap = computed(() => this.hot() ? this.map.hotGamesRequest() : null);

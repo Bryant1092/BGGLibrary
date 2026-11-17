@@ -29,6 +29,7 @@ import { checkedInText, fitsPlayers, fitsPlayTime, minutesText, PLAY_TIME_CHOICE
 import { PlayFiltersComponent } from '../shared/play-filters.component';
 import { GameDetailsCache } from '../service/game-details-cache';
 import { isHotGame } from '../util/hot-games';
+import { NoticeTagComponent } from '../shared/notice-tag.component';
 
 /**
  * How many game-detail requests to send to Tabletop.Events at once.
@@ -65,7 +66,7 @@ type ListFilter = 'all' | 'toplay' | 'liked' | 'buy';
 @Component({
   selector: 'app-lists',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent, FriendsPicksComponent, RatingControlsComponent, BuyListComponent, PlayFiltersComponent],
+  imports: [NoticeTagComponent, FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent, FriendsPicksComponent, RatingControlsComponent, BuyListComponent, PlayFiltersComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './lists.component.html',
 })

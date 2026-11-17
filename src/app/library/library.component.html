@@ -130,6 +130,8 @@
               }
               <span class="bl-shelf">Shelf {{ r.shelf }}</span>
               @if (r.hot) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
+              <!-- Missing pieces / damage on this copy (util/game-notice.ts). -->
+              <app-notice-tag [game]="r.item" />
             </span>
           </span>
           <span class="bl-when">{{ r.when }}</span>
@@ -207,6 +209,7 @@
                   <span class="bl-pill" [class.out]="row.out" [class.new]="row.isNew">{{ row.status }}</span>
                   <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ row.shelf }}</span>
                   @if (row.hot) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
+                  <app-notice-tag [game]="row.item" />
                 </span>
                 <span class="bl-meta">
                   <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ row.players }}</span>

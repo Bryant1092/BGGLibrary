@@ -12,6 +12,7 @@ import { SheetComponent } from '../shared/sheet.component';
 import { ThumbComponent } from '../shared/thumb.component';
 import { statusText } from '../util/game-format';
 import { isHotGame } from '../util/hot-games';
+import { NoticeTagComponent } from '../shared/notice-tag.component';
 
 /** Rows drawn at first; more are added as you scroll (a shelf can hold 900+ games). */
 const FIRST_ROWS = 60;
@@ -53,7 +54,7 @@ const LETTER_ORDER = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
 @Component({
   selector: 'app-shelf-list',
   standalone: true,
-  imports: [IconComponent, ThumbComponent, InViewDirective, SheetComponent],
+  imports: [NoticeTagComponent, IconComponent, ThumbComponent, InViewDirective, SheetComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   // has-index leaves room on the right of each row so the letter strip never covers the + button.
   host: { '[class.has-index]': 'showIndex() && letters().length > 1', '[style.--strip-top.px]': 'stripTop()' },
@@ -97,6 +98,8 @@ const LETTER_ORDER = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
                   <span class="bl-pill checking">Checking…</span>
                 }
                 @if (row.hot) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
+                <!-- Missing pieces / damage, from the live record once loaded (util/game-notice.ts). -->
+                <app-notice-tag [game]="shelf.live().get(row.game.id)" />
               </span>
               <span class="bl-meta">
                 <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ row.players }}</span>

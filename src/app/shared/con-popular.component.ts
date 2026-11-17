@@ -12,6 +12,7 @@ import { currentOrNextConvention, dallasDateKey, shortDuration } from '../util/l
 import { IconComponent } from './icon.component';
 import { InViewDirective } from './in-view.directive';
 import { ThumbComponent } from './thumb.component';
+import { NoticeTagComponent } from './notice-tag.component';
 
 const COLLAPSED_KEY = 'bgglibrary.conTopCollapsed';
 
@@ -31,7 +32,7 @@ const COLLAPSED_KEY = 'bgglibrary.conTopCollapsed';
 @Component({
   selector: 'app-con-popular',
   standalone: true,
-  imports: [IconComponent, InViewDirective, ThumbComponent],
+  imports: [NoticeTagComponent, IconComponent, InViewDirective, ThumbComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: block; }
@@ -112,6 +113,8 @@ const COLLAPSED_KEY = 'bgglibrary.conTopCollapsed';
                   <span class="bl-pill" [class.out]="item.is_checked_out">{{ status(item) }}</span>
                   <span class="bl-shelf"><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ shelf(item) }}</span>
                   @if (hot(r.game)) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
+                  <!-- All copies: "1 of 2 copies: missing pieces" when only some have a problem. -->
+                  <app-notice-tag [copies]="copyDetails(r.game.ids)" />
                 </span>
                 <span class="bl-meta">
                   <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ playersOf(item) }}</span>
@@ -251,6 +254,8 @@ export class ConPopularComponent {
   }
 
   status(item: BggItem): string { return statusText(item, this.now()); }
+  /** Every copy's loaded record (for the missing-pieces tag; unloaded copies are skipped). */
+  copyDetails(ids: string[]): (BggItem | undefined)[] { return ids.map(id => this.details().get(id)); }
   shelf(item: BggItem): string { return shelfText(item); }
   playersOf(item: BggItem): string { return playersText(item); }
   minutesOf(item: BggItem): string { return minutesText(item); }

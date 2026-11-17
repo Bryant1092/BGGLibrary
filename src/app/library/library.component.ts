@@ -29,6 +29,7 @@ import { LocalSearchService } from '../service/local-search.service';
 import { ConCheckoutsService } from '../service/con-checkouts.service';
 import { InViewDirective } from '../shared/in-view.directive';
 import { RatingControlsComponent } from '../shared/rating-controls.component';
+import { NoticeTagComponent } from '../shared/notice-tag.component';
 
 /**
  * 12 per page. Tabletop.Events' response time grows with page size (measured
@@ -85,7 +86,7 @@ export class LibraryPageState {
 @Component({
   selector: 'app-library',
   standalone: true,
-  imports: [InViewDirective, RatingControlsComponent, IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent, UpNextComponent, ConPopularComponent, LocalResultsComponent],
+  imports: [NoticeTagComponent, InViewDirective, RatingControlsComponent, IconComponent, SheetComponent, GameSheetComponent, ListPickerSheetComponent, ThumbComponent, OfflineBarComponent, ShelfListComponent, UpNextComponent, ConPopularComponent, LocalResultsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './library.component.html',
 })
