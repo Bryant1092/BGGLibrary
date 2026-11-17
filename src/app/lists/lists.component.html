@@ -4,14 +4,7 @@
       <img src="icons/icon-72x72.png" alt="" width="30" height="30">
       <h1>My Lists</h1>
       @if (selectedList() && view() === 'lists') {
-        @if (selecting()) {
-          <!-- Leaves Select mode without removing anything. -->
-          <button type="button" class="bl-link-btn select-btn" (click)="stopSelecting()">Done</button>
-        } @else {
-          <!-- Select several games to remove at once (ListsComponent.startSelecting). -->
-          @if (games()?.length) {
-            <button type="button" class="bl-link-btn select-btn" (click)="startSelecting()">Select</button>
-          }
+        @if (!selecting()) {
           <!-- Re-downloads availability for every game in the list. -->
           <button type="button" class="bl-icon-btn accent" aria-label="Refresh availability" [class.bl-spinning]="refreshing()" [disabled]="refreshing()" (click)="refresh()">
             <bl-icon name="refresh" [size]="22" />
@@ -123,7 +116,14 @@
         Players / play time: how the group picks the next game ("5 of us, about an hour").
         In the list rather than the pinned header, which already has four rows.
       -->
-      <app-play-filters [(players)]="players" [(playTime)]="playTime" />
+      <!--
+        Select / Done sits at the right end of this row, right above the Played boxes that
+        turn into pick circles: next to what it changes, not up in the header (asked 2026-11-17).
+      -->
+      <div class="list-tools">
+        <app-play-filters [(players)]="players" [(playTime)]="playTime" />
+        <button type="button" class="bl-link-btn select-btn" (click)="selecting() ? stopSelecting() : startSelecting()">{{ selecting() ? 'Done' : 'Select' }}</button>
+      </div>
       <!-- One flat list tracked by game id (ListsComponent.entries): stops thumbnails reloading. -->
       @for (e of entries(); track e.key) {
         @if (e.row; as row) {
