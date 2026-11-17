@@ -340,7 +340,12 @@
             <span class="ev-type"><span class="dot" [style.background]="row.color"></span>{{ row.event.type }}</span>
             <h2>{{ row.event.name }}</h2>
           </div>
-          <button type="button" class="bl-icon-btn" aria-label="Close" (click)="sheet.set(null)" style="margin: -6px -10px 0 0"><bl-icon name="close" /></button>
+          <div class="head-actions">
+            <!-- Sends "<event> · Thu 9 AM · room" with a link that opens this event in the app
+                 (same share menu as a game's details; copies the text where there's no share menu). -->
+            <button type="button" class="bl-icon-btn share" aria-label="Share this event" (click)="shareEvent(row)"><bl-icon name="share" /></button>
+            <button type="button" class="bl-icon-btn" aria-label="Close" (click)="sheet.set(null)"><bl-icon name="close" /></button>
+          </div>
         </div>
         <ul class="facts">
           <li><bl-icon name="clock" [size]="18" /><span>{{ whenText(row.event) }}</span></li>

@@ -61,6 +61,10 @@ button.hours-row:active { background: var(--bl-hair); }
 .sheet-head { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; }
 .sheet-head h2 { margin-top: 6px; overflow-wrap: anywhere; }
 .sheet-head .ev-type { font-size: 13px; font-weight: 600; color: var(--bl-muted); }
+/* Share + close at the top right (close sits where it did before). Share uses the tinted style,
+   like the share button in a game's details. */
+.sheet-head .head-actions { display: flex; gap: 4px; flex: none; margin: -6px -10px 0 0; }
+.sheet-head .share { color: var(--bl-on-tonal); background: var(--bl-tonal); }
 .facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
 .facts li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .facts bl-icon { color: var(--bl-muted); }

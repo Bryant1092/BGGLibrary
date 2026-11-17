@@ -533,6 +533,30 @@ export class EventsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.sheet.set('event');
   }
 
+  /**
+   * Shares an event with the group (asked 2026-11-17): name, day and time, room, and seats,
+   * plus a link that opens this event's details in the app (/events?event=<id>, the same link
+   * reminders use). Uses the phone's share menu; copies the text where there's none (most
+   * laptops). Seats can change, so they're said as "right now".
+   */
+  async shareEvent(row: EventRow): Promise<void> {
+    const e = row.event;
+    const seats = e.ticketed && !e.cancelled ? `\n${row.seatsText} right now` : '';
+    const text = `${e.name}\n${this.whenText(e)}\n${e.room}${seats}`;
+    const url = new URL(`events?event=${encodeURIComponent(e.id)}`, document.baseURI).href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: e.name, text, url });
+      } else {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        this.toast.show({ text: 'Copied. Paste it into your group chat.' });
+      }
+    } catch (err: any) {
+      // AbortError = the person closed the share menu; nothing to report.
+      if (err?.name !== 'AbortError') this.toast.error("Couldn't share. Try again.");
+    }
+  }
+
   toggleStar(event: ConEvent): void {
     const on = this.service.toggleStar(event.id);
     this.toast.show({ text: on ? `Starred ${event.name}` : `Removed ${event.name} from your stars` });
