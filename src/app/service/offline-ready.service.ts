@@ -9,7 +9,8 @@ import { ToastService } from './toast.service';
 export type OfflineState = 'unknown' | 'saving' | 'ready';
 
 const READY_KEY = 'bgglibrary.offlineReady';
-const POLL_MS = 3000;
+/** Every second while saving: "Ready" appears as soon as it's true (~90 cache lookups, cheap). */
+const POLL_MS = 1000;
 /** Stop checking if nothing new was saved for this long (e.g. a browser that never caches). */
 const STALL_MS = 2 * 60 * 1000;
 
@@ -26,7 +27,8 @@ const STALL_MS = 2 * 60 * 1000;
  * on the next time the app is opened.
  *
  * How it measures: the service worker's own file list (ngsw.json) names every
- * prefetch file; we count how many are already in the phone's Cache Storage.
+ * prefetch file; we count how many are already in the phone's Cache Storage (all but
+ * the version-named code files, see check()).
  * ngsw has no progress events, so counting saved files is the only way to show progress.
  */
 @Injectable({ providedIn: 'root' })
@@ -61,6 +63,12 @@ export class OfflineReadyService {
       this.urls = (manifest.assetGroups as { installMode: string; urls: string[] }[])
         .filter(g => g.installMode === 'prefetch')
         .flatMap(g => g.urls)
+        // Leave out the app's code files (main-AB12CD34.js, styles-….css): their names change
+        // with every version. During an update the phone still has the previous version's
+        // code, maps and search list, so it already works offline, but counting the new
+        // names showed "Saving for offline use…" for up to a minute after each update
+        // (reported 2026-11-16). The start page, maps and search list keep their names.
+        .filter(u => !/-[A-Z0-9]{8}\.(js|css)$/.test(u))
         .map(u => new URL(u, location.origin).href);
     } catch {
       // Offline (or the server is down): keep the last answer; it was right when last online.
