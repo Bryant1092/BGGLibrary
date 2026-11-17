@@ -57,9 +57,12 @@ export class GameDetailsCache {
     this.entries.delete(id);
     this.fromStorage.delete(id);
     this.entries.set(id, { item, at: Date.now() });
-    // A list's games all arrive within a second or two: write once after they settle.
-    clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => this.save(), 1500);
+    // A list's games arrive within a second or two: write them in one go, 1.5 s after the
+    // first. Not "1.5 s after the last": in testing, steady updates kept pushing that save
+    // back for 20+ s, so closing the app in that window lost the saved copy.
+    if (this.saveTimer === undefined) {
+      this.saveTimer = setTimeout(() => { this.saveTimer = undefined; this.save(); }, 1500);
+    }
   }
 
   // localStorage can throw (private mode, full storage) or hold junk: never let that
