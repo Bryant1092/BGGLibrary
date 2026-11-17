@@ -69,6 +69,24 @@ type ListFilter = 'all' | 'toplay' | 'liked' | 'buy';
   imports: [NoticeTagComponent, FormsModule, RouterLink, IconComponent, SheetComponent, GameSheetComponent, OfflineBarComponent, ListPickerSheetComponent, ThumbComponent, FriendsPicksComponent, RatingControlsComponent, BuyListComponent, PlayFiltersComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './lists.component.html',
+  // Select mode (pick several games to remove). Custom names on purpose: never .row / .card,
+  // which Bootstrap styles app-wide.
+  styles: `
+    .select-btn { font-size: 17px; font-weight: 600; padding: 0 8px; min-height: 44px; }
+    .bl-row.picked { background: var(--bl-accent-soft); }
+    /* The shelf badge is the same soft color as a picked row; give it the page color so it still reads as a box. */
+    .bl-row.picked .bl-shelf-badge:not(.out) { background: var(--bl-surface); }
+    /* 44px tap target around a 26px circle: empty when not picked, filled with a check when picked. */
+    .pick { flex: none; width: 44px; height: 44px; margin-left: 4px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; }
+    .pick .circle { width: 26px; height: 26px; border-radius: 13px; box-sizing: border-box; border: 2px solid var(--bl-control-border);
+      display: flex; align-items: center; justify-content: center; color: var(--bl-on-accent); }
+    .pick.on .circle { background: var(--bl-accent); border-color: var(--bl-accent); }
+    .select-bar { position: fixed; left: 0; right: 0; bottom: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom)); z-index: 39;
+      display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--bl-surface); border-top: 1px solid var(--bl-hair); }
+    .select-bar .count { flex: 1; text-align: center; font-size: 14px; color: var(--bl-muted); }
+    .select-bar .bl-btn { width: auto; min-height: 44px; padding: 0 18px; }
+    .select-spacer { height: 72px; }
+  `,
 })
 export class ListsComponent implements OnInit, OnDestroy {
   private bggService = inject(BggService);
@@ -363,6 +381,8 @@ export class ListsComponent implements OnInit, OnDestroy {
   }
 
   select(id: string | undefined): void {
+    // Picks belong to one list: switching lists leaves Select mode.
+    if (id !== this.selectedId()) this.stopSelecting();
     this.selectedId.set(id);
     if (this.selectedId$.value !== id) {
       this.games.set(null);
@@ -509,6 +529,55 @@ export class ListsComponent implements OnInit, OnDestroy {
       console.error('Failed to update played', err);
       this.toast.error(navigator.onLine ? "Couldn't save that. Try again." : "You're offline. Changes to lists need a connection.");
     });
+  }
+
+  // ---------- Select several games to remove ----------
+
+  /**
+   * "Select" mode: tap rows to pick them, then remove them all at once.
+   *
+   * Why: removing games meant opening each one and tapping Remove (asked for 2026-11-16).
+   * Same pattern as iPhone's Photos and Mail: Select in the header, tap to check rows,
+   * actions in a bar at the bottom, Done to leave. Removing offers Undo instead of an
+   * "Are you sure?" question (Nielsen Norman Group: undo beats confirmation dialogs,
+   * which people click through without reading).
+   */
+  selecting = signal(false);
+  picked = signal<Set<string>>(new Set());
+  /** Rows on screen right now (filters applied): what "Select all" picks. */
+  private visibleIds = computed(() => this.entries().filter(e => e.row).map(e => e.row!.game.id!));
+  allPicked = computed(() => { const v = this.visibleIds(), p = this.picked(); return v.length > 0 && v.every(id => p.has(id)); });
+
+  startSelecting(): void { this.picked.set(new Set()); this.selecting.set(true); }
+  stopSelecting(): void { this.selecting.set(false); this.picked.set(new Set()); }
+
+  togglePick(id: string): void {
+    this.picked.update(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+
+  toggleAll(): void {
+    this.picked.set(this.allPicked() ? new Set() : new Set(this.visibleIds()));
+  }
+
+  removePicked(): void {
+    const list = this.selectedList();
+    const ids = [...this.picked()];
+    if (!list || !ids.length || this.busy()) return;
+    const removed = (this.games() || []).filter(g => ids.includes(g.id!));
+    const label = ids.length === 1 ? removed[0]?.name || '1 game' : `${ids.length} games`;
+    this.busy.set(true);
+    this.gameService.removeGamesFromList(list.id, ids).then(() => {
+      this.stopSelecting();
+      this.toast.show({
+        text: `Removed ${label} from ${list.name}`,
+        actionLabel: 'Undo',
+        action: () => this.gameService.addGamesToList(list.id, removed)
+          .catch(() => this.toast.error("Couldn't put them back. Add them again from the Library.")),
+      }, 6000);
+    }).catch(err => {
+      console.error('Failed to remove games', err);
+      this.toast.error(navigator.onLine ? "Couldn't remove the games. Try again." : "You're offline. Removing games needs a connection.");
+    }).finally(() => this.busy.set(false));
   }
 
   /** Details sheet button on this page always removes, with Undo. */

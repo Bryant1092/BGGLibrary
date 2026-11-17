@@ -4,13 +4,22 @@
       <img src="icons/icon-72x72.png" alt="" width="30" height="30">
       <h1>My Lists</h1>
       @if (selectedList() && view() === 'lists') {
-        <!-- Re-downloads availability for every game in the list. -->
-        <button type="button" class="bl-icon-btn accent" aria-label="Refresh availability" [class.bl-spinning]="refreshing()" [disabled]="refreshing()" (click)="refresh()">
-          <bl-icon name="refresh" [size]="22" />
-        </button>
-        <button type="button" class="bl-icon-btn accent" aria-label="List options" style="margin-right: -8px" (click)="sheet.set('actions')">
-          <bl-icon name="more" [size]="24" [stroke]="2.4" />
-        </button>
+        @if (selecting()) {
+          <!-- Leaves Select mode without removing anything. -->
+          <button type="button" class="bl-link-btn select-btn" (click)="stopSelecting()">Done</button>
+        } @else {
+          <!-- Select several games to remove at once (ListsComponent.startSelecting). -->
+          @if (games()?.length) {
+            <button type="button" class="bl-link-btn select-btn" (click)="startSelecting()">Select</button>
+          }
+          <!-- Re-downloads availability for every game in the list. -->
+          <button type="button" class="bl-icon-btn accent" aria-label="Refresh availability" [class.bl-spinning]="refreshing()" [disabled]="refreshing()" (click)="refresh()">
+            <bl-icon name="refresh" [size]="22" />
+          </button>
+          <button type="button" class="bl-icon-btn accent" aria-label="List options" style="margin-right: -8px" (click)="sheet.set('actions')">
+            <bl-icon name="more" [size]="24" [stroke]="2.4" />
+          </button>
+        }
       }
     </div>
 
@@ -18,8 +27,8 @@
       <!-- Friends' picks lives here (not as a 5th tab): it's another way of looking at lists. -->
       <div class="bl-view-switch" role="tablist" aria-label="Show">
         <button type="button" role="tab" [attr.aria-selected]="view() === 'lists'" (click)="view.set('lists')">My lists</button>
-        <button type="button" role="tab" [attr.aria-selected]="view() === 'picks'" (click)="view.set('picks')">Friends' picks</button>
-        <button type="button" role="tab" [attr.aria-selected]="view() === 'buy'" (click)="view.set('buy')">Buy list</button>
+        <button type="button" role="tab" [attr.aria-selected]="view() === 'picks'" (click)="stopSelecting(); view.set('picks')">Friends' picks</button>
+        <button type="button" role="tab" [attr.aria-selected]="view() === 'buy'" (click)="stopSelecting(); view.set('buy')">Buy list</button>
       </div>
     }
     @if (lists()?.length && view() === 'lists') {
@@ -118,8 +127,12 @@
       <!-- One flat list tracked by game id (ListsComponent.entries): stops thumbnails reloading. -->
       @for (e of entries(); track e.key) {
         @if (e.row; as row) {
-          <div class="bl-row" style="padding-right: 8px" [class.has-rate]="row.game.played || row.liked !== null || row.buy">
-            <button type="button" class="bl-row-main" style="align-items: center" (click)="openGame(row)" [disabled]="!row.item">
+          <div class="bl-row" style="padding-right: 8px" [class.has-rate]="!selecting() && (row.game.played || row.liked !== null || row.buy)"
+               [class.picked]="selecting() && picked().has(row.game.id!)">
+            <!-- In Select mode a tap picks the row instead of opening its details. -->
+            <button type="button" class="bl-row-main" style="align-items: center"
+                    (click)="selecting() ? togglePick(row.game.id!) : openGame(row)" [disabled]="!selecting() && !row.item"
+                    [attr.role]="selecting() ? 'checkbox' : null" [attr.aria-checked]="selecting() ? picked().has(row.game.id!) : null">
               <!--
                 Box art first: at the shelf you're scanning for the box, so the picture is what you
                 match against. The shelf badge stays big on the right: which shelf, then which box.
@@ -154,6 +167,12 @@
                 <span class="bl-shelf-badge" [class.bl-skel]="!row.failed"><small>Shelf</small><strong>?</strong></span>
               }
             </button>
+            @if (selecting()) {
+              <!-- Select mode: a pick circle instead of the bell / Played / rating, so those can't be tapped by mistake. -->
+              <button type="button" class="pick" [class.on]="picked().has(row.game.id!)" tabindex="-1" aria-hidden="true" (click)="togglePick(row.game.id!)">
+                <span class="circle">@if (picked().has(row.game.id!)) { <bl-icon name="check" [size]="16" [stroke]="3" /> }</span>
+              </button>
+            } @else {
             @if (e.out) {
               <!-- Only checked-out games get a bell; an available game has nothing to wait for. -->
               <button type="button" class="bl-bell" [attr.aria-pressed]="watch.isWatched(row.game.id!)"
@@ -182,6 +201,7 @@
                 </button>
               </div>
             }
+            }
           </div>
         } @else {
           <h2 class="bl-section">{{ e.head }}</h2>
@@ -202,6 +222,20 @@
         </div>
         }
       }
+    }
+    @if (selecting() && view() === 'lists') {
+      <!--
+        Select mode actions, pinned above the tab bar like iPhone's Photos / Mail toolbars.
+        The spacer keeps the last rows reachable above the bar.
+      -->
+      <div class="select-spacer" aria-hidden="true"></div>
+      <div class="select-bar" role="toolbar" aria-label="Selected games">
+        <button type="button" class="bl-link-btn" (click)="toggleAll()">{{ allPicked() ? 'Select none' : 'Select all' }}</button>
+        <span class="count" role="status">{{ picked().size ? picked().size + ' selected' : 'Tap games to select' }}</span>
+        <button type="button" class="bl-btn danger" [disabled]="!picked().size || busy()" (click)="removePicked()">
+          Remove{{ picked().size ? ' (' + picked().size + ')' : '' }}
+        </button>
+      </div>
     }
   </main>
 </div>

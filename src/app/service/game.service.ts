@@ -53,6 +53,26 @@ export class GameService {
     }, DATALIST_DB.DATA_LISTS, listId);
   }
 
+  /**
+   * Removes several games in one save (My Lists' "Select" mode). One transaction, so a
+   * friend adding to the same shared list at that moment doesn't lose their game.
+   */
+  removeGamesFromList(listId: string, ids: string[]): Promise<string> {
+    const drop = new Set(ids);
+    return this.firestore.transactUpdate<GameList>(current => ({
+      gameList: (current?.gameList || []).filter(g => !drop.has(g.id!))
+    }), DATALIST_DB.DATA_LISTS, listId);
+  }
+
+  /** Puts several games back (Undo after removing them); skips any already on the list. */
+  addGamesToList(listId: string, games: Game[]): Promise<string> {
+    return this.firestore.transactUpdate<GameList>(current => {
+      const gameList = current?.gameList || [];
+      const have = new Set(gameList.map(g => g.id));
+      return { gameList: [...gameList, ...games.filter(g => !have.has(g.id))] };
+    }, DATALIST_DB.DATA_LISTS, listId);
+  }
+
   /** Removes every entry with the game's id, even if other stored fields (like the photo URL) changed. */
   removeGamefromList(listId: string, game: Game): Promise<string> {
     return this.firestore.transactUpdate<GameList>(current => ({
