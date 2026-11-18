@@ -1,6 +1,6 @@
 {
- "builtAt": "2026-11-16T21:30:47.449Z",
- "total": 9056,
+ "builtAt": "2026-11-18T15:06:13.151Z",
+ "total": 9060,
  "thumbHost": "https://cf.geekdo-images.com/",
  "shelves": [
   {
@@ -31,7 +31,7 @@
   {
    "shelf": "CARD RACK NEW",
    "slug": "card-rack-new",
-   "count": 215
+   "count": 217
   },
   {
    "shelf": "D",
@@ -81,7 +81,7 @@
   {
    "shelf": "L",
    "slug": "l",
-   "count": 301
+   "count": 300
   },
   {
    "shelf": "M",
@@ -96,7 +96,7 @@
   {
    "shelf": "NEW",
    "slug": "new",
-   "count": 974
+   "count": 977
   },
   {
    "shelf": "O",
