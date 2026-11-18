@@ -557,6 +557,8 @@ async function trackConCheckouts(db, con) {
   }
   state.seenUntil = newest;
   stateCache = state;
+  // Same checkouts feed this con's play-time / shelf-time averages (own state, own document).
+  await trackPlayTimes(db, con, base, recent).catch(err => logger.error('play times failed', err));
 
   // Add copies of the same game together, most checkouts first.
   const byGame = new Map();
@@ -580,6 +582,115 @@ async function trackConCheckouts(db, con) {
   });
   lastWritten = snapshot;
   logger.info(`con checkouts: ${games.length} games ranked (${recent.length} checked out since the last run)`);
+}
+
+// ---------------------------------------------------------------------------
+// This con's real play time and shelf time per game (asked for 2026-11-18 at the con).
+//
+// The library's own average_seconds_checked_out covers every past con and was often
+// off. Tabletop.Events keeps only each copy's latest checkout and check-in time, so
+// this job records each one as it happens:
+// - Time out: when a copy comes back, its check-in minus its checkout.
+// - Time on the shelf: when a copy goes out, its checkout minus its previous check-in
+//   (only if that check-in was during this con).
+// Hours the library is closed (midnight-8 AM Dallas) don't count, so a game out
+// overnight isn't counted as 8 hours of play.
+// Results go to meta/conPlayTimes (public, one document; the app switches from the
+// library's average to this one once a game has PLAY_MIN_SAMPLES plays).
+// Cost: 1-2 extra Tabletop.Events pages per 10-minute run (recent check-ins); two
+// Firestore writes per run, only when something changed.
+// ---------------------------------------------------------------------------
+const PLAY_STATE = 'meta/conPlayState';
+const PLAY_TIMES = 'meta/conPlayTimes';
+let playCache = null;
+
+/**
+ * Milliseconds between a and b with the library's closed hours (midnight-8 AM Dallas)
+ * left out. Dallas is UTC-6 for the whole of BGG.CON (November, standard time) and
+ * UTC-5 for BGG.Spring (daylight time), so the closed window is 06:00-14:00 or
+ * 05:00-13:00 UTC; the offset is read from the date itself.
+ */
+function openMs(a, b) {
+  if (!(b > a)) return 0;
+  let closed = 0;
+  const day = 24 * 3600 * 1000;
+  for (let d = Math.floor(a / day) * day - day; d <= b; d += day) {
+    const offsetH = dallasUtcOffsetHours(d + 12 * 3600 * 1000);
+    const start = d + offsetH * 3600 * 1000, end = start + 8 * 3600 * 1000; // local 00:00-08:00
+    closed += Math.max(0, Math.min(b, end) - Math.max(a, start));
+  }
+  return b - a - closed;
+}
+
+/** Hours Dallas is behind UTC at that moment (6 in winter, 5 in summer). */
+function dallasUtcOffsetHours(ms) {
+  const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hourCycle: 'h23' }).format(new Date(ms)));
+  return (new Date(ms).getUTCHours() - h + 24) % 24;
+}
+
+/** Same grouping as the ranking: copies of a game count together. */
+const playKey = g => g.bgg_id ? `bgg:${g.bgg_id}` : `name:${String(g.name || '').trim().toLowerCase()}`;
+
+async function trackPlayTimes(db, con, base, recentCheckouts) {
+  let state = playCache?.conId === con.id ? playCache : (await db.doc(PLAY_STATE).get()).data();
+  if (!state || state.conId !== con.id) {
+    // lastIn / lastOut: the check-in / checkout already counted per copy, so the overlap
+    // between runs (and copies seen twice) never counts one twice.
+    state = { conId: con.id, inSeenUntil: base.open, lastIn: {}, lastOut: {}, sums: {} };
+  }
+  let changed = false;
+  const add = (g, field, ms) => {
+    const k = playKey(g);
+    const s = state.sums[k] || (state.sums[k] = { o: 0, on: 0, s: 0, sn: 0 });
+    s[field] += ms; s[field + 'n'] += 1;
+    changed = true;
+  };
+
+  // Time on the shelf: copies that went out since the last run.
+  for (const g of recentCheckouts) {
+    const out = tteTime(g.last_checkout_date), back = tteTime(g.last_checkin_date);
+    if (state.lastOut[g.id] === out) continue;
+    state.lastOut[g.id] = out;
+    // Its previous check-in must be this con's (not the pre-con intake scan).
+    if (back >= base.open && back < out) add(g, 's', openMs(back, out));
+  }
+
+  // Time out: copies checked in since the last run, newest first; stop at older ones.
+  const cutoff = state.inSeenUntil - 5 * 60 * 1000;
+  const url = page => `${LIBRARY_GAMES}?_items_per_page=100&_page_number=${page}&_order_by=last_checkin_date&_sort_order=desc&is_checked_out=0`;
+  let newest = state.inSeenUntil;
+  outer: for (let page = 1; page <= 40; page++) {
+    const r = await tteJson(url(page));
+    if (!r?.items) return; // Tabletop.Events unreachable: nothing saved, try again next run
+    for (const g of r.items) {
+      const back = tteTime(g.last_checkin_date), out = tteTime(g.last_checkout_date);
+      if (back < cutoff) break outer;
+      newest = Math.max(newest, back);
+      if (state.lastIn[g.id] === back) continue;
+      state.lastIn[g.id] = back;
+      // A real play this con: checked out after opening, back after that. Over 10 open
+      // hours is a check-in that was never scanned, not a play.
+      const ms = openMs(out, back);
+      if (out >= base.open && back > out && ms > 0 && ms <= 10 * 3600 * 1000) add(g, 'o', ms);
+    }
+    if (r.items.length < 100) break;
+  }
+  state.inSeenUntil = newest;
+  // Only the last hour of "already counted" marks can matter (runs overlap by 5 minutes),
+  // so drop older ones to keep the saved state small all con.
+  const keep = Date.now() - 3600 * 1000;
+  for (const m of [state.lastIn, state.lastOut]) for (const id of Object.keys(m)) if (m[id] < keep) delete m[id];
+  playCache = state;
+  if (!changed) return;
+
+  // Public summary, per game: [avg minutes out, plays, avg minutes on the shelf, times].
+  const games = {};
+  for (const [k, s] of Object.entries(state.sums)) {
+    games[k] = [s.on ? Math.round(s.o / s.on / 60000) : 0, s.on, s.sn ? Math.round(s.s / s.sn / 60000) : 0, s.sn];
+  }
+  await db.doc(PLAY_STATE).set(state);
+  await db.doc(PLAY_TIMES).set({ conId: con.id, conName: con.name, games, updatedAt: admin.firestore.Timestamp.fromMillis(Date.now()) });
+  logger.info(`play times: ${Object.keys(games).length} games`);
 }
 
 /** Saved badge numbers are kept this long after a convention's last day. */

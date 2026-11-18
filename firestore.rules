@@ -201,6 +201,11 @@ service cloud.firestore {
     match /meta/conCheckouts {
       allow read: if true;
     }
+    // This con's average time out / time on the shelf per game (functions/index.js,
+    // trackPlayTimes). Public like the ranking: game statistics only, no people.
+    match /meta/conPlayTimes {
+      allow read: if true;
+    }
 
     // Meeple codes: codes/{MEEP-XXXX} -> { uid }. Claimed once, in a transaction, so a
     // code can never belong to two people. Looked up one code at a time, never listed.

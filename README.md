@@ -131,7 +131,7 @@ All in `functions/index.js`; details in [ARCHITECTURE.md](ARCHITECTURE.md#server
 | Function | When | Does |
 |---|---|---|
 | `checkWatchedGames` | every 2 min | "Game is back" push for bells; event reminders. Library part paused 2–7 AM Dallas time. |
-| `checkPrizeDrawings` | every 10 min | Prize-drawing win alerts by badge number; tracks "Most played this con". |
+| `checkPrizeDrawings` | every 10 min | Prize-drawing win alerts by badge number; tracks "Most played this con" and this con's average time out / on the shelf per game (`meta/conPlayTimes`). |
 | `syncWatchIndex` | on each bell change | Keeps the one-document bell summary (`meta/watchIndex`) in step. |
 
 ```bash

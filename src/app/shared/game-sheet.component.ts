@@ -6,6 +6,7 @@ import { bggUrl, checkedInText, howToPlayUrl, minutesText, playersText, shelfTex
 import { isHotGame } from '../util/hot-games';
 import { gameNotice } from '../util/game-notice';
 import { MapService } from '../service/map.service';
+import { ConPlayTimesService, PLAY_MIN_SAMPLES } from '../service/con-play-times.service';
 import { IconComponent } from './icon.component';
 import { SheetComponent } from './sheet.component';
 import { ThumbComponent } from './thumb.component';
@@ -58,6 +59,8 @@ import { ThumbComponent } from './thumb.component';
     .cond div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
     .cond small { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-muted); }
     .cond span { font-size: 15px; line-height: 20px; overflow-wrap: anywhere; }
+    /* Fine print in the This con box (which average "Often back sooner" uses). */
+    .cond .muted-note { font-size: 13px; line-height: 18px; color: var(--bl-muted); }
     .hot { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--bl-accent-soft); font-size: 14px; line-height: 19px; display: flex; gap: 10px; align-items: flex-start; }
     .hot > bl-icon { color: var(--bl-accent-text); }
     .hot-text { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
@@ -157,6 +160,29 @@ import { ThumbComponent } from './thumb.component';
         </div>
       }
 
+      <!--
+        This con's real numbers (ConPlayTimesService), with how many plays they come from and
+        when the server last updated them, so it's clear how much to trust them. "Often back
+        sooner" above switches to this con's average at PLAY_MIN_SAMPLES plays.
+      -->
+      @if (conStats(); as s) {
+        <div class="cond" role="note">
+          <bl-icon name="clock" [size]="22" />
+          <div>
+            <small>This con{{ s.updatedAt ? ' · updated ' + time(s.updatedAt) : '' }}</small>
+            @if (s.plays) {
+              <span>Out about <strong>{{ dur(s.outMinutes) }}</strong> per checkout ({{ s.plays }} {{ s.plays === 1 ? 'play' : 'plays' }})</span>
+            }
+            @if (s.shelfTimes) {
+              <span>Back on the shelf about <strong>{{ dur(s.shelfMinutes) }}</strong> before someone takes it ({{ s.shelfTimes }}×)</span>
+            }
+            @if (game().is_checked_out && !usingConAverage()) {
+              <span class="muted-note">"Often back sooner" uses the library's all-time average until this con has {{ minSamples }} plays.</span>
+            }
+          </div>
+        </div>
+      }
+
       @if (game().is_checked_out) {
         <button type="button" class="bl-btn secondary" [attr.aria-pressed]="watched()" (click)="watchToggle.emit()"
                 [style.color]="watched() ? 'var(--bl-accent-text)' : null" [style.border-color]="watched() ? 'var(--bl-accent-text)' : null">
@@ -200,7 +226,22 @@ export class GameSheetComponent {
   shelf = computed(() => shelfText(this.game()));
   players = computed(() => playersText(this.game()));
   minutes = computed(() => minutesText(this.game()));
-  due = computed(() => dueInfo(this.game(), this.now()));
+  /** This con's time out / on the shelf for this game (null until it has any). */
+  conStats = computed(() => this.playTimes.statsFor(this.game()));
+  /**
+   * "Often back sooner, around …" uses this con's own average once the game has
+   * PLAY_MIN_SAMPLES plays; until then the library's all-time average (owner's request).
+   */
+  usingConAverage = computed(() => (this.conStats()?.plays ?? 0) >= PLAY_MIN_SAMPLES && this.conStats()!.outMinutes > 0);
+  due = computed(() => dueInfo(
+    this.usingConAverage() ? { ...this.game(), average_seconds_checked_out: this.conStats()!.outMinutes * 60 } : this.game(),
+    this.now()));
+  private playTimes = inject(ConPlayTimesService);
+  readonly minSamples = PLAY_MIN_SAMPLES;
+  /** "1h 20m" / "25 min" for the This con box. */
+  dur(minutes: number): string {
+    return minutes < 60 ? `${Math.max(1, minutes)} min` : shortDuration(minutes * 60_000);
+  }
   bgg = computed(() => bggUrl(this.game()));
   howToPlay = computed(() => howToPlayUrl(this.game()));
   hot = computed(() => isHotGame(this.game().name, this.now()));
