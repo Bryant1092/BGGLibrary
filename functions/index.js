@@ -143,7 +143,15 @@ exports.checkWatchedGames = onSchedule({
           await db.doc(WATCH_INDEX).update(new admin.firestore.FieldPath('bells', uid + KEY_SEP + gameId), admin.firestore.FieldValue.delete()).catch(() => {});
           continue;
         }
-        sent += await notifyOwner(db, bell, game);
+        const n = await notifyOwner(db, bell, game);
+        sent += n;
+        if (n === 0) {
+          // No phone could be reached (e.g. the Home Screen app was re-added and has no push address
+          // yet; 2026-11-17 this silently ate an alert). Keep the bell: the app shows the alert and
+          // clears it when it's next opened. The checkin cursor stops it from being sent again here.
+          logger.info('no push address, bell kept for the app', { uid: bell.ref.parent.parent.id, gameId: game.id });
+          continue;
+        }
         // Bell done: it fires once. The app sees the bell disappear and updates;
         // syncWatchIndex removes it from the summary.
         await bell.ref.delete().catch(err => logger.warn('could not remove bell', err.message));

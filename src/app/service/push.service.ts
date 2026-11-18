@@ -53,9 +53,21 @@ export class PushService {
     combineLatest([this.userService.checkAuth(), this.swPush.subscription])
       .pipe(takeUntilDestroyed(destroyRef))
       .subscribe(([user, sub]) => {
-        if (user && sub) this.save(sub).catch(() => { /* tried again next start */ });
+        if (!user) return;
+        if (sub) {
+          this.save(sub).catch(() => { /* tried again next start */ });
+        } else if (Notification.permission === 'granted' && !this.resubscribing) {
+          // Allowed, but this phone has no push address. Happens after removing and re-adding the
+          // Home Screen app (iPhone treats it as a new app, 2026-11-17): the old address stopped
+          // working and alerts only showed once the app was opened. Make a new one, no tap needed
+          // since permission was already given. Once per app start, so a failure can't loop.
+          this.resubscribing = true;
+          this.subscribe().catch(() => { /* in-app alerts still work */ });
+        }
       });
   }
+
+  private resubscribing = false;
 
   private save(sub: PushSubscription): Promise<void> {
     const uid = this.userService.getCurrentUid();

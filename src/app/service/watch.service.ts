@@ -231,7 +231,17 @@ export class WatchService {
     }
   }
 
+  /** Game id -> when we last alerted for it (this app session). */
+  private alertedAt = new Map<string, number>();
+
   private alert(game: WatchedGame, checkedIn?: string): void {
+    // Only once per game per 10 minutes. On opening the app the same "is back" alert showed twice
+    // (2026-11-17): removing the bell saves to the database, and the saved list can briefly come
+    // back with the bell still in it, so the next check found it "back" again. iPhone doesn't
+    // reliably replace a notification with the same tag, so guard here instead.
+    const last = this.alertedAt.get(game.id);
+    if (last && Date.now() - last < 10 * 60_000) return;
+    this.alertedAt.set(game.id, Date.now());
     // When it was checked in, so you know how long it's been sitting there (someone may grab it).
     const t = parseTteDate(checkedIn)?.getTime();
     const when = t ? `checked in ${formatLibraryTime(t)}` : '';
