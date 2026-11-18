@@ -653,6 +653,17 @@ async function trackPlayTimes(db, con, base, recentCheckouts) {
   for (const g of recentCheckouts) {
     const out = tteTime(g.last_checkout_date), back = tteTime(g.last_checkin_date);
     if (state.lastOut[g.id] === out) continue;
+    // The play before this checkout. A popular copy can come back and go out again between
+    // two runs (Hell of a Deal sat ~4 min, 2026-11-18): the check-in scan below only sees
+    // copies still on the shelf, so it never saw that return and only 2 of 8 plays counted.
+    // Here its previous checkout (remembered in outAt) to its check-in is that play.
+    const prevOut = state.outAt?.[g.id];
+    if (prevOut && back > prevOut && state.lastIn[g.id] !== back) {
+      state.lastIn[g.id] = back;
+      const ms = openMs(prevOut, back);
+      if (prevOut >= base.open && ms > 0 && ms <= 10 * 3600 * 1000) add(g, 'o', ms);
+    }
+    (state.outAt ||= {})[g.id] = out;
     state.lastOut[g.id] = out;
     // Its previous check-in must be this con's (not the pre-con intake scan).
     if (back >= base.open && back < out) add(g, 's', openMs(back, out));
@@ -679,12 +690,19 @@ async function trackPlayTimes(db, con, base, recentCheckouts) {
     if (r.items.length < 100) break;
   }
   state.inSeenUntil = newest;
-  // Only the last hour of "already counted" marks can matter (runs overlap by 5 minutes),
-  // so drop older ones to keep the saved state small all con.
-  const keep = Date.now() - 3600 * 1000;
-  for (const m of [state.lastIn, state.lastOut]) for (const id of Object.keys(m)) if (m[id] < keep) delete m[id];
+  // Drop old marks to keep the saved state small all con. Kept 12 hours, not 1: a copy can sit
+  // on the shelf for hours, and when it goes out again its check-in mark (lastIn) stops that
+  // play being counted twice, and outAt is where its play started. Longer than a con day's
+  // 10 counted hours, so nothing still needed is dropped.
+  const keep = Date.now() - 12 * 3600 * 1000;
+  for (const m of [state.lastIn, state.lastOut, state.outAt || {}]) for (const id of Object.keys(m)) if (m[id] < keep) delete m[id];
   playCache = state;
-  if (!changed) return;
+  if (!changed) {
+    // No new averages, but new checkouts were noted (outAt): save those so a server restart
+    // doesn't forget where those plays started. One small server-only write; phones don't read it.
+    if (recentCheckouts.length) await db.doc(PLAY_STATE).set(state);
+    return;
+  }
 
   // Public summary, per game: [avg minutes out, plays, avg minutes on the shelf, times].
   const games = {};
