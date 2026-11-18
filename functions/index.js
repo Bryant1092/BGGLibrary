@@ -649,24 +649,43 @@ async function trackPlayTimes(db, con, base, recentCheckouts) {
     changed = true;
   };
 
-  // Time on the shelf: copies that went out since the last run.
+  /** One play (checkout -> check-in) of a copy, counted once per check-in (lastIn). */
+  const play = (g, out, back) => {
+    if (!out || !(back > out) || state.lastIn[g.id] === back) return;
+    state.lastIn[g.id] = back;
+    (state.inAt ||= {})[g.id] = Math.max(state.inAt[g.id] || 0, back);
+    // A real play this con: checked out after opening. Over 10 open hours is a check-in
+    // that was never scanned, not a play.
+    const ms = openMs(out, back);
+    if (out >= base.open && ms > 0 && ms <= 10 * 3600 * 1000) add(g, 'o', ms);
+  };
+
+  // Copies that went out since the last run. Tabletop.Events keeps only each copy's latest
+  // checkout and check-in, so between two runs (10 min) a copy can be in three states, all
+  // handled here (logic re-checked 2026-11-18 after Hell of a Deal showed 2 plays, 8 pickups):
+  // - Still out (check-in older than this checkout): that check-in ended its previous play
+  //   (from outAt, the checkout we saw last time) and started its shelf time.
+  // - Already back (a quick game): this checkout -> check-in is the play. Its shelf time
+  //   started at the check-in we saw before (inAt), since Tabletop.Events has replaced it.
+  // - Back and out again more than once between runs: the middle plays can't be recovered.
+  // The check-in scan below also counts plays; lastIn stops the same play counting twice.
   for (const g of recentCheckouts) {
     const out = tteTime(g.last_checkout_date), back = tteTime(g.last_checkin_date);
     if (state.lastOut[g.id] === out) continue;
-    // The play before this checkout. A popular copy can come back and go out again between
-    // two runs (Hell of a Deal sat ~4 min, 2026-11-18): the check-in scan below only sees
-    // copies still on the shelf, so it never saw that return and only 2 of 8 plays counted.
-    // Here its previous checkout (remembered in outAt) to its check-in is that play.
     const prevOut = state.outAt?.[g.id];
-    if (prevOut && back > prevOut && state.lastIn[g.id] !== back) {
-      state.lastIn[g.id] = back;
-      const ms = openMs(prevOut, back);
-      if (prevOut >= base.open && ms > 0 && ms <= 10 * 3600 * 1000) add(g, 'o', ms);
+    let shelfFrom;
+    if (back < out) {
+      if (prevOut && prevOut < back) play(g, prevOut, back);
+      shelfFrom = back;
+    } else {
+      // Read the earlier check-in first: play() records this new one in inAt.
+      shelfFrom = state.inAt?.[g.id] && state.inAt[g.id] < out ? state.inAt[g.id] : 0;
+      play(g, out, back);
     }
     (state.outAt ||= {})[g.id] = out;
     state.lastOut[g.id] = out;
-    // Its previous check-in must be this con's (not the pre-con intake scan).
-    if (back >= base.open && back < out) add(g, 's', openMs(back, out));
+    // Shelf time only from a check-in during this con (not the pre-con intake scan).
+    if (shelfFrom >= base.open && shelfFrom < out) add(g, 's', openMs(shelfFrom, out));
   }
 
   // Time out: copies checked in since the last run, newest first; stop at older ones.
@@ -680,12 +699,7 @@ async function trackPlayTimes(db, con, base, recentCheckouts) {
       const back = tteTime(g.last_checkin_date), out = tteTime(g.last_checkout_date);
       if (back < cutoff) break outer;
       newest = Math.max(newest, back);
-      if (state.lastIn[g.id] === back) continue;
-      state.lastIn[g.id] = back;
-      // A real play this con: checked out after opening, back after that. Over 10 open
-      // hours is a check-in that was never scanned, not a play.
-      const ms = openMs(out, back);
-      if (out >= base.open && back > out && ms > 0 && ms <= 10 * 3600 * 1000) add(g, 'o', ms);
+      play(g, out, back);
     }
     if (r.items.length < 100) break;
   }
@@ -695,7 +709,7 @@ async function trackPlayTimes(db, con, base, recentCheckouts) {
   // play being counted twice, and outAt is where its play started. Longer than a con day's
   // 10 counted hours, so nothing still needed is dropped.
   const keep = Date.now() - 12 * 3600 * 1000;
-  for (const m of [state.lastIn, state.lastOut, state.outAt || {}]) for (const id of Object.keys(m)) if (m[id] < keep) delete m[id];
+  for (const m of [state.lastIn, state.lastOut, state.outAt || {}, state.inAt || {}]) for (const id of Object.keys(m)) if (m[id] < keep) delete m[id];
   playCache = state;
   if (!changed) {
     // No new averages, but new checkouts were noted (outAt): save those so a server restart
