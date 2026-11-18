@@ -204,7 +204,17 @@
             }
           </div>
         } @else {
-          <h2 class="bl-section">{{ e.head }}</h2>
+          <!-- Grey band between sections, like the Library tab. -->
+          @if (!e.first) { <div class="bl-section-gap"></div> }
+          <!-- Pinned under the header while its section is on screen (.sec-head). -->
+          <div class="sec-head" [id]="'list-sec-' + e.key.slice(5)">
+            <h2 class="bl-section">{{ e.head }}</h2>
+            @if (e.jumpOut) {
+              <button type="button" class="bl-link-btn" (click)="jumpToOut()" [attr.aria-label]="'Jump to checked out games (' + e.jumpOut + ')'">
+                Checked out · {{ e.jumpOut }} <bl-icon name="chevronDown" [size]="16" />
+              </button>
+            }
+          </div>
         }
       } @empty {
         @if (players() || playTime()) {

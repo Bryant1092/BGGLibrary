@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, OnDestroy, OnInit, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, OnDestroy, OnInit, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -82,6 +82,13 @@ type ListFilter = 'all' | 'toplay' | 'liked' | 'buy';
     .pick .circle { width: 26px; height: 26px; border-radius: 13px; box-sizing: border-box; border: 2px solid var(--bl-control-border);
       display: flex; align-items: center; justify-content: center; color: var(--bl-on-accent); }
     .pick.on .circle { background: var(--bl-accent); border-color: var(--bl-accent); }
+    /* Section headings ("Available now", "Checked out") pinned under the page header while
+       their section is on screen; the next one pushes the previous one up (iPhone list style). */
+    .sec-head { position: sticky; top: var(--lists-head-h, 0px); z-index: 5; display: flex; align-items: center; justify-content: space-between;
+                padding-right: 6px; background: var(--bl-surface); border-bottom: 1px solid var(--bl-hair); }
+    .sec-head .bl-section { padding-bottom: 8px; }
+    /* Grey band between sections, as on the Library tab (styles.css .bl-section-gap). */
+    .bl-row:has(+ .bl-section-gap) { border-bottom: 0; }
     .select-bar { position: fixed; left: 0; right: 0; bottom: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom)); z-index: 39;
       display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--bl-surface); border-top: 1px solid var(--bl-hair); }
     .select-bar .count { flex: 1; text-align: center; font-size: 14px; color: var(--bl-muted); }
@@ -241,10 +248,42 @@ export class ListsComponent implements OnInit, OnDestroy {
    * 6-game list, seen as flickering (reported 2026-11-16). In one list tracked by
    * game, a row just moves to its new place and its image stays put.
    */
-  entries = computed(() => this.sections().flatMap(s => [
-    { key: 'head:' + s.key, head: s.title, out: s.out, row: null as ListRow | null },
-    ...s.rows.map(row => ({ key: 'game:' + row.game.id, head: '', out: s.out, row })),
-  ]));
+  entries = computed(() => {
+    const sections = this.sections();
+    // "Checked out ↓" on the first heading jumps past the available games (asked 2026-11-18:
+    // long lists meant scrolling all the way down). Only when there is something to jump past.
+    const outCount = sections[0]?.key !== 'out' ? sections.find(s => s.key === 'out')?.rows.length ?? 0 : 0;
+    return sections.flatMap((s, i) => [
+      { key: 'head:' + s.key, head: s.title, out: s.out, row: null as ListRow | null, first: i === 0, jumpOut: i === 0 ? outCount : 0 },
+      ...s.rows.map(row => ({ key: 'game:' + row.game.id, head: '', out: s.out, row, first: false, jumpOut: 0 })),
+    ]);
+  });
+
+  /** Scrolls so the "Checked out" heading sits right under the page header. */
+  jumpToOut(): void {
+    const head = document.getElementById('list-sec-out');
+    if (!head) return;
+    const headerH = ((this.host.nativeElement as HTMLElement).querySelector('.bl-header') as HTMLElement | null)?.offsetHeight ?? 0;
+    window.scrollTo({ top: head.getBoundingClientRect().top + window.scrollY - headerH, behavior: 'smooth' });
+  }
+
+  /**
+   * The section headings stick right under the page header (asked 2026-11-18: the list's
+   * heading stays on top while scrolling, and "Checked out" takes over once reached). The
+   * header's height changes (offline bar, list switcher, text size), so it's measured and
+   * passed to the CSS as --lists-head-h.
+   */
+  private watchHeaderHeight(): void {
+    const host = this.host.nativeElement as HTMLElement;
+    const ro = new ResizeObserver(() => {
+      const h = (host.querySelector('.bl-header') as HTMLElement | null)?.offsetHeight ?? 0;
+      host.style.setProperty('--lists-head-h', h + 'px');
+    });
+    const header = host.querySelector('.bl-header');
+    if (header) ro.observe(header);
+    this.destroyRef.onDestroy(() => ro.disconnect());
+  }
+  private host = inject(ElementRef);
 
   summary = computed(() => {
     const games = this.games() || [];
@@ -266,6 +305,8 @@ export class ListsComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    // The header is in this component's own template, so it exists once the first render is done.
+    setTimeout(() => this.watchHeaderHeight());
     document.addEventListener('visibilitychange', this.retryFailed);
     window.addEventListener('online', this.retryFailed);
     // One stream for detail requests: mergeMap caps parallel requests,
