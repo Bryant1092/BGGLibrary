@@ -167,7 +167,7 @@ Start from what you see, then check the place listed.
 | Lists, friends or stars don't save ("Check your connection") | Firestore unreachable, or a rule rejects the write | Browser console for `permission-denied`; compare with `firestore.rules`; were the rules deployed first? |
 | No "game is back" notification | No push subscription, bell missing, or the job didn't run | `users/{uid}/pushSubs` and `users/{uid}/watches` in Firestore; `meta/watchIndex`; function logs for `checkWatchedGames` (Google Cloud console → Logging; `firebase functions:log` can lag hours) |
 | No event reminder | Star saved without `remindAt`, reminders set to Off, or event started > 5 min ago | `users/{uid}/eventStars/{eventId}`; Account → Reminders |
-| "Most played this con" never appears | Only shown while the library is open for the current con | `meta/conCheckouts` (public read); `checkPrizeDrawings` logs |
+| "Most played this con" never appears | Shown from the first checkout of a con until the next con opens | `meta/conCheckouts` (public read); `checkPrizeDrawings` logs |
 | Missing-pieces note shows a name or staff code | Note cleaning missed a pattern | `src/app/util/game-notice.ts` (`cleanNote`) |
 | Friend circle colors look wrong in one mode | Token not defined for that mode | `--bl-pN-*` in `src/styles.css` (light block and `[data-theme="dark"]` block) |
 

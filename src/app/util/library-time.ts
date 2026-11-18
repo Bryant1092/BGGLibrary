@@ -114,6 +114,11 @@ export function longDuration(ms: number): string {
 }
 
 /** The convention happening now, or the next one coming up. */
+/** True once the convention's library has opened for the first time. */
+export function conventionStarted(con: Convention, now: number = Date.now()): boolean {
+  return dayInstant(con.days[0], con.days[0].open) <= now;
+}
+
 export function currentOrNextConvention(now: number = Date.now()): Convention | undefined {
   return CONVENTIONS.find(c => dayInstant(c.days[c.days.length - 1], c.days[c.days.length - 1].close) > now);
 }

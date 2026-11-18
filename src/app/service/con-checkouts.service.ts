@@ -2,7 +2,7 @@ import { computed, inject, Injectable } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { catchError, Observable, of } from 'rxjs';
-import { currentOrNextConvention } from '../util/library-time';
+import { conventionStarted, currentOrNextConvention } from '../util/library-time';
 
 /** One game in the ranking: copies of the same game are already added together. */
 export interface ConGame {
@@ -41,12 +41,20 @@ export class ConCheckoutsService {
     { initialValue: undefined },
   );
 
-  /** A ranking for the convention that's on now (an old one from last year doesn't count). */
+  /**
+   * The latest ranking. After a con ends it stays up (the owner asked, 2026-11-18, to keep
+   * BGG.CON 2026's final list showing) until the next con's library opens; from then on only
+   * that con's ranking counts, so last con's numbers never pass as the new con's.
+   */
   readonly available = computed(() => {
     const d = this.data();
     const con = currentOrNextConvention();
-    return !!d?.games?.length && (!con?.tteConventionId || d.conId === con.tteConventionId);
+    if (!d?.games?.length) return false;
+    return !con?.tteConventionId || d.conId === con.tteConventionId || !conventionStarted(con);
   });
+
+  /** The con the ranking is from (after a con ends, the "current or next" con is a different one). */
+  readonly conName = computed(() => this.available() ? this.data()!.conName : null);
 
   readonly games = computed<ConGame[]>(() => this.available() ? this.data()!.games : []);
   readonly updatedAt = computed(() => this.available() ? this.data()!.updatedAt?.toMillis?.() ?? null : null);

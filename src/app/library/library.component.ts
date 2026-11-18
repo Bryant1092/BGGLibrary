@@ -202,7 +202,9 @@ export class LibraryComponent implements OnInit, OnDestroy {
 
   conCheckouts = inject(ConCheckoutsService);
   conMode = signal(false);
-  conName = computed(() => currentOrNextConvention(this.now())?.name || 'this convention');
+  // The ranking's own con first: after BGG.CON ends the next con is BGG.Spring, but the list
+  // still showing is BGG.CON's.
+  conName = computed(() => this.conCheckouts.conName() || currentOrNextConvention(this.now())?.name || 'this convention');
 
   setConSort(): void {
     this.sheet.set(null);
