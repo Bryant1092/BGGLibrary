@@ -391,14 +391,20 @@ export class LibraryComponent implements OnInit, OnDestroy {
   /**
    * A link shared from a game's details ends in ?game=<id>; open that game's
    * details, then drop the parameter so a reload doesn't reopen it.
+   *
+   * Also how a "game is back" notification opens its game (2026-11-18): tapping it sends the
+   * app to library/home?game=<id>. Watched live, not just once at startup, because when the
+   * app is already on the Library tab, a new ?game= doesn't create this page again.
    */
   private openSharedGame(): void {
-    const id = this.route.snapshot.queryParamMap.get('game');
-    if (!id) return;
-    this.router.navigate([], { queryParams: { game: null }, queryParamsHandling: 'merge', replaceUrl: true });
-    this.bggService.getBggGameInfo(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (response: any) => { if (response?.result?.id) this.openDetails(response.result); },
-      error: () => this.toast.error("Couldn't open the shared game. Check your connection."),
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      const id = params.get('game');
+      if (!id) return;
+      this.router.navigate([], { queryParams: { game: null }, queryParamsHandling: 'merge', replaceUrl: true });
+      this.bggService.getBggGameInfo(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (response: any) => { if (response?.result?.id) this.openDetails(response.result); },
+        error: () => this.toast.error("Couldn't open that game. Check your connection."),
+      });
     });
   }
 

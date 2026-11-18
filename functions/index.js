@@ -320,15 +320,18 @@ async function notifyOwner(db, bell, game) {
   const name = bell.data().name || game.name;
   const shelf = game.custom_fields?.Location || bell.data().shelf || '';
   const when = checkedInTime(game.last_checkin_date);
-  // Angular's service worker shows `notification` and, on tap, opens My Lists
-  // (onActionClick); the tag replaces the in-app alert's notification for the same game.
+  // Angular's service worker shows `notification`; the tag replaces the in-app alert's
+  // notification for the same game. On tap it opens that game's details (?game=, the same
+  // link as sharing a game; 2026-11-18, it used to open My Lists). "navigate…" rather than
+  // "focus…": if the app is still open in the background, it's sent to the game too,
+  // instead of just coming forward wherever it was.
   const payload = JSON.stringify({
     notification: {
       title: `${name} is back`,
       body: `Available${shelf ? ` on shelf ${shelf}` : ''}${when ? `, checked in ${when}` : ''}.`,
       icon: `${APP_URL}icons/icon-192x192.png`,
       tag: bell.id,
-      data: { onActionClick: { default: { operation: 'focusLastFocusedOrOpen', url: `${APP_URL}library/user` } } },
+      data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url: `${APP_URL}library/home?game=${encodeURIComponent(bell.id)}` } } },
     },
   });
   let sent = 0;

@@ -257,10 +257,11 @@ export class WatchService {
    */
   private async showPhoneNotification(title: string, body: string, tag: string): Promise<void> {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    const url = new URL('library/user', document.baseURI).href;
+    // Opens that game's details (the tag is the game id), like the server's notification.
+    const url = new URL(`library/home?game=${encodeURIComponent(tag)}`, document.baseURI).href;
     const options: NotificationOptions & { data: unknown } = {
       body, tag, icon: new URL('icons/icon-192x192.png', document.baseURI).href,
-      data: { onActionClick: { default: { operation: 'focusLastFocusedOrOpen', url } } },
+      data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url } } },
     };
     try {
       const registration = await navigator.serviceWorker?.getRegistration();
