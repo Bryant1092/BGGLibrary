@@ -427,6 +427,11 @@ body {
 .bl-toast span { flex: 1; padding: 8px 0; }
 .bl-toast button { min-height: 44px; padding: 0 14px; border: 0; background: transparent; font-weight: 700; color: var(--bl-toast-action); }
 .bl-toast.error button { color: #fff; text-decoration: underline; }
+/* × to dismiss a toast early (ToastComponent; swiping works too). Quieter than the action. */
+.bl-toast button.x { padding: 0 10px; color: var(--bl-toast-muted); display: flex; align-items: center; touch-action: manipulation; }
+.bl-toast.error button.x { color: #fff; text-decoration: none; }
+/* The toast follows the finger in any direction, so the page mustn't scroll under it. */
+.bl-toast { touch-action: none; }
 /* "A new version is ready" (UpdateBarComponent): toast look, under real toasts (z 60) so
    "Added to …" still shows on top; hidden while typing and while a sheet is open. */
 .bl-update-bar { z-index: 55; animation: bl-rise .32s cubic-bezier(0.32, 0.72, 0, 1); }
