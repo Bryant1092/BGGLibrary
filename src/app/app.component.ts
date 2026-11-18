@@ -81,6 +81,7 @@ export class AppComponent implements OnInit {
     }, { passive: false });
 
     this.hideTabBarWhileTyping();
+    this.keepTabBarAtBottom();
 
     this.hideNavService.checkHideNav()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -110,6 +111,65 @@ export class AppComponent implements OnInit {
     this.offlineReady.start(this.destroyRef);
     // Notices new versions (on open, back from the background, every 15 min) for the update bar.
     this.appUpdate.start(this.destroyRef);
+  }
+
+  /**
+   * Puts the tab bar back at the bottom of the screen when iPhone has lost track of it.
+   *
+   * Reported 2026-11-18 at the con: with no typing involved, the Home Screen app showed the
+   * tab bar stuck mid-screen with the page continuing below it, on every tab, until the app
+   * was closed and reopened. iPhone had placed it at the bottom of a shorter screen (it
+   * happened while other apps' Live Activities were showing, after coming back from the
+   * background).
+   *
+   * After coming back, on a resize and when scrolling stops, this checks whether the bar's
+   * bottom edge is at the bottom of the screen. If it isn't, it does the 1px scroll nudge,
+   * then makes the browser re-place the bar from scratch. Each check is one position
+   * measurement, so it costs nothing noticeable. Skipped while typing (the bar is hidden then,
+   * hideTabBarWhileTyping) or while a sheet has the page locked.
+   */
+  private keepTabBarAtBottom(): void {
+    if (!window.matchMedia?.('(pointer: coarse)').matches) return;
+    const root = document.documentElement;
+    const misplaced = (bar: HTMLElement) => {
+      const bottom = bar.getBoundingClientRect().bottom;
+      // Also compare with the screen itself: in a Home Screen app in portrait, the window
+      // should be about as tall as the screen; a much shorter one is the same bug.
+      const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+      const portrait = window.innerHeight > window.innerWidth;
+      const shrunk = standalone && portrait && window.innerHeight < screen.height * 0.85;
+      return Math.abs(bottom - window.innerHeight) > 2 || shrunk;
+    };
+    const check = () => {
+      if (root.classList.contains('bl-typing') || document.body.style.position === 'fixed') return;
+      const bar = document.querySelector<HTMLElement>('.bl-tabbar');
+      if (!bar || !misplaced(bar)) return;
+      window.scrollBy({ top: 1, behavior: 'instant' as ScrollBehavior });
+      window.scrollBy({ top: -1, behavior: 'instant' as ScrollBehavior });
+      requestAnimationFrame(() => {
+        if (!misplaced(bar)) return;
+        // Still wrong: take it out of the layout and put it back, so it's placed again.
+        bar.style.display = 'none';
+        void bar.offsetHeight;
+        bar.style.display = '';
+      });
+    };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const soon = (ms: number) => { clearTimeout(timer); timer = setTimeout(check, ms); };
+    const onVisible = () => { if (document.visibilityState === 'visible') soon(400); };
+    const onResize = () => soon(300);
+    const onScroll = () => soon(250); // runs once scrolling has stopped
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onResize);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    this.destroyRef.onDestroy(() => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onResize);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll);
+    });
   }
 
   /**
@@ -150,6 +210,7 @@ export class AppComponent implements OnInit {
       }, 150);
     };
     document.addEventListener('focusin', onIn);
+    // (keepTabBarAtBottom below handles the same symptom when no keyboard was involved.)
     document.addEventListener('focusout', onOut);
     this.destroyRef.onDestroy(() => {
       clearTimeout(timer);
