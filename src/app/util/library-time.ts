@@ -179,6 +179,14 @@ function daysBetween(fromKey: string, toKey: string): number {
   return Math.round((Date.parse(toKey) - Date.parse(fromKey)) / (24 * HOUR));
 }
 
+/** When the library opened today if it's open right now (Dallas time), otherwise null. */
+export function libraryOpenSince(now: number = Date.now()): number | null {
+  const today = conventionOn(now)?.days.find(d => d.date === dallasDateKey(now));
+  if (!today) return null;
+  const opens = dayInstant(today, today.open);
+  return now >= opens && now < dayInstant(today, today.close) ? opens : null;
+}
+
 /** Library status badge for the header, or null when no convention is within 30 days. */
 export function libraryStatus(now: number = Date.now()): LibraryStatus | null {
   // A convention day wins even after its final close, so the last afternoon

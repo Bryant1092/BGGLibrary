@@ -6,6 +6,7 @@ import { bggUrl, checkedInText, howToPlayUrl, minutesText, playersText, shelfTex
 import { isHotGame } from '../util/hot-games';
 import { gameNotice } from '../util/game-notice';
 import { MapService } from '../service/map.service';
+import { DeskActivity } from '../service/desk-activity.service';
 import { ConPlayTimesService, PLAY_MIN_SAMPLES } from '../service/con-play-times.service';
 import { IconComponent } from './icon.component';
 import { SheetComponent } from './sheet.component';
@@ -23,6 +24,8 @@ import { ThumbComponent } from './thumb.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .checked-in { display: block; margin-top: 6px; font-size: 14px; color: var(--bl-muted); }
+    .desk-stale { display: block; padding: 6px 10px; border-radius: 10px; font-size: 14px; line-height: 19px;
+      background: var(--bl-late-bg); color: var(--bl-late-fg); border: 1px solid var(--bl-late-border); }
     .head { display: flex; gap: 14px; align-items: flex-start; }
     .head .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
     .head h2 { overflow-wrap: anywhere; }
@@ -76,6 +79,10 @@ import { ThumbComponent } from './thumb.component';
           <span class="bl-pill" [class.out]="game().is_checked_out">{{ game().is_checked_out ? 'Checked out' : 'Available now' }}</span>
           <!-- When it came back, so you know it was just returned. -->
           @if (checkedIn()) { <span class="checked-in">{{ checkedIn() }}</span> }
+          <!-- Desk scanning is down (DeskActivity): the pill above is as of the last scan. -->
+          @if (desk.staleSince(); as since) {
+            <span class="desk-stale" role="status">Check-in/out hasn't updated since {{ deskSinceText(since) }}, so this may be wrong.</span>
+          }
         </div>
         <div class="head-actions">
           <button type="button" class="bl-icon-btn" aria-label="Close" (click)="closed.emit()"><bl-icon name="close" /></button>
@@ -208,6 +215,8 @@ import { ThumbComponent } from './thumb.component';
 })
 export class GameSheetComponent {
   private toast = inject(ToastService);
+  readonly desk = inject(DeskActivity);
+  readonly deskSinceText = (ms: number) => formatLibraryTime(ms);
   game = input.required<BggItem>();
   /** Name of the list the button adds to; empty when signed out or there are no lists yet. */
   listName = input<string | undefined>();

@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, signal } from '@angular/core';
 import { NetworkHealth } from '../service/network-health';
+import { DeskActivity } from '../service/desk-activity.service';
+import { formatLibraryTime } from '../util/library-time';
 
 /**
  * Connection bar inside the page header. Two cases:
@@ -44,12 +46,25 @@ import { NetworkHealth } from '../service/network-health';
              the phone still shows full Wi-Fi bars (captive portal). -->
         <span><strong>Wi-Fi is struggling.</strong> Showing saved info where we have it. Just joined the hotel Wi-Fi? Open Safari to finish signing in. Turning off Wi-Fi to use cellular often helps too.</span>
       </div>
+    } @else if (deskSince()) {
+      <!-- The desk stopped scanning (DeskActivity): Tabletop.Events still answers, but its
+           Available / Out is frozen at the last scan. -->
+      <div class="bar" role="status">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <span><strong>Library check-in/out isn't updating.</strong> Nothing scanned since {{ sinceText(deskSince()!) }}, so Available / Out may be wrong. Check at the library desk.</span>
+      </div>
     }
   `,
 })
 export class OfflineBarComponent {
   readonly online = signal(navigator.onLine);
   readonly health = inject(NetworkHealth);
+  readonly desk = inject(DeskActivity);
+  /** Show the "check-in/out isn't updating" case (off on Events, which shows no availability). */
+  readonly library = input(true);
+  readonly deskSince = computed(() => this.library() ? this.desk.staleSince() : null);
+  readonly sinceText = (ms: number) => formatLibraryTime(ms);
 
   constructor() {
     const update = () => this.online.set(navigator.onLine);

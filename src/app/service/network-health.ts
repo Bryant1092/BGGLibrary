@@ -1,6 +1,7 @@
 import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpRequest, HttpResponse } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { Observable, retry, tap, throwError, timeout, timer } from 'rxjs';
+import { DeskActivity } from './desk-activity.service';
 
 /**
  * Convention Wi-Fi: thousands of phones on one network. Requests don't usually
@@ -69,6 +70,7 @@ function retryDelay(err: unknown, attempt: number): number {
 export function tteResilience(req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> {
   if (req.method !== 'GET' || !req.url.startsWith('https://tabletop.events/api')) return next(req);
   const health = inject(NetworkHealth);
+  const desk = inject(DeskActivity);
   return next(req).pipe(
     timeout(ATTEMPT_TIMEOUT_MS),
     retry({
@@ -76,7 +78,7 @@ export function tteResilience(req: HttpRequest<unknown>, next: HttpHandlerFn): O
       delay: (err, attempt) => retryable(err) ? timer(retryDelay(err, attempt)) : throwError(() => err),
     }),
     tap({
-      next: event => { if (event instanceof HttpResponse) health.ok(); },
+      next: event => { if (event instanceof HttpResponse) { health.ok(); desk.note(event.body); } },
       error: err => { if (retryable(err)) health.failed(); },
     }),
   );
