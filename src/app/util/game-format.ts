@@ -1,5 +1,6 @@
 import { BggItem } from '../model/bgg.model';
 import { parseTteDate } from './time-ago';
+import { deskDownSince } from './desk-state';
 import { formatLibraryDate, formatLibraryTime, shortDuration, STALE_CHECKOUT_MS } from './library-time';
 
 /** Shared wording for game details, so the Library, My Lists and details sheet all match. */
@@ -56,10 +57,17 @@ export function shelfText(game: Pick<BggItem, 'custom_fields'>): string {
   return game.custom_fields?.Location || '?';
 }
 
-/** "Available", or "Out 45m" using the time since checkout. */
+/**
+ * "Available", or "Out 45m" using the time since checkout. While the desk isn't scanning
+ * (deskDownSince) it says "Available as of 1:39 PM" / "Out as of 1:39 PM" instead: the
+ * status is only known up to the last scan, and a running "Out 4h 20m" would keep
+ * growing for a game that may be back on the shelf.
+ */
 export function statusText(game: Pick<BggItem, 'is_checked_out' | 'last_checkout_date'>, now: number = Date.now()): string {
+  const downSince = deskDownSince();
+  const asOf = downSince ? ` as of ${formatLibraryTime(downSince, now)}` : '';
   if (!game.is_checked_out) {
-    return 'Available';
+    return `Available${asOf}`;
   }
   const checkedOut = parseTteDate(game.last_checkout_date);
   if (!checkedOut) {
@@ -67,7 +75,8 @@ export function statusText(game: Pick<BggItem, 'is_checked_out' | 'last_checkout
   }
   const elapsed = now - checkedOut.getTime();
   // "Out since May 25" reads as old data; "Out 172d" looks like someone has had it for months.
-  return elapsed > STALE_CHECKOUT_MS ? `Out since ${formatLibraryDate(checkedOut.getTime())}` : `Out ${shortDuration(elapsed)}`;
+  if (elapsed > STALE_CHECKOUT_MS) return `Out since ${formatLibraryDate(checkedOut.getTime())}`;
+  return asOf ? `Out${asOf}` : `Out ${shortDuration(elapsed)}`;
 }
 
 /**

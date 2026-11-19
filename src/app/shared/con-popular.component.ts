@@ -9,6 +9,7 @@ import { CONVENTIONS } from '../config/conventions';
 import { fitsPlayers, fitsPlayTime, minutesText, PlayTimeChoice, playersText, shelfText, statusText } from '../util/game-format';
 import { isHotGame } from '../util/hot-games';
 import { currentOrNextConvention, dallasDateKey, shortDuration } from '../util/library-time';
+import { deskDownSince } from '../util/desk-state';
 import { IconComponent } from './icon.component';
 import { InViewDirective } from './in-view.directive';
 import { ThumbComponent } from './thumb.component';
@@ -183,6 +184,8 @@ export class ConPopularComponent {
   updatedText = computed(() => {
     const at = this.con.updatedAt();
     if (!at) return '';
+    // Desk not scanning: "updated 1h 50m ago" would look like the app is broken.
+    if (deskDownSince()) return 'paused · library desk isn\'t scanning';
     const ago = this.now() - at;
     return ago < 60_000 ? 'updated just now' : `updated ${shortDuration(ago)} ago`;
   });

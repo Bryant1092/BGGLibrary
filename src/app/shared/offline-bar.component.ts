@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, signal } from '@angular/core';
 import { NetworkHealth } from '../service/network-health';
 import { DeskActivity } from '../service/desk-activity.service';
+import { NoticeService } from '../service/notice.service';
 import { formatLibraryTime } from '../util/library-time';
 
 /**
@@ -30,8 +31,24 @@ import { formatLibraryTime } from '../util/library-time';
       font-size: 14px; line-height: 19px;
     }
     svg { flex: none; }
+    .notice { background: var(--bl-tonal); color: var(--bl-on-tonal); border-top-color: transparent; padding-right: 4px; }
+    .notice span { flex: 1; white-space: pre-line; }
+    .notice button { flex: none; width: 44px; height: 44px; margin: -12px 0; display: grid; place-items: center;
+      background: none; border: 0; color: inherit; }
+    .notice + .bar { margin-top: 10px; }
   `,
   template: `
+    <!-- Owner's announcement (NoticeService, public/notice.json); can show with one of the others. -->
+    @if (notice.message(); as text) {
+      <div class="bar notice" role="status">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3zM11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        <span>{{ text }}</span>
+        <button type="button" aria-label="Hide this message" (click)="notice.dismiss()">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    }
     @if (!online()) {
       <div class="bar" role="status">
         <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -61,6 +78,7 @@ export class OfflineBarComponent {
   readonly online = signal(navigator.onLine);
   readonly health = inject(NetworkHealth);
   readonly desk = inject(DeskActivity);
+  readonly notice = inject(NoticeService);
   /** Show the "check-in/out isn't updating" case (off on Events, which shows no availability). */
   readonly library = input(true);
   readonly deskSince = computed(() => this.library() ? this.desk.staleSince() : null);

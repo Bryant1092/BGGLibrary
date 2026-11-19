@@ -1,3 +1,4 @@
+import { DeskActivity } from './service/desk-activity.service';
 import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterOutlet } from '@angular/router';
@@ -37,6 +38,8 @@ export class AppComponent implements OnInit {
   private eventReminders = inject(EventRemindersService);
   private offlineReady = inject(OfflineReadyService);
   private appUpdate = inject(AppUpdateService);
+  // Started here so "desk down" labels work on every tab, even before any header bar shows.
+  private deskActivity = inject(DeskActivity);
   private reactions = inject(ReactionsService);
   private push = inject(PushService);
   prize = inject(PrizeService);

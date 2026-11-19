@@ -33,7 +33,7 @@
       @if (!filters().shelf) {
         <button type="button" class="bl-chip" [class.on]="filters().availableOnly" [attr.aria-pressed]="filters().availableOnly" (click)="toggleAvailable()">
           @if (filters().availableOnly) { <bl-icon name="check" [size]="16" [stroke]="2.6" /> }
-          Available now
+          {{ availableChip() }}
         </button>
       }
       <button type="button" class="bl-chip" [class.on]="!!filters().players" (click)="sheet.set('players')">

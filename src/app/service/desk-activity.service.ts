@@ -1,4 +1,5 @@
-import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { computed, DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
+import { deskDownSince } from '../util/desk-state';
 import { ConCheckoutsService } from './con-checkouts.service';
 import { libraryOpenSince } from '../util/library-time';
 import { parseTteDate } from '../util/time-ago';
@@ -45,6 +46,7 @@ export class DeskActivity {
   });
 
   constructor() {
+    effect(() => deskDownSince.set(this.staleSince()));
     const tick = setInterval(() => this.now.set(Date.now()), 60_000);
     inject(DestroyRef).onDestroy(() => clearInterval(tick));
   }

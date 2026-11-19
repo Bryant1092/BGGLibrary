@@ -139,13 +139,18 @@ import { ThumbComponent } from './thumb.component';
       }
 
       @if (due(); as d) {
-        <div class="due" [class.late]="d.isLate && !d.stale">
+        <div class="due" [class.late]="d.isLate && !d.stale && !desk.staleSince()">
           <bl-icon name="clock" [size]="26" />
           <div class="text">
             @if (d.stale) {
               <span class="kicker">Checked out</span>
               <span class="headline">Since {{ date(d.checkedOutAt) }}</span>
               <span class="detail">That was a while ago, so it may never have been checked back in. Look on shelf {{ shelf() }} or ask at the library desk.</span>
+            } @else if (d.isLate && desk.staleSince()) {
+              <!-- Desk not scanning: "Past due" in red would accuse someone of a game that may be back. -->
+              <span class="kicker">Due time passed</span>
+              <span class="headline">Was due {{ time(d.dueAt) }}</span>
+              <span class="detail">Check-ins haven't been recorded since {{ deskSinceText(desk.staleSince()!) }}, so it may already be back. Look on shelf {{ shelf() }} or ask at the library desk.</span>
             } @else if (d.isLate) {
               <span class="kicker">Past due</span>
               <span class="headline">Was due {{ time(d.dueAt) }}</span>
