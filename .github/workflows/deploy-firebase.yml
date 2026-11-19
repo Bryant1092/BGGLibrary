@@ -1,0 +1,46 @@
+# Manual Firebase deploy for the fork's project (bgg-library-test), run from the Actions tab.
+# Needs repo secret FIREBASE_SERVICE_ACCOUNT = JSON key of a service account on bgg-library-test.
+# Order from README: rules/index first, then functions, then the app (Pages workflow).
+name: Deploy Firebase (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: What to deploy
+        type: choice
+        options: [firestore, functions, firestore-then-functions]
+        default: firestore
+
+jobs:
+  firebase:
+    if: github.repository == 'Bryant1092/BGGLibrary'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Service account
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+
+      - name: Install functions deps
+        if: inputs.target != 'firestore'
+        run: cd functions && npm ci --no-audit --no-fund
+
+      - name: Deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          FB="npx -y firebase-tools@latest --project bgg-library-test --non-interactive"
+          case "${{ inputs.target }}" in
+            firestore) $FB deploy --only firestore ;;
+            functions) $FB deploy --only functions ;;
+            firestore-then-functions) $FB deploy --only firestore && $FB deploy --only functions ;;
+          esac
+
+      - name: Clean up key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

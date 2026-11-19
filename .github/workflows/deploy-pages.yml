@@ -1,0 +1,59 @@
+# Builds the fork (bgg-library-test Firebase) and publishes it to this repo's gh-pages branch,
+# i.e. https://bryant1092.github.io/BGGLibrary/. Linux version of the PowerShell steps in README
+# "Deploying". Never touches billythekid664/BGGLibrary.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [feature/redesign]
+    paths-ignore: ['**.md', 'functions/**', 'firestore.rules', 'firestore.indexes.json', '.github/workflows/deploy-firebase.yml']
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Safety: only ever deploy from Bryant's fork.
+    if: github.repository == 'Bryant1092/BGGLibrary'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      # 1. Build against the fork's Firebase, stamped with the build time (Account > Version).
+      #    Any build error fails the job here, so an empty folder is never published.
+      - name: Build (production,fork)
+        run: |
+          npx ng build --configuration production,fork --base-href=/BGGLibrary/ \
+            --define "BUILD_TIME=$(date +%s%3N)" --output-path=dist/out
+
+      # 2. A wrong base href means a blank site.
+      - name: Check base href
+        run: grep -q '<base href="/BGGLibrary/">' dist/out/browser/index.html
+
+      # 3. Same extras angular-cli-ghpages adds, plus byte-for-byte files for the service worker.
+      - name: Pages extras
+        run: |
+          cd dist/out/browser
+          cp index.html 404.html
+          touch .nojekyll
+          printf '* -text\n' > .gitattributes
+
+      # 4. Publish to this repo's gh-pages branch (replaces its contents).
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: dist/out/browser
+          commit_message: 'Deploy ${{ github.sha }}'
