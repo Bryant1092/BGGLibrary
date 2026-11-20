@@ -1,0 +1,30 @@
+# Prints the server's recent log messages (bgg-library-test) to the run output, so problems
+# can be checked from a phone. Message text and time only: repo Actions logs are public, so
+# structured fields (like user ids) are never printed.
+name: Read server logs (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: How far back (minutes)
+        default: '90'
+
+jobs:
+  logs:
+    if: github.repository == 'Bryant1092/BGGLibrary'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Service account
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+      - name: Read
+        run: |
+          gcloud auth activate-service-account --key-file="$RUNNER_TEMP/sa.json" --quiet
+          since=$(date -u -d "-${{ inputs.minutes }} minutes" +%Y-%m-%dT%H:%M:%SZ)
+          gcloud logging read "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=(\"checkwatchedgames\" OR \"checkprizedrawings\") AND timestamp>=\"$since\" AND severity>=INFO" \
+            --project bgg-library-test --order asc --limit 400 \
+            --format='value(timestamp.date("%H:%M", tz="America/Chicago"),resource.labels.service_name,severity,jsonPayload.message,textPayload)' \
+            | cut -c1-220
+      - name: Clean up key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
