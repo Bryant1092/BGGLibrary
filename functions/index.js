@@ -135,12 +135,43 @@ function libraryDaytime(ms) {
  * First version (same evening) counted checked-out games instead, but Tabletop.Events refuses
  * that filter, so it never saw the desk come back. An out-of-order answer is ignored, not trusted.
  */
-async function checkDesk(db, now) {
+/**
+ * The owner's manual switch in the app's public/notice.json ({ deskDown, deskDownSince, until }),
+ * read from the live site: { since } when on, else null. Never throws.
+ */
+async function manualDeskDown(now) {
+  try {
+    const res = await fetch(`${APP_URL}notice.json?t=${now}`, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const n = await res.json();
+    if (!n?.deskDown) return null;
+    const until = Date.parse(n.until || '');
+    if (!isNaN(until) && now > until) return null;
+    const since = Date.parse(n.deskDownSince || '');
+    return { since: isNaN(since) ? now : since };
+  } catch { return null; }
+}
+
+async function checkDesk(db, now, manual = null) {
   if (!desk) {
     const saved = (await db.doc(DESK_STATUS).get()).data() || {};
     const ms = v => v?.toMillis?.() || 0;
     desk = { lastScanAt: ms(saved.lastScanAt), watchingSince: now,
       outageFrom: ms(saved.outageFrom), catchUpUntil: ms(saved.catchUpUntil), savedAt: 0 };
+  }
+  if (manual) {
+    // Switch on: treat everything as catch-up until it's turned off (+ CATCH_UP_MS for the tail).
+    const first = desk.outageFrom !== manual.since;
+    desk.outageFrom = manual.since;
+    desk.catchUpUntil = now + CATCH_UP_MS;
+    if (first || now - desk.savedAt >= DESK_SAVE_EVERY_MS) {
+      const ts = ms => ms ? admin.firestore.Timestamp.fromMillis(ms) : null;
+      await db.doc(DESK_STATUS).set({ lastScanAt: ts(desk.lastScanAt), outageFrom: ts(desk.outageFrom),
+        catchUpUntil: ts(desk.catchUpUntil), manual: true, updatedAt: ts(now) });
+      desk.savedAt = now;
+      if (first) logger.warn('desk: manual switch on (writing by hand): holding alerts and skipping play times');
+    }
+    return { catchingUp: true };
   }
   const r = await tteJson(`${LIBRARY_GAMES}?_items_per_page=5&_order_by=last_checkin_date&_sort_order=desc`);
   const items = r?.items || [];
@@ -198,7 +229,8 @@ exports.checkWatchedGames = onSchedule({
   await sendEventReminders(db, now).catch(err => logger.error('event reminders failed', err));
 
   if (libraryQuietHours(now) || tteCoolingDown()) return;
-  const { catchingUp } = await checkDesk(db, now).catch(err => { logger.error('desk check failed', err); return { catchingUp: false }; });
+  const manual = await manualDeskDown(now);
+  const { catchingUp } = await checkDesk(db, now, manual).catch(err => { logger.error('desk check failed', err); return { catchingUp: !!manual }; });
   const keys = await loadBellKeys(db, now);
   if (!keys.length) return;
 

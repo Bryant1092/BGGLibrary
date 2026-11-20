@@ -1,5 +1,6 @@
 import { computed, DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
-import { deskDownSince } from '../util/desk-state';
+import { deskDownSince, deskManual } from '../util/desk-state';
+import { NoticeService } from './notice.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { catchError, Observable, of } from 'rxjs';
@@ -35,6 +36,9 @@ const FUTURE_SLACK_MS = 5 * 60_000;
 @Injectable({ providedIn: 'root' })
 export class DeskActivity {
   private conCheckouts = inject(ConCheckoutsService);
+  private notice = inject(NoticeService);
+  /** Owner's manual desk-down switch is on (different wording: no reliable "as of" time). */
+  readonly manual = computed(() => this.notice.deskDownSince() != null);
   private seen = signal(0);
   /** meta/deskStatus (functions/index.js, checkDesk): when the server last saw the checked-out count change. */
   private status = toSignal(
@@ -58,6 +62,9 @@ export class DeskActivity {
    * quiet overnight hours never trigger it, and only once the app has some activity to go by.
    */
   readonly staleSince = computed<number | null>(() => {
+    // The owner's switch wins: Tabletop.Events can look live while staff type in a paper backlog.
+    const manual = this.notice.deskDownSince();
+    if (manual != null) return manual;
     const now = this.now();
     const newest = this.newest();
     const openSince = libraryOpenSince(now);
@@ -67,6 +74,7 @@ export class DeskActivity {
 
   constructor() {
     effect(() => deskDownSince.set(this.staleSince()));
+    effect(() => deskManual.set(this.notice.deskDownSince() != null));
     const tick = setInterval(() => this.now.set(Date.now()), 60_000);
     inject(DestroyRef).onDestroy(() => clearInterval(tick));
   }

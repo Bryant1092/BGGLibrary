@@ -19,7 +19,7 @@ import { OfflineBarComponent } from '../shared/offline-bar.component';
 import { ShelfIndex, ShelfInfo, ShelfService } from '../service/shelf.service';
 import { ShelfListComponent } from './shelf-list.component';
 import { currentOrNextConvention, formatLibraryTime, libraryStatus, shortDuration } from '../util/library-time';
-import { deskDownSince } from '../util/desk-state';
+import { deskDownSince, deskManual } from '../util/desk-state';
 import { isNewArrival, minutesText, playerChoiceText, playersFilterText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
 import { isHotGame, matchHotGames } from '../util/hot-games';
 import { MapService } from '../service/map.service';
@@ -176,6 +176,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
   /** "Available now", or "Available at 1:39 PM" while the desk isn't scanning (that's all it can know). */
   availableChip = computed(() => {
     const since = deskDownSince();
+    if (since && deskManual()) return 'Likely available';
     return since ? `Available at ${formatLibraryTime(since)}` : 'Available now';
   });
   hasHotGames = computed(() => currentOrNextConvention(this.now())?.hasHotGames ?? false);

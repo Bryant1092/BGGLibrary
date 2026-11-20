@@ -1,6 +1,6 @@
 import { BggItem } from '../model/bgg.model';
 import { parseTteDate } from './time-ago';
-import { deskDownSince } from './desk-state';
+import { deskDownSince, deskManual } from './desk-state';
 import { formatLibraryDate, formatLibraryTime, shortDuration, STALE_CHECKOUT_MS } from './library-time';
 
 /** Shared wording for game details, so the Library, My Lists and details sheet all match. */
@@ -65,6 +65,10 @@ export function shelfText(game: Pick<BggItem, 'custom_fields'>): string {
  */
 export function statusText(game: Pick<BggItem, 'is_checked_out' | 'last_checkout_date'>, now: number = Date.now()): string {
   const downSince = deskDownSince();
+  // Manual switch: entries are being typed in from paper, so there's no single "as of" time.
+  if (downSince && deskManual()) {
+    return game.is_checked_out ? 'Likely out' : 'Likely available';
+  }
   const asOf = downSince ? ` as of ${formatLibraryTime(downSince, now)}` : '';
   if (!game.is_checked_out) {
     return `Available${asOf}`;

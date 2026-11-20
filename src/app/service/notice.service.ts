@@ -16,7 +16,14 @@ import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core'
  * worker nor GitHub Pages' cache serves an old copy. Checked at startup, when the app comes
  * back to the foreground, and every 5 minutes. Fails quietly: no notice is the safe default.
  */
-interface Notice { message?: string; until?: string; }
+/**
+ * deskDown: manual "the library is writing check-ins by hand" switch (added 2026-11-19 8:50 PM:
+ * staff typed the paper backlog in while still writing new ones down, so Tabletop.Events looked
+ * live and the automatic check couldn't tell). On = the app's desk warning and "likely" labels,
+ * and the server holds alerts and skips play times (it reads this same file).
+ * deskDownSince: when it started (ISO), for the warning's text. Both end with "until".
+ */
+interface Notice { message?: string; until?: string; deskDown?: boolean; deskDownSince?: string; }
 
 const POLL_MS = 5 * 60_000;
 const DISMISSED_KEY = 'bgg-notice-dismissed';
@@ -34,6 +41,16 @@ export class NoticeService {
     if (!text || text === this.dismissed()) return '';
     const until = n?.until ? Date.parse(n.until) : NaN;
     return !isNaN(until) && this.now() > until ? '' : text;
+  });
+
+  /** When the manual desk-down switch says it started (ms), or null when it's off. */
+  readonly deskDownSince = computed<number | null>(() => {
+    const n = this.notice();
+    if (!n?.deskDown) return null;
+    const until = n.until ? Date.parse(n.until) : NaN;
+    if (!isNaN(until) && this.now() > until) return null;
+    const since = n.deskDownSince ? Date.parse(n.deskDownSince) : NaN;
+    return isNaN(since) ? this.now() : since;
   });
 
   constructor() {

@@ -9,3 +9,6 @@ import { signal } from '@angular/core';
  * Written only by DeskActivity.
  */
 export const deskDownSince = signal<number | null>(null);
+
+/** True when the owner's manual switch (notice.json deskDown) says the desk is writing by hand. */
+export const deskManual = signal(false);

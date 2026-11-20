@@ -69,7 +69,11 @@ import { formatLibraryTime } from '../util/library-time';
       <div class="bar" role="status">
         <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-        <span><strong>Library check-in/out isn't updating.</strong> Nothing scanned since {{ sinceText(deskSince()!) }}, so Available / Out may be wrong. Check at the library desk.</span>
+        @if (desk.manual()) {
+          <span><strong>The library is writing check-ins and check-outs by hand</strong> (since {{ sinceText(deskSince()!) }}), so Available / Out may be wrong. Check the shelf or ask at the desk.</span>
+        } @else {
+          <span><strong>Library check-in/out isn't updating.</strong> Nothing scanned since {{ sinceText(deskSince()!) }}, so Available / Out may be wrong. Check at the library desk.</span>
+        }
       </div>
     }
   `,
