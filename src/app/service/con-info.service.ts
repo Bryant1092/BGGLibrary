@@ -80,6 +80,8 @@ export class ConInfoService {
   readonly pagesLoading = signal(false);
   /** When the guide was last saved on this phone (for "Saved for offline"). */
   readonly pagesSavedAt = signal(this.cache?.pagesAt ?? 0);
+  /** When the news posts were last fetched (ms): Account's "Prize drawings · checked 10:42 AM". */
+  readonly postsSavedAt = signal(this.cache?.postsAt ?? 0);
 
   private readIds = signal<Set<string>>(this.readSet(READ_KEY));
   private promptedIds = signal<Set<string>>(this.readSet(PROMPTED_KEY));
@@ -140,6 +142,7 @@ export class ConInfoService {
       // BGG posts the final Hot Games list in the news; pick it up without an app update.
       setNewsHotGames(hotGamesFromPosts(posts));
       this.saveCache({ posts, postsAt: Date.now() });
+      this.postsSavedAt.set(Date.now());
       resolve(true);
     }));
   }

@@ -330,3 +330,27 @@ export function dueInfo(game: DueInput, now: number = Date.now()): DueInfo | nul
     overnight: !isLate && !cappedAtFinalClose && dallasDateKey(dueAt) !== dallasDateKey(now),
   };
 }
+
+/**
+ * When a prize drawing's winner must pick up by: the Exhibit Hall's closing time on the day
+ * after the drawing (BGG: "Saturday Drawing Winners go to the Prize Booth on Sunday ... Bundles
+ * not picked up by the end of the Exhibit Hall hours will be cycled into the next day's drawing").
+ * A post before 6 AM counts as the previous day's drawing. null when the hall hours aren't known.
+ */
+export function prizePickupDeadline(postedAt: number): number | null {
+  const con = conventionOn(postedAt) ?? currentOrNextConvention(postedAt);
+  const drawingDay = dallasDateKey(postedAt - 6 * HOUR);
+  const [y, m, d] = drawingDay.split('-').map(Number);
+  const next = dallasDateKey(fromWallClock(y, m, d + 1, 12));
+  const close = con?.exhibitHallClose?.[next];
+  return close ? dayInstant({ date: next, open: '00:00', close }, close) : null;
+}
+
+/** A deadline as people say it: "5 PM today", "5 PM tomorrow", "Sat 5 PM" (Dallas time). */
+export function formatDeadline(ms: number, now: number = Date.now()): string {
+  const time = clockFormatter.format(new Date(ms)).replace(':00', '');
+  const days = Math.round((Date.parse(dallasDateKey(ms)) - Date.parse(dallasDateKey(now))) / (24 * HOUR));
+  if (days === 0) return `${time} today`;
+  if (days === 1) return `${time} tomorrow`;
+  return `${weekdayFormatter.format(new Date(ms))} ${time}`;
+}

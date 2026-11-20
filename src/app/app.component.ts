@@ -7,6 +7,7 @@ import { WatchService } from './service/watch.service';
 import { InstallService } from './service/install.service';
 import { InstallStepsComponent } from './shared/install-steps.component';
 import { PrizeWin } from './util/prize-drawing';
+import { formatDeadline, prizePickupDeadline } from './util/library-time';
 import { MapService } from './service/map.service';
 import { ConInfoService } from './service/con-info.service';
 import { FriendsService } from './service/friends.service';
@@ -52,6 +53,13 @@ export class AppComponent implements OnInit {
   // Created at startup because Android announces "installable" only once, early
   // (beforeinstallprompt); the Account tab uses it for its Install button.
   install = inject(InstallService);
+
+  /** "Sat 5 PM" / "5 PM today" for the "You won!" sheet, from the drawing's post (prizePickupDeadline). */
+  pickupBy(win: PrizeWin): string {
+    const post = this.prize.drawings().find(d => d.win?.key === win.key);
+    const by = post ? prizePickupDeadline(post.postedAt) : null;
+    return by ? formatDeadline(by) : '';
+  }
 
   /** "Show on map" in the "You won!" sheet: the Prize Booth (MapService.prizeBoothRequest). */
   showPrizeBooth(win: PrizeWin): void {

@@ -40,6 +40,12 @@ export interface Convention {
    * https://tabletop.events/api/convention?query=<name> once the convention exists.
    */
   tteConventionId?: string;
+  /**
+   * When the Exhibit Hall closes each attendee day (Dallas time), from the convention page.
+   * Prize drawing winners must pick up the next day before it closes (BGG's drawing posts), so
+   * this gives the pickup deadline on Account. Missing = no deadline shown (BGG's own words only).
+   */
+  exhibitHallClose?: Record<string, string>;
 }
 
 export const CONVENTIONS: Convention[] = [
@@ -47,6 +53,8 @@ export const CONVENTIONS: Convention[] = [
     name: 'BGG.CON 2026',
     tteConventionId: 'CC4FC78E-17EC-11F1-9082-3FD444321FD1',
     hasHotGames: true,
+    // Convention page, 2026-11-20: Thu–Sat 10am–5pm, Sun 10am–3pm.
+    exhibitHallClose: { '2026-11-19': '17:00', '2026-11-20': '17:00', '2026-11-21': '17:00', '2026-11-22': '15:00' },
     days: [
       { date: '2026-11-18', open: '09:00', close: '24:00' },
       { date: '2026-11-19', open: '08:00', close: '24:00' },

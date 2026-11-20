@@ -34,12 +34,15 @@
   Prizes must be picked up the next day or they go back into the drawing, so it's a sheet,
   not a passing message, with the way to the Prize Booth.
 -->
-@if (prize.unseen()[0]; as win) {
+@if (prize.sheetWin(); as win) {
   <app-sheet label="You won a prize drawing" (closed)="prize.markSeen(win)">
     <h2>🎉 You won! Badge #{{ win.badge }}</h2>
     <p class="bl-sheet-note" style="font-size: 16px; line-height: 22px; color: var(--bl-text)">
       You're in BGG's <strong>{{ win.section }}</strong>{{ win.bundle ? ' (bundle ' + win.bundle + ')' : '' }}, in the news post "{{ win.postTitle }}".
     </p>
+    @if (pickupBy(win); as by) {
+      <p class="bl-sheet-note" style="font-size: 16px; line-height: 22px; color: var(--bl-late-fg); font-weight: 700">Pick up at the Prize Booth by {{ by }}.</p>
+    }
     @if (win.pickup) { <p class="bl-sheet-note" style="font-size: 15px; line-height: 21px">BGG says: "{{ win.pickup }}"</p> }
     <!-- Where the booth is comes from BGG's own posts each convention (findPrizeBooth). -->
     <p class="bl-sheet-note">{{ prize.boothText() }}</p>

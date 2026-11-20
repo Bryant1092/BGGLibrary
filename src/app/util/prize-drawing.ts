@@ -102,3 +102,42 @@ export function findPrizeWins(posts: { id: string; title: string; html: string }
   }
   return wins;
 }
+
+/** One posted drawing (a table with a Badge column), with your win in it if any. */
+export interface PrizeDrawing {
+  key: string;
+  postId: string;
+  postTitle: string;
+  /** The heading above the table, e.g. "Thursday Prize Drawing". */
+  section: string;
+  postedAt: number;
+  /** Your row in it, or null (no win, or no badge number to check). */
+  win: PrizeWin | null;
+}
+
+/**
+ * Every prize drawing BGG has posted, newest first, each with your win if any (Account lists
+ * them so "no win" is visible, not just silence; added 2026-11-20).
+ */
+export function findPrizeDrawings(posts: { id: string; title: string; html: string; postedAt: number }[], badgeInput: string): PrizeDrawing[] {
+  const wins = findPrizeWins(posts, badgeInput);
+  const drawings: PrizeDrawing[] = [];
+  for (const post of [...posts].sort((a, b) => b.postedAt - a.postedAt)) {
+    const html = post.html || '';
+    let tableNo = 0;
+    const found: PrizeDrawing[] = [];
+    for (const table of html.matchAll(/<table[\s\S]*?<\/table>/gi)) {
+      tableNo++;
+      const first = table[0].match(/<tr[\s\S]*?<\/tr>/i)?.[0] || '';
+      const header = [...first.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map(c => strip(c[1]));
+      if (!header.some(h => /badge/i.test(h))) continue;
+      const heading = [...html.slice(0, table.index).matchAll(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/gi)].pop();
+      const prefix = `${post.id}:${tableNo}:`;
+      found.push({ key: `${post.id}:${tableNo}`, postId: post.id, postTitle: post.title, postedAt: post.postedAt,
+        section: heading ? strip(heading[1]) : 'Prize drawing', win: wins.find(w => w.key.startsWith(prefix)) ?? null });
+    }
+    // Tables in a post read top to bottom; newest first overall means the last table first.
+    drawings.push(...found.reverse());
+  }
+  return drawings;
+}

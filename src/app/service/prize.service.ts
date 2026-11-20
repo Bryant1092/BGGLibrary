@@ -4,7 +4,7 @@ import { doc, Firestore, getDoc, serverTimestamp, setDoc, deleteDoc } from '@ang
 import { ConInfoService } from './con-info.service';
 import { UserService } from './user.service';
 import { badgeExpired } from '../util/library-time';
-import { findPrizeBooth, findPrizeWins, normalizeBadge, PrizeBoothPlace, PrizeWin } from '../util/prize-drawing';
+import { findPrizeBooth, findPrizeDrawings, findPrizeWins, normalizeBadge, PrizeBoothPlace, PrizeDrawing, PrizeWin } from '../util/prize-drawing';
 
 const BADGE_PREFIX = 'bgglibrary.badge.';
 const SEEN_KEY = 'bgglibrary.prizeSeen';
@@ -46,6 +46,17 @@ export class PrizeService {
 
   /** Wins not shown yet: the first one is shown in the "You won!" sheet (AppComponent). */
   readonly unseen = computed(() => this.wins().filter(w => !this.seen().has(w.key)));
+  /** Every drawing BGG has posted, newest first, with your win in it if any (Account). */
+  readonly drawings = computed<PrizeDrawing[]>(() => findPrizeDrawings(this.info.posts() || [], this.badge()));
+  /** When the posts were last checked against your badge. */
+  readonly checkedAt = this.info.postsSavedAt;
+  /** A win opened from Account (tapping "You won!"); shown in the same sheet. */
+  private opened = signal<PrizeWin | null>(null);
+  /** What the "You won!" sheet shows: one you opened, else the first new win. */
+  readonly sheetWin = computed(() => this.opened() ?? this.unseen()[0] ?? null);
+  open(win: PrizeWin): void {
+    this.opened.set(win);
+  }
 
   /** Called once from AppComponent. */
   start(destroyRef: DestroyRef): void {
@@ -103,6 +114,7 @@ export class PrizeService {
   }
 
   markSeen(win: PrizeWin): void {
+    this.opened.set(null);
     const next = new Set(this.seen()).add(win.key);
     this.seen.set(next);
     this.write(SEEN_KEY, JSON.stringify([...next].slice(-200)));
