@@ -87,7 +87,6 @@ import { ThumbComponent } from './thumb.component';
     .hot > bl-icon { color: var(--bl-accent-text); }
     .hot-text { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
     .hot-text .bl-link-btn { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 -14px -2px; /* -14: same footprint with the 44px tap height */ }
-    .bgg { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; font-weight: 600; text-decoration: none; color: var(--bl-accent-text); }
   `,
   template: `
     <app-sheet [label]="game().name" (closed)="closed.emit()">
@@ -264,9 +263,14 @@ import { ThumbComponent } from './thumb.component';
         Watch how to play
       </a>
       <span class="note" style="text-align: center; margin-top: -8px">Opens a YouTube search</span>
-      <a class="bgg" [href]="bgg()" target="_blank" rel="noopener">
-        View on BoardGameGeek <bl-icon name="external" [size]="16" />
+      <!-- A real button like "Watch how to play" (asked 2026-11-20), text + "opens elsewhere" icon
+           (the standard for leaving the app). No BGG logo: it's their trademark, not ours to redraw.
+           With the BGG app installed, iPhone may open the game there instead. -->
+      <a class="bl-btn secondary" style="text-decoration: none" [href]="bgg()" target="_blank" rel="noopener"
+         [attr.aria-label]="'View ' + game().name + ' on BoardGameGeek (opens outside the app)'">
+        View on BoardGameGeek <bl-icon name="external" [size]="18" />
       </a>
+      <span class="note" style="text-align: center; margin-top: -8px">Ratings, rules and photos on BoardGameGeek</span>
     </app-sheet>
   `,
 })
