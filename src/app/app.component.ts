@@ -226,10 +226,43 @@ export class AppComponent implements OnInit {
     document.addEventListener('focusin', onIn);
     // (keepTabBarAtBottom below handles the same symptom when no keyboard was involved.)
     document.addEventListener('focusout', onOut);
+
+    // The keyboard can close while the field keeps focus: swiped down, or the app left and
+    // reopened (2026-11-20: the bar stayed hidden on Library, search still focused, no keyboard,
+    // until the sort was changed). The visible area (visualViewport) shrinks while the keyboard
+    // is up; once it has been up and is gone again, unfocus the field, so the bar comes back and
+    // the next tap opens the keyboard (and hides the bar) as usual. Only after the keyboard was
+    // seen, so an iPad with a hardware keyboard (no on-screen keyboard) is left alone.
+    const vv = window.visualViewport;
+    let sawKeyboard = false;
+    let check: ReturnType<typeof setTimeout> | undefined;
+    const keyboardUp = () => !!vv && window.innerHeight - vv.height > 120;
+    const blurIfClosed = () => {
+      const el = document.activeElement;
+      if (!root.classList.contains('bl-typing') || !isTextField(el)) { sawKeyboard = false; return; }
+      if (keyboardUp()) { sawKeyboard = true; return; }
+      if (sawKeyboard) { sawKeyboard = false; (el as HTMLElement).blur(); }
+    };
+    const onViewport = () => { clearTimeout(check); check = setTimeout(blurIfClosed, 250); };
+    // Back in the app: iPhone restores the focus but not the keyboard.
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      clearTimeout(check);
+      check = setTimeout(() => {
+        const el = document.activeElement;
+        if (root.classList.contains('bl-typing') && isTextField(el) && vv && !keyboardUp()) (el as HTMLElement).blur();
+      }, 600);
+    };
+    vv?.addEventListener('resize', onViewport);
+    document.addEventListener('visibilitychange', onVisible);
+
     this.destroyRef.onDestroy(() => {
       clearTimeout(timer);
+      clearTimeout(check);
       document.removeEventListener('focusin', onIn);
       document.removeEventListener('focusout', onOut);
+      vv?.removeEventListener('resize', onViewport);
+      document.removeEventListener('visibilitychange', onVisible);
     });
   }
 }
