@@ -147,6 +147,10 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
+  /* No rubber-band bounce at the top / bottom of a page (2026-11-19: on iPhone the bounce while
+     scrolling dragged the bottom tab bar up off the edge). The app has no pull-to-refresh to lose:
+     lists refresh with the ↻ button. Sheets keep their own scrolling and swipe-to-close. */
+  overscroll-behavior-y: none;
 }
 body {
   font-family: var(--bl-font);
@@ -440,6 +444,9 @@ body {
 
 .bl-tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; height: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom));
+  /* Its own layer: iPhone then draws it apart from the scrolling page, so fast flick-scrolling
+     doesn't make it jump (2026-11-19). */
+  transform: translateZ(0);
   padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing: border-box; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
   border-top: 1px solid var(--bl-hair); background: var(--bl-surface);
 }
