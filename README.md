@@ -20,23 +20,35 @@ shared "want to play" lists, and sends alerts when a checked-out game comes back
 - [Configuration](#configuration)
 - [Keeping library data fresh](#keeping-library-data-fresh)
 - [Deploying](#deploying)
+- [Checks before deploy](#checks-before-deploy)
 - [Server jobs (Cloud Functions)](#server-jobs-cloud-functions)
 - [Testing](#testing)
 - [Troubleshooting](#troubleshooting)
 - [Costs and limits](#costs-and-limits)
 - [After the convention](#after-the-convention)
+- [Changes during BGG.CON 2026](#changes-during-bggcon-2026)
 
 ## What the app does
 
 | Tab | For the person using it |
 |---|---|
-| **Library** | Search all ~9,000 library games (instant, works offline), browse a shelf in shelf order, see Available / Out and due times, players, play time, Hot Games tags, missing-pieces warnings, and "Most played this con". Tap **+** to add to a list. |
-| **My Lists** | Lists of games to play (shareable, editable together), Played / Liked / Want to buy, players and time filters, select several to remove, bells for "tell me when it's back". **Friends' picks** combines the whole group's lists ("4 of 6 want this"); **Buy list** is a shopping list. |
+| **Library** | Search all ~9,000 library games (instant, works offline), browse a shelf in shelf order, see Available / Out and due times, players, play time, Hot Games tags, missing-pieces warnings, and "Most played this con". Tap **+** to add to a list (a toast names the game and offers Undo). Only the title row stays pinned; search and filters scroll away, and a search button in the title row brings them back. A "You won!" banner shows until a prize's pickup deadline. |
+| **Game details** (sheet) | Location (tap for the library on the map), players, time, due-back estimate, this con's play stats, every copy with its last scan, and a bar pinned to the bottom with **Add to list** and the **bell**. |
+| **My Lists** | Lists of games to play (shareable, editable together), Played / Liked / Marked to buy, players and time filters, select several to remove, bells for "tell me when it's back". Ticked-off games collapse into a **Played** section with history. **Friends' picks** combines the whole group's lists ("4 of 6 want this"); **Buy list** is a shopping list. |
 | **Events** | The convention schedule with seats left, starred events with reminders, an "Up next" card, BGG's news posts, exhibitors and an indoor venue map. |
-| **Account** | Sign in, Meeple code to add friends, alert and reminder settings, prize-drawing badge number, appearance, offline status, library hours, app version. |
+| **Alerts** | Notification center: every "game is back" alert from the last 7 days (up to 100), grouped by time, with a badge on the tab for unseen ones. Tapping a phone notification opens here. |
+| **Account** | Prize drawings first during the con (each drawing, win or not, pickup deadline and countdown), sign in, Meeple code to add friends, alert and reminder settings, appearance, offline status, library hours, app version. |
 
 Notifications (game is back, event reminder, prize won) work with the app closed when it was added
-to the Home Screen and notifications were allowed.
+to the Home Screen and notifications were allowed. iPhone shows web-app notifications as text with
+the app icon only (no game covers); the in-app "is back" toast does show the cover. Titles drop
+trailing edition notes ("Night at the Zoo is back") so "is back" isn't cut off; the full name
+leads the body.
+
+When the library desk stops scanning (an outage), the app and server notice: a banner says
+statuses may be wrong, "back" alerts wait 10 minutes and re-check instead of firing in a flood,
+and `public/notice.json` can force the banner on by hand (`deskDown: true`). Details in
+[ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Tech at a glance
 
@@ -93,7 +105,18 @@ Tabletop.Events' own search; they just aren't instant until the next refresh.
 
 **Never run `npm run deploy`.** That script publishes to the *original* repository's site.
 
-Deploys are done from **PowerShell** (Git Bash rewrites `/BGGLibrary/` into a Windows path and
+**Normal way (since Nov 2026): push to `feature/redesign`.** GitHub Actions does the rest:
+
+| Workflow | Runs | Does |
+|---|---|---|
+| `deploy-pages.yml` | every push to `feature/redesign` (not for `.md`-only or server-only changes) | [Checks](#checks-before-deploy), then builds `production,fork` and publishes to `gh-pages`. About 2 minutes. |
+| `deploy-firebase.yml` | by hand (Actions tab → Run workflow, or `gh workflow run deploy-firebase.yml --ref feature/redesign -f target=functions`) | Checks the functions load, then deploys `firestore` rules, `functions`, or both, using the `FIREBASE_SERVICE_ACCOUNT` secret. |
+| `read-logs.yml`, `tte-lookup.yml`, `prize-posts.yml` | by hand | Read function logs, look up library copies on Tabletop.Events, list prize posts. |
+
+Manual workflows also need a copy on `main` for GitHub to show the Run button. All workflows are
+guarded with `if: github.repository == 'Bryant1092/BGGLibrary'`.
+
+**By hand (fallback),** from **PowerShell** (Git Bash rewrites `/BGGLibrary/` into a Windows path and
 produces a blank page):
 
 ```powershell
@@ -124,6 +147,22 @@ Order matters when a change needs new database rules or server code:
 2. `firebase deploy --only functions` (if the server changed)
 3. Build and deploy the app
 
+## Checks before deploy
+
+Added 2026-11-20 in **gentle mode** (the con was on, so a stuck deploy was the bigger risk).
+The `checks` job in `deploy-pages.yml` runs first; the deploy only starts if it passes.
+
+| Check | Command | Blocks the deploy? |
+|---|---|---|
+| Lint (TypeScript + templates, incl. accessibility rules) | `npm run lint` | **Errors** block. Rules in the `GENTLE` list in `eslint.config.js` only warn for now. |
+| Build (TypeScript `strict`, `strictTemplates`) | `ng build` in the deploy job | Yes |
+| Functions syntax | `node --check functions/index.js` | Yes (and `deploy-firebase.yml` also checks the file loads) |
+| Unit tests | `npx ng test --watch=false --browsers=ChromeHeadless` | **No, report only**: the old `*.spec.ts` files are Angular defaults and 6 of 10 fail |
+
+Run `npm run lint` before pushing; `npx eslint --fix` fixes some warnings automatically.
+Selector prefixes: `app-` for screens and features, `bl-` for small shared pieces (`bl-icon`,
+`[blInView]`). See [After the convention](#after-the-convention) for making the checks strict.
+
 ## Server jobs (Cloud Functions)
 
 All in `functions/index.js`; details in [ARCHITECTURE.md](ARCHITECTURE.md#server-jobs).
@@ -145,7 +184,9 @@ allowance; a $1 budget alert is set). See [After the convention](#after-the-conv
 
 ## Testing
 
-- `npx ng test` runs the few Karma unit tests (`*.spec.ts`).
+- `npx ng test` runs the few Karma unit tests (`*.spec.ts`). They're stale (6 of 10 fail) and
+  don't block deploys yet; see [Checks before deploy](#checks-before-deploy).
+- `npm run lint` runs ESLint (angular-eslint) on TypeScript and templates.
 - Features were verified end to end on the live test site with Playwright scripts driving WebKit in
   iPhone mode, checking results against the real data (Tabletop.Events, Firestore), not just the
   screen. Those scripts aren't in the repo; the approach is described in
@@ -183,9 +224,48 @@ Start from what you see, then check the place listed.
 
 ## After the convention
 
+**Shut down (Sunday night, Nov 22 2026)**
+
 1. Delete the three functions (`checkWatchedGames`, `checkPrizeDrawings`, `syncWatchIndex`) and
    downgrade the Firebase project from Blaze to Spark.
 2. Clear server-only state in `meta/` and old `eventStars`.
 3. Prize badge numbers clear themselves 14 days after the con.
-4. For the next con: run `npm run shelves`, check the convention appears (it's looked up
+4. Delete the deploy service account's key in Google Cloud (IAM → Service accounts → Keys) and
+   the `FIREBASE_SERVICE_ACCOUNT` secret in the GitHub repo settings.
+5. For the next con: run `npm run shelves`, check the convention appears (it's looked up
    automatically), rebuild the venue map if the hall changed, and re-enable the functions.
+
+**To do after the con (code quality)**
+
+- [ ] Fix the lint warnings (`npm run lint` lists them; ~130 on 2026-11-20, mostly `any` in
+      Tabletop.Events responses: give those responses proper types), then delete the `GENTLE`
+      block in `eslint.config.js` so every rule blocks deploys.
+- [ ] Rewrite the unit tests (`*.spec.ts`) to test real logic first: `util/prize-drawing.ts`
+      (drawing parsing and pickup deadlines), `util/library-time.ts`, `util/game-format.ts`
+      (status wording), `shortGameName`, and the desk-outage rules. Then remove
+      `continue-on-error` from the test step.
+- [ ] Add ESLint for `functions/index.js` and a small test for its alert rules (`heldBack`,
+      late check-ins).
+- [ ] Replace Tabletop.Events' deprecated `/librarygames` endpoint and test it before the next con.
+- [ ] Optional: give the deploy account the Monitoring Viewer role so free-tier usage can be
+      checked from a phone.
+- [ ] From the UX audit, not built yet: Dynamic Type (iPhone Text Size), 11pt minimum text,
+      Clear all on Alerts, unread dot on Events → Info, pull-to-refresh on My Lists, shorter
+      add/remove button label in the game sheet.
+
+## Changes during BGG.CON 2026
+
+Built from an iPhone during the con (Nov 18–22). Newest first; the commit history has details.
+
+| Date | Change |
+|---|---|
+| Nov 20 | Pre-deploy checks (lint, functions syntax, tests report-only) in gentle mode |
+| Nov 20 | Notification titles drop edition notes so "is back" fits |
+| Nov 20 | Game sheet action bar pinned to the bottom (fixed iPhone gap); "is back" toast with cover and location pin |
+| Nov 20 | UX audit fixes: scroll-away headers on Library and My Lists, named add/remove toasts, map link on Location, prize card first and win banner, one-field Name and no confirm-password on sign-up, always-enabled submit buttons, "Marked to buy" |
+| Nov 20 | Prize drawings: each drawing numbered with win / no win, pickup deadline and countdown |
+| Nov 20 | Alerts tab (notification center) with badge; notification taps open it |
+| Nov 19–20 | Copies list in game details (last scan per copy, "may be out / may be back") |
+| Nov 19 | Desk-outage handling: watcher on the server, banner, held-back alerts, manual switch in `notice.json` |
+| Nov 19 | Played section with history in My Lists; bell off for ticked games |
+| Nov 18–19 | Deploys moved to GitHub Actions; Firebase deploys via a service account |

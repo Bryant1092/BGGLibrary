@@ -17,7 +17,37 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Checks before every deploy (added 2026-11-20, "gentle" mode for the con; README → Checks
+  # before deploy). A failing step here stops the deploy job below from starting.
+  checks:
+    if: github.repository == 'Bryant1092/BGGLibrary'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      # Blocks: ESLint errors in TypeScript and templates (incl. accessibility rules). The
+      # rules in eslint.config.js's GENTLE list only warn for now.
+      - name: Lint
+        run: npx ng lint
+
+      # Blocks: a syntax error in the Firebase functions (they deploy separately, by hand).
+      - name: Functions syntax
+        run: node --check functions/index.js
+
+      # Reports only, for now: the old *.spec.ts files are Angular defaults and 6 of 10 fail.
+      # After the con: rewrite them and remove continue-on-error.
+      - name: Unit tests (not blocking yet)
+        continue-on-error: true
+        run: npx ng test --watch=false --browsers=ChromeHeadless
+
   deploy:
+    # Only after the checks pass.
+    needs: checks
     # Safety: only ever deploy from Bryant's fork.
     if: github.repository == 'Bryant1092/BGGLibrary'
     runs-on: ubuntu-latest

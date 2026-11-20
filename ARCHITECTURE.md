@@ -18,6 +18,8 @@ which explain *why* each piece is the way it is.
 - [Tracing a feature end to end](#tracing-a-feature-end-to-end)
 - [Cross-cutting concerns](#cross-cutting-concerns): [offline](#offline), [Tabletop.Events requests](#tabletopevents-requests),
   [Firestore reads](#firestore-reads-and-connections), [time](#time-and-library-rules), [privacy](#privacy), [UI conventions](#ui-conventions)
+- [Library desk outages](#library-desk-outages)
+- [Alerts and notifications](#alerts-and-notifications)
 - [Rules that must stay true](#rules-that-must-stay-true)
 - [Testing approach](#testing-approach)
 
@@ -138,12 +140,14 @@ All access is checked by `firestore.rules`; every write lists exactly which fiel
 | `users/{uid}/reactions/{gameId}` | liked, buy, name, photo, at | the owner | owner; friends if `profiles/{uid}.shareRatings` |
 | `users/{uid}/watches/{gameId}` | name, shelf, at | the app (bells, automatic for checked-out list games) | owner; server |
 | `users/{uid}/eventStars/{eventId}` | name, start, room, remindAt, at | the app | owner; server (collection-group query on `remindAt`) |
+| `users/{uid}/alerts/{gameId}_{checkinMs}` | gameId, name, shelf, checkedInAt, createdAt, late | server (on send) and the app (its own alerts); create only, no updates | the owner (Alerts tab); owner may delete |
 | `users/{uid}/pushSubs/{id}` | sub (push endpoint + keys), at | the app after "Turn on" | server |
 | `users/{uid}/friends/{other}` | status (outgoing / incoming / friends), name, code, at | both people (request, accept) | both |
 | `profiles/{uid}` | name, code, shareRatings | the owner | friends, code lookup |
 | `codes/{MEEP-XXXX}` | uid | the owner, once (transaction) | anyone signed in (code lookup) |
 | `prizeBadges/{uid}` | badge, notified, at | owner (badge); server (notified) | owner; server |
 | `meta/conCheckouts` | top 100 games this con, conId, updatedAt | server only | everyone |
+| `meta/deskStatus` | lastScanAt, outageFrom, catchUpUntil, updatedAt | server only | everyone (the app's desk banner) |
 | `meta/watchIndex`, `meta/conCheckoutBaseline`, `meta/conCheckoutState` | server bookkeeping | server only | server only |
 
 ## Server jobs
@@ -275,10 +279,47 @@ via the hotel front desk. Convention days and hours come from `config/convention
   Bootstrap styles leak in.
 - Code comments explain *why*, so a reviewer can follow decisions without the chat history.
 
+## Library desk outages
+
+Added after the Nov 19 2026 outage (scanning down ~1:39–9:10 PM; staff wrote barcodes by hand,
+then typed the backlog in, and Tabletop.Events stamped every entry with the typing time).
+
+- **Server** (`functions/index.js`, `checkDesk` inside `checkWatchedGames`, every 2 min): reads the
+  newest check-in times. No scans for `DESK_OUTAGE_MS` (30 min) between 9 AM and 11 PM Dallas =
+  outage; the first new scan after it starts a catch-up window (`CATCH_UP_MS`, 90 min). Saved to
+  `meta/deskStatus`. Tabletop.Events' sort by check-in time was unreliable then, so out-of-order
+  results are distrusted and a direct check runs every 6 min instead.
+- **Held-back alerts** (`heldBack`): during catch-up, or when 3+ games "come back" at once, an alert
+  waits `ALERT_HOLD_MS` (10 min) and is re-checked; it's dropped if the game is out again. The
+  app's own watcher (`watch.service.ts`) does the same.
+- **Play times** (`trackPlayTimes`) skip checkouts / check-ins typed in late.
+- **App**: `desk-activity.service.ts` + `util/desk-state.ts` turn `meta/deskStatus` into
+  "statuses may be wrong" banners (`offline-bar.component.ts`) and "as of / Likely" wording
+  (`util/game-format.ts`).
+- **Manual switch**: `public/notice.json` (`deskDown`, `deskDownSince`, `deskBackAt`, plus a
+  free-text `message` with `until`) is read by the app (`notice.service.ts`) and the server
+  (`manualDeskDown`). Edit, push, and every phone shows it within minutes.
+
+## Alerts and notifications
+
+- **Push** ("X is back"): `notifyOwner` in `functions/index.js`. Title uses `shortGameName`
+  (trailing "(… edition)" removed so "is back" fits on the lock screen); the full name leads the
+  body. iPhone web push is text + app icon only (no images or action buttons). Tapping opens
+  `/alerts?game=<id>` via `onActionClick` → `focusLastFocusedOrOpen`; iPhone ignores the service
+  worker's `navigate`, so `notification-taps.service.ts` routes the tap inside the app.
+- **Alerts tab**: `alerts.service.ts` (Firestore `users/{uid}/alerts`, or local storage when signed
+  out; 7 days, up to 100; unseen count = tab badge) and `alerts/alerts.component.ts`.
+- **In-app toast** (`toast.service.ts`, `shared/toast.component.ts`): the "is back" toast carries a
+  `game` (cover, name, shelf with the location pin); every other toast is text-only by design.
+
 ## Rules that must stay true
 
-- **Never `npm run deploy`** (it publishes to the original repo). Build with `production,fork` from
-  PowerShell, add the `.gitattributes` file, check the base href. See the [README](README.md#deploying).
+- **Never `npm run deploy`** (it publishes to the original repo). Deploy by pushing to
+  `feature/redesign` (GitHub Actions builds `production,fork`, adds `.gitattributes`, checks the
+  base href). See the [README](README.md#deploying).
+- **Deploys wait for the checks** (`checks` job: lint errors, functions syntax). Don't bypass
+  them; fix the code. See the [README](README.md#checks-before-deploy).
+- **Never open PRs or push to `billythekid664/BGGLibrary`**; this fork stays independent.
 - **Rules before code**: deploy `firestore.rules` before an app version that writes new fields.
 - **Tabletop.Events data is never copied into Firestore**; Firestore holds only people's own data
   and the server's small summaries.

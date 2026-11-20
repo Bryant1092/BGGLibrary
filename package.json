@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "deploy": "ng deploy --base-href=/BGGLibrary/ --repo=https://github.com/billythekid664/BGGLibrary.git",
     "test": "ng test",
-    "shelves": "node scripts/build-shelf-index.mjs"
+    "shelves": "node scripts/build-shelf-index.mjs",
+    "lint": "ng lint"
   },
   "private": true,
   "dependencies": {
@@ -38,12 +39,15 @@
     "@angular/localize": "^19.2.0",
     "@types/jasmine": "~5.1.0",
     "angular-cli-ghpages": "^2.0.3",
+    "angular-eslint": "19.8.1",
+    "eslint": "^9.28.0",
     "jasmine-core": "~5.6.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
-    "typescript": "~5.7.2"
+    "typescript": "~5.7.2",
+    "typescript-eslint": "8.33.1"
   }
 }

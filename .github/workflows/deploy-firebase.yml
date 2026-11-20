@@ -30,6 +30,12 @@ jobs:
         if: inputs.target != 'firestore'
         run: cd functions && npm ci --no-audit --no-fund
 
+      # Stop before deploying if the functions don't even load (syntax error, bad require, a
+      # top-level crash). Added 2026-11-20; README → Checks before deploy.
+      - name: Check functions load
+        if: inputs.target != 'firestore'
+        run: node --check functions/index.js && node -e "require('./functions/index.js')"
+
       - name: Deploy
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
