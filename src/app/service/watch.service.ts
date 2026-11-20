@@ -148,6 +148,23 @@ export class WatchService {
   }
 
   /**
+   * You ticked Played (asked 2026-11-19): your bell for it turns off and stays off, since you
+   * no longer need to know when it's back. Only yours: others on the list may not have played
+   * it. Tapping the bell turns it back on as usual. Returns whether a bell was on.
+   */
+  muteForPlayed(id: string): boolean {
+    const wasOn = this.isWatched(id);
+    if (wasOn) this.update(map => map.delete(id));
+    if (!this.muted.has(id)) { this.muted.add(id); this.saveMuted(); }
+    return wasOn;
+  }
+
+  /** Played unticked (a mistake): let the automatic bell come back if it's checked out. */
+  unmuteForPlayed(id: string): void {
+    if (this.muted.delete(id)) this.saveMuted();
+  }
+
+  /**
    * Automatic bell for a checked-out game on one of your lists (My Lists calls this
    * as it loads availability). Quiet: no message, no permission prompt.
    */

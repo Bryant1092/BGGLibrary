@@ -144,7 +144,9 @@
                   @if (e.out) {
                     <span class="bl-pill out">{{ row.status }}</span>
                   }
-                  @if (row.item) {
+                  @if (row.historyOnly) {
+                    <span>Removed from this list</span>
+                  } @else if (row.item) {
                     <!-- Same players / time icons as the Library and Friends' picks rows. -->
                     <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ row.players }}</span>
                     <span><bl-icon name="clock" [size]="15" />{{ row.minutes }} min</span>
@@ -159,7 +161,9 @@
                 @if (row.checkedIn) { <span class="bl-checked-in">{{ row.checkedIn }}</span> }
 
               </span>
-              @if (row.item) {
+              @if (row.historyOnly) {
+                <!-- History only: no copy on the list to find on a shelf. -->
+              } @else if (row.item) {
                 <span class="bl-shelf-badge" [class.out]="e.out" [class.long]="row.longShelf">
                   <small>Shelf</small><strong>{{ row.shelf }}</strong>
                 </span>
@@ -167,19 +171,23 @@
                 <span class="bl-shelf-badge" [class.bl-skel]="!row.failed"><small>Shelf</small><strong>?</strong></span>
               }
             </button>
-            @if (selecting()) {
+            @if (selecting() && row.historyOnly) {
+              <!-- Already off the list: nothing to remove. -->
+            } @else if (selecting()) {
               <!-- Select mode: a pick circle instead of the bell / Played / rating, so those can't be tapped by mistake. -->
               <button type="button" class="pick" [class.on]="picked().has(row.game.id!)" tabindex="-1" aria-hidden="true" (click)="togglePick(row.game.id!)">
                 <span class="circle">@if (picked().has(row.game.id!)) { <bl-icon name="check" [size]="16" [stroke]="3" /> }</span>
               </button>
             } @else {
-            @if (e.out) {
-              <!-- Only checked-out games get a bell; an available game has nothing to wait for. -->
+            @if (e.out || (e.played && row.item?.is_checked_out)) {
+              <!-- Only checked-out games get a bell; an available game has nothing to wait for.
+                   Played ones keep it (off) so you can turn it back on. -->
               <button type="button" class="bl-bell" [attr.aria-pressed]="watch.isWatched(row.game.id!)"
                       [attr.aria-label]="'Notify me when ' + row.game.name + ' is back'" (click)="toggleWatch(row)">
                 <bl-icon [name]="watch.isWatched(row.game.id!) ? 'bell' : 'bellOff'" [size]="22" />
               </button>
             }
+            @if (!row.historyOnly) {
             <button type="button" class="bl-check" role="checkbox" [attr.aria-checked]="!!row.game.played"
                     [attr.aria-label]="'Played ' + row.game.name" (click)="togglePlayed(row.game)">
               <span class="bl-box">
@@ -187,6 +195,7 @@
               </span>
               Played
             </button>
+            }
             @if (row.game.played || row.liked !== null || row.buy) {
               <!--
                 Your rating, or "Rate it" once the game is played. Everyone in the group can rate
@@ -208,7 +217,16 @@
           @if (!e.first) { <div class="bl-section-gap"></div> }
           <!-- Pinned under the header while its section is on screen (.sec-head). -->
           <div class="sec-head" [id]="'list-sec-' + e.key.slice(5)">
+            @if (e.played) {
+              <!-- Collapsed by default: what's left to play stays front and center. -->
+              <h2 class="bl-section played-head">
+                <button type="button" class="bl-link-btn played-toggle" [attr.aria-expanded]="playedOpen()" (click)="playedOpen.set(!playedOpen())">
+                  {{ e.head }} <bl-icon [name]="playedOpen() ? 'chevronUp' : 'chevronDown'" [size]="16" />
+                </button>
+              </h2>
+            } @else {
             <h2 class="bl-section">{{ e.head }}</h2>
+            }
             @if (e.jumpOut) {
               <button type="button" class="bl-link-btn" (click)="jumpToOut()" [attr.aria-label]="'Jump to checked out games (' + e.jumpOut + ')'">
                 Checked out · {{ e.jumpOut }} <bl-icon name="chevronDown" [size]="16" />

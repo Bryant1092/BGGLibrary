@@ -4,7 +4,7 @@ import { USERS_DB, UserService } from './user.service';
 import { Game } from '../model/game.model';
 import { limit, where } from '@angular/fire/firestore';
 import { firstValueFrom, Observable } from 'rxjs';
-import { GameList } from '../model/gamelist.model';
+import { GameList, PlayedGame } from '../model/gamelist.model';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
 
 export const DATALIST_DB = {
@@ -60,7 +60,8 @@ export class GameService {
   removeGamesFromList(listId: string, ids: string[]): Promise<string> {
     const drop = new Set(ids);
     return this.firestore.transactUpdate<GameList>(current => ({
-      gameList: (current?.gameList || []).filter(g => !drop.has(g.id!))
+      gameList: (current?.gameList || []).filter(g => !drop.has(g.id!)),
+      playedHistory: keepPlayed(current, g => drop.has(g.id!)),
     }), DATALIST_DB.DATA_LISTS, listId);
   }
 
@@ -76,7 +77,8 @@ export class GameService {
   /** Removes every entry with the game's id, even if other stored fields (like the photo URL) changed. */
   removeGamefromList(listId: string, game: Game): Promise<string> {
     return this.firestore.transactUpdate<GameList>(current => ({
-      gameList: (current?.gameList || []).filter(g => g.id !== game.id)
+      gameList: (current?.gameList || []).filter(g => g.id !== game.id),
+      playedHistory: keepPlayed(current, g => g.id === game.id),
     }), DATALIST_DB.DATA_LISTS, listId);
   }
 
@@ -116,9 +118,14 @@ export class GameService {
 
   /** Sets a game's Played tick. A transaction, like add/remove, so two people ticking at once can't overwrite each other's changes. */
   setPlayed(listId: string, gameId: string, played: boolean): Promise<string> {
-    return this.firestore.transactUpdate<GameList>(current => ({
-      gameList: (current?.gameList || []).map(g => g.id === gameId ? { ...g, played } : g)
-    }), DATALIST_DB.DATA_LISTS, listId);
+    return this.firestore.transactUpdate<GameList>(current => {
+      const gameList = (current?.gameList || []).map(g => g.id === gameId ? { ...g, played } : g);
+      // History: ticking adds it, unticking removes it (a mis-tap shouldn't stay in history).
+      const history = (current?.playedHistory || []).filter(h => h.id !== gameId);
+      const game = gameList.find(g => g.id === gameId);
+      if (played && game) history.push(historyEntry(game, Date.now()));
+      return { gameList, playedHistory: history };
+    }, DATALIST_DB.DATA_LISTS, listId);
   }
 
   fetchUsersWithGameList(gameListId: string): Promise<UserGameListRef[]> {
@@ -202,4 +209,25 @@ export class GameService {
       return id;
     });
   }
+}
+
+/** Just what the Played section shows, so history stays small. */
+function historyEntry(g: Game, playedAt: number): PlayedGame {
+  const e: PlayedGame = { id: g.id, name: g.name || '', playedAt };
+  if (g.photo) e.photo = g.photo;
+  if (g.bgg_id) e.bgg_id = g.bgg_id;
+  return e;
+}
+
+/**
+ * History after removing games: played games being removed are kept (and added if they were
+ * ticked before history existed, 2026-11-19), so removing a game never loses that you played it.
+ */
+function keepPlayed(current: GameList | undefined, removing: (g: Game) => boolean): PlayedGame[] {
+  const history = [...(current?.playedHistory || [])];
+  const have = new Set(history.map(h => h.id));
+  for (const g of current?.gameList || []) {
+    if (g.played && removing(g) && !have.has(g.id)) history.push(historyEntry(g, 0));
+  }
+  return history;
 }

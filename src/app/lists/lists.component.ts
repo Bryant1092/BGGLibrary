@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { BehaviorSubject, catchError, EMPTY, finalize, from, ignoreElements, map, merge, mergeMap, of, Subject, switchMap } from 'rxjs';
 import { BggItem } from '../model/bgg.model';
 import { Game } from '../model/game.model';
+import { PlayedGame } from '../model/gamelist.model';
 import { UserGameListRef } from '../model/user-gamelist-ref.model';
 import { BggService } from '../service/bgg.service';
 import { GameService } from '../service/game.service';
@@ -58,6 +59,8 @@ interface ListRow {
   buy: boolean;
   /** "Checked in 2:14 PM · 12m ago" for games returned in the last 48 h. */
   checkedIn: string;
+  /** In the list's played history but no longer on the list (Played section only). */
+  historyOnly?: boolean;
 }
 
 /** My Lists filter chips. "To play" is the one used most during the con. */
@@ -87,6 +90,10 @@ type ListFilter = 'all' | 'toplay' | 'liked' | 'buy';
     .sec-head { position: sticky; top: var(--lists-head-h, 0px); z-index: 5; display: flex; align-items: center; justify-content: space-between;
                 padding-right: 6px; background: var(--bl-surface); border-bottom: 1px solid var(--bl-hair); }
     .sec-head .bl-section { padding-bottom: 8px; }
+    /* Played: the heading is the toggle; full-width, 44pt tall tap target. */
+    .played-head { flex: 1; padding: 0 !important; }
+    .played-toggle { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 44px; padding: 0 16px;
+      font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; text-align: left; }
     /* Grey band between sections, as on the Library tab (styles.css .bl-section-gap). */
     .bl-row:has(+ .bl-section-gap) { border-bottom: 0; }
     .select-bar { position: fixed; left: 0; right: 0; bottom: calc(var(--bl-tabbar-h) + env(safe-area-inset-bottom)); z-index: 39;
@@ -123,7 +130,8 @@ export class ListsComponent implements OnInit, OnDestroy {
    * turned its bell off), so you're told when it's back. WatchService does the checking.
    */
   private autoWatch = effect(() => {
-    const out = this.rows().filter(r => r.item?.is_checked_out);
+    // Not played games: ticking Played turns your bell off for good (WatchService.muteForPlayed).
+    const out = this.rows().filter(r => r.item?.is_checked_out && !r.game.played);
     untracked(() => out.forEach(r => this.watch.autoWatch({ id: r.game.id!, name: r.game.name || '', shelf: r.shelf })));
   });
   /** One-time card asking to allow phone notifications, once there's a bell to alert about. */
@@ -158,6 +166,10 @@ export class ListsComponent implements OnInit, OnDestroy {
   private selectedId$ = new BehaviorSubject<string | undefined>(undefined);
   /** Games stored in the selected list (live, so friends' changes appear). */
   games = signal<Game[] | null>(null);
+  /** The selected list's played history (GameList.playedHistory). */
+  playedHistory = signal<PlayedGame[]>([]);
+  /** The Played section at the bottom starts collapsed (asked 2026-11-19); open stays open while here. */
+  playedOpen = signal(false);
 
   /**
    * Tabletop.Events details (availability, players, time, shelf) per game id.
@@ -222,19 +234,44 @@ export class ListsComponent implements OnInit, OnDestroy {
     return [p ? playersFilterText(p) : '', t ? PLAY_TIME_CHOICES.find(c => c.value === t)!.label.toLowerCase() : ''].filter(Boolean).join(' and ');
   });
 
-  /** Available games first (what you can grab now), then checked-out ones by soonest due back. */
+  /**
+   * Available games first (what you can grab now), then checked-out ones by soonest due back.
+   * Under All, played games leave those two and go in a collapsed "Played" section at the
+   * bottom, with games removed from the list after being played (asked 2026-11-19: the
+   * unplayed part should shrink as the group plays through it).
+   */
   sections = computed(() => {
     const byName = (a: ListRow, b: ListRow) => (a.game.name || '').localeCompare(b.game.name || '');
     const f = this.filter();
     const rows = this.playRows().filter(r => f === 'all' || (f === 'toplay' && !r.game.played) || (f === 'liked' && r.liked === true) || (f === 'buy' && r.buy));
-    const available = rows.filter(r => r.item && !r.item.is_checked_out).sort(byName);
-    const out = rows.filter(r => r.item?.is_checked_out).sort((a, b) => a.dueAt - b.dueAt || byName(a, b));
-    const unknown = rows.filter(r => !r.item).sort(byName);
+    const splitPlayed = f === 'all';
+    const active = splitPlayed ? rows.filter(r => !r.game.played) : rows;
+    const available = active.filter(r => r.item && !r.item.is_checked_out).sort(byName);
+    const out = active.filter(r => r.item?.is_checked_out).sort((a, b) => a.dueAt - b.dueAt || byName(a, b));
+    const unknown = active.filter(r => !r.item).sort(byName);
+    const played = splitPlayed ? this.playedRows() : [];
     return [
       { key: 'available', title: `Available now · ${available.length}`, rows: available, out: false },
       { key: 'out', title: `Checked out · ${out.length}`, rows: out, out: true },
       { key: 'unknown', title: unknown.some(r => !r.failed) ? 'Checking availability…' : "Couldn't check availability", rows: unknown, out: false },
+      { key: 'played', title: `Played · ${played.length}`, rows: played, out: false },
     ].filter(s => s.rows.length);
+  });
+
+  /** Played games on the list (newest first by when they were played), then ones since removed. */
+  private playedRows = computed<ListRow[]>(() => {
+    const when = new Map(this.playedHistory().map(h => [h.id, h.playedAt || 0]));
+    const onList = this.playRows().filter(r => r.game.played);
+    const ids = new Set((this.games() || []).map(g => g.id));
+    const reactions = this.reactions.byGame();
+    const removed: ListRow[] = this.playedHistory().filter(h => !ids.has(h.id)).map(h => {
+      const reaction = reactions.get(h.id!) || {};
+      return { game: { ...h, played: true }, failed: false, shelf: '', longShelf: false, status: '', hot: false,
+        players: '', minutes: '', dueAt: Infinity, liked: reaction.liked ?? null, buy: !!reaction.buy, checkedIn: '', historyOnly: true };
+    });
+    const newest = (a: ListRow, b: ListRow) => (when.get(b.game.id) || 0) - (when.get(a.game.id) || 0)
+      || (a.game.name || '').localeCompare(b.game.name || '');
+    return [...onList.sort(newest), ...removed.sort(newest)];
   });
 
   /**
@@ -253,10 +290,15 @@ export class ListsComponent implements OnInit, OnDestroy {
     // "Checked out ↓" on the first heading jumps past the available games (asked 2026-11-18:
     // long lists meant scrolling all the way down). Only when there is something to jump past.
     const outCount = sections[0]?.key !== 'out' ? sections.find(s => s.key === 'out')?.rows.length ?? 0 : 0;
-    return sections.flatMap((s, i) => [
-      { key: 'head:' + s.key, head: s.title, out: s.out, row: null as ListRow | null, first: i === 0, jumpOut: i === 0 ? outCount : 0 },
-      ...s.rows.map(row => ({ key: 'game:' + row.game.id, head: '', out: s.out, row, first: false, jumpOut: 0 })),
-    ]);
+    const open = this.playedOpen();
+    return sections.flatMap((s, i) => {
+      const played = s.key === 'played';
+      return [
+        { key: 'head:' + s.key, head: s.title, out: s.out, played, row: null as ListRow | null, first: i === 0, jumpOut: i === 0 ? outCount : 0 },
+        // Played starts collapsed: its heading is a button that shows / hides the rows.
+        ...(played && !open ? [] : s.rows.map(row => ({ key: 'game:' + row.game.id, head: '', out: s.out, played, row, first: false, jumpOut: 0 }))),
+      ];
+    });
   });
 
   /** Scrolls so the "Checked out" heading sits right under the page header. */
@@ -378,6 +420,7 @@ export class ListsComponent implements OnInit, OnDestroy {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(list => {
       this.games.set(this.selectedId() ? list?.gameList || [] : null);
+      this.playedHistory.set(list?.playedHistory || []);
       this.listVisible.set(list?.visible !== false);
       // Lists made before friends existed: the owner fills in owner/visible so friends can find it.
       if (list && !list.owner && this.isOwner()) this.friends.backfill(this.selectedId()!, list);
@@ -567,6 +610,17 @@ export class ListsComponent implements OnInit, OnDestroy {
     if (!list) return;
     // Right after playing is when the group says whether they liked it, so ask then.
     if (!game.played) { this.rating.set(game); this.sheet.set('rate'); }
+    // Your bell for it goes off once you've played it; unticking (a mistake) lets it come back.
+    if (!game.played) {
+      // Under All the row leaves for the collapsed Played section, so say where it went.
+      const bellWasOn = this.watch.muteForPlayed(game.id!);
+      const moved = this.filter() === 'all' ? 'Moved to Played' : '';
+      const bell = bellWasOn ? 'your alert is off (tap its bell to turn it back on)' : '';
+      const text = [moved, bell].filter(Boolean).join('. ');
+      if (text) this.toast.show({ text: text.charAt(0).toUpperCase() + text.slice(1) + '.' });
+    } else {
+      this.watch.unmuteForPlayed(game.id!);
+    }
     this.gameService.setPlayed(list.id, game.id!, !game.played).catch(err => {
       console.error('Failed to update played', err);
       this.toast.error(navigator.onLine ? "Couldn't save that. Try again." : "You're offline. Changes to lists need a connection.");
