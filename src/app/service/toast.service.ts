@@ -6,6 +6,12 @@ export interface Toast {
   actionLabel?: string;
   action?: () => void;
   error?: boolean;
+  /**
+   * A game this message is about (the "is back" alert): shown with its cover, its name on its
+   * own line and the shelf with the location pin below (asked 2026-11-20). `text` is still the
+   * full sentence, for screen readers.
+   */
+  game?: { name: string; image?: string; shelf: string; detail?: string };
 }
 
 /**

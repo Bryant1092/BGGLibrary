@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ToastService } from '../service/toast.service';
 import { IconComponent } from './icon.component';
+import { ThumbComponent } from './thumb.component';
 
 /**
  * Renders ToastService's message above the tab bar. role="status" makes screen readers announce it.
@@ -14,13 +15,21 @@ import { IconComponent } from './icon.component';
   selector: 'app-toast',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent],
+  imports: [IconComponent, ThumbComponent],
   template: `
     <div role="status" aria-live="polite">
       @if (toast.current(); as t) {
-        <div class="bl-toast" [class.error]="t.error"
+        <div class="bl-toast" [class.error]="t.error" [class.with-game]="!!t.game"
              (touchstart)="dragStart($event)" (touchmove)="dragMove($event)" (touchend)="dragEnd($event)" (touchcancel)="dragEnd($event)">
-          <span>{{ t.text }}</span>
+          @if (t.game; as g) {
+            <app-thumb [src]="g.image" [name]="g.name" [size]="48" [radius]="10" [lazy]="false" />
+            <span class="game" [attr.aria-label]="t.text">
+              <strong>{{ g.name }} is back</strong>
+              <small><bl-icon name="pin" [size]="14" [stroke]="2.2" /><span class="visually-hidden">Shelf</span>{{ g.shelf }}{{ g.detail ? ' · ' + g.detail : '' }}</small>
+            </span>
+          } @else {
+            <span>{{ t.text }}</span>
+          }
           @if (t.actionLabel) {
             <button type="button" (click)="toast.runAction()">{{ t.actionLabel }}</button>
           }

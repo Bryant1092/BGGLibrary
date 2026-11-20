@@ -249,7 +249,7 @@ export class WatchService {
           const checkedIn = parseTteDate(item.last_checkin_date)?.getTime() ?? 0;
           if (Date.now() < this.desk.catchUpUntil() && Date.now() - checkedIn < ALERT_HOLD_MS) continue;
           this.update(map => map.delete(game.id));
-          this.alert({ ...game, shelf: item.custom_fields?.Location || game.shelf }, item.last_checkin_date);
+          this.alert({ ...game, shelf: item.custom_fields?.Location || game.shelf }, item.last_checkin_date, item.bgg_icon_uri);
         }
       }
     } finally {
@@ -260,7 +260,7 @@ export class WatchService {
   /** Game id -> when we last alerted for it (this app session). */
   private alertedAt = new Map<string, number>();
 
-  private alert(game: WatchedGame, checkedIn?: string): void {
+  private alert(game: WatchedGame, checkedIn?: string, image?: string): void {
     // Only once per game per 10 minutes. On opening the app the same "is back" alert showed twice
     // (2026-11-17): removing the bell saves to the database, and the saved list can briefly come
     // back with the bell still in it, so the next check found it "back" again. iPhone doesn't
@@ -272,7 +272,7 @@ export class WatchService {
     const t = parseTteDate(checkedIn)?.getTime();
     const when = t ? `checked in ${formatLibraryTime(t)}` : '';
     const text = `${game.name} is back${when ? ' (' + when + ')' : ''}, shelf ${game.shelf}`;
-    this.toast.show({ text, actionLabel: 'View', action: () => this.router.navigate(['/alerts'], { queryParams: { game: game.id } }) }, 10_000);
+    this.toast.show({ text, game: { name: game.name, image, shelf: game.shelf, detail: when }, actionLabel: 'View', action: () => this.router.navigate(['/alerts'], { queryParams: { game: game.id } }) }, 10_000);
     this.showPhoneNotification(`${game.name} is back`, `Available on shelf ${game.shelf}${when ? ', ' + when : ''}.`, game.id);
     // Kept in the Alerts tab. Same id as the server's for this check-in, so it's listed once.
     this.alerts.record({ gameId: game.id, name: game.name, shelf: game.shelf || '', checkedInAt: t || 0,
