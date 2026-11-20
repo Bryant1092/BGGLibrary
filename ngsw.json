@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1795142956529,
+  "timestamp": 1795144329201,
   "index": "/BGGLibrary/index.html",
   "assetGroups": [
     {
@@ -12,13 +12,14 @@
       },
       "urls": [
         "/BGGLibrary/chunk-246GQLNT.js",
-        "/BGGLibrary/chunk-52YUVBHG.js",
         "/BGGLibrary/chunk-5K5SJWXB.js",
+        "/BGGLibrary/chunk-5MVQZDUP.js",
         "/BGGLibrary/chunk-6GNNLKJC.js",
         "/BGGLibrary/chunk-ALHGVCZV.js",
         "/BGGLibrary/chunk-BP47XDHP.js",
         "/BGGLibrary/chunk-COQ3CIS6.js",
         "/BGGLibrary/chunk-CQTF7LFQ.js",
+        "/BGGLibrary/chunk-DK4HACOG.js",
         "/BGGLibrary/chunk-ECBXVGWK.js",
         "/BGGLibrary/chunk-FWPEQYBL.js",
         "/BGGLibrary/chunk-GCTJWZA5.js",
@@ -28,7 +29,6 @@
         "/BGGLibrary/chunk-JKEP4O7E.js",
         "/BGGLibrary/chunk-MS4N32NH.js",
         "/BGGLibrary/chunk-N56YS5JP.js",
-        "/BGGLibrary/chunk-NDKL2P6V.js",
         "/BGGLibrary/chunk-OOWYGWVU.js",
         "/BGGLibrary/chunk-P5SDIEUV.js",
         "/BGGLibrary/chunk-PSSD54G7.js",
@@ -42,10 +42,10 @@
         "/BGGLibrary/chunk-ZD3H6PQV.js",
         "/BGGLibrary/favicon.ico",
         "/BGGLibrary/index.html",
-        "/BGGLibrary/main-CVWR65OB.js",
+        "/BGGLibrary/main-5RSEU4US.js",
         "/BGGLibrary/manifest.webmanifest",
         "/BGGLibrary/polyfills-RP2QB4T4.js",
-        "/BGGLibrary/styles-VADR6EGJ.css"
+        "/BGGLibrary/styles-7FIB2FPX.css"
       ],
       "patterns": []
     },
@@ -214,13 +214,14 @@
   "hashTable": {
     "/BGGLibrary/apple-touch-icon.png": "6704c2a082a1b18b632fb5426b4eb893440afc01",
     "/BGGLibrary/chunk-246GQLNT.js": "cf6940da4873ceda83a89bb0d1abcb0e46badb5b",
-    "/BGGLibrary/chunk-52YUVBHG.js": "2527a8a9ec0a2a2f03acea79e9069d6295f56297",
     "/BGGLibrary/chunk-5K5SJWXB.js": "c5adc5887aff46e9725e45e6f4496d9f1d5e78eb",
+    "/BGGLibrary/chunk-5MVQZDUP.js": "79107b7bbe14187e8e04c86c5b2ae7848afe93d3",
     "/BGGLibrary/chunk-6GNNLKJC.js": "2b4b4cfd4668d08096d05aaa9bfa023c23c48a0c",
     "/BGGLibrary/chunk-ALHGVCZV.js": "faa68f3a2a868bacb284a6de551c195942e5ec28",
     "/BGGLibrary/chunk-BP47XDHP.js": "6a3127309bbfc6d7ee7f911cea08624bf225096b",
     "/BGGLibrary/chunk-COQ3CIS6.js": "5dc2370305dc0a4218e567df5712b45aee67a5ff",
     "/BGGLibrary/chunk-CQTF7LFQ.js": "a2acdafd802db2e8f3027ea4c307d7ab85d8b6e4",
+    "/BGGLibrary/chunk-DK4HACOG.js": "65b245266fcb2da0663a6ec76c32c772c0326a98",
     "/BGGLibrary/chunk-ECBXVGWK.js": "78a56631e220223bfe39f7486803bb3e8ec3847f",
     "/BGGLibrary/chunk-FWPEQYBL.js": "59255e290160c4ed71d8d8e53a78dfb691a47160",
     "/BGGLibrary/chunk-GCTJWZA5.js": "1529020aebba43d9e999ac0acbbe85740913344b",
@@ -230,7 +231,6 @@
     "/BGGLibrary/chunk-JKEP4O7E.js": "5a7c729f8ed5a74c105b28ce143368bd3c922925",
     "/BGGLibrary/chunk-MS4N32NH.js": "3a78222340b01a0fca7c1dccd47be75a69c42a7c",
     "/BGGLibrary/chunk-N56YS5JP.js": "45bd7039cc807607810374fe63007dde422607cc",
-    "/BGGLibrary/chunk-NDKL2P6V.js": "a55c1efc18d7dfa35a3551204af3022d02b0bb55",
     "/BGGLibrary/chunk-OOWYGWVU.js": "48a3175b60b5bcde3cbe40c46e9756b0d66a4df9",
     "/BGGLibrary/chunk-P5SDIEUV.js": "a0bd05a8d8c90477ba75b726aab07cd86c1c1a65",
     "/BGGLibrary/chunk-PSSD54G7.js": "479f4bcdd0711bd48c0d1b980bbfd3f008656be0",
@@ -251,8 +251,8 @@
     "/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
     "/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
     "/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
-    "/BGGLibrary/index.html": "85c7e960982a81ff5d5dbfae61293273d804513f",
-    "/BGGLibrary/main-CVWR65OB.js": "dde842eb355a9ab46645602b4e964618d69de283",
+    "/BGGLibrary/index.html": "f8687c9c0b8c86a95852f81c612d84aa6e42eda4",
+    "/BGGLibrary/main-5RSEU4US.js": "f0743c328ae85a669650d7845ef5704411797e7e",
     "/BGGLibrary/manifest.webmanifest": "02fd681aa859fb7e11b7fcdf99d3a14607b751db",
     "/BGGLibrary/maps/bggcon-2026/floor-atrium.svg": "262ac9a949ed9a1c472dce0b630ad01745057a90",
     "/BGGLibrary/maps/bggcon-2026/floor-exhibition.svg": "e22a76e06b91fb3ee2e76e7868ee486b036018c2",
@@ -347,7 +347,7 @@
     "/BGGLibrary/shelves/x.json": "7acedd55964750bab246f15ba63d2304022a4018",
     "/BGGLibrary/shelves/y.json": "896351df380ea0d53d217c4ca98faf77d5674d10",
     "/BGGLibrary/shelves/z.json": "8383f8c74c73cbeaee81b978be7da1070314b54d",
-    "/BGGLibrary/styles-VADR6EGJ.css": "04ad4833e2a89d893904bdb244d94acfecd7454c"
+    "/BGGLibrary/styles-7FIB2FPX.css": "2ba94c0f499e1410eb094fa56bb80d61a2f9894f"
   },
   "navigationUrls": [
     {
