@@ -40,6 +40,11 @@ jobs:
             functions) $FB deploy --only functions ;;
             firestore-then-functions) $FB deploy --only firestore && $FB deploy --only functions ;;
           esac
+          # Stay in the free tier: delete old function container images after 1 day (Artifact
+          # Registry storage past 0.5 GB is billed). Not fatal if the account can't set it.
+          if [ "${{ inputs.target }}" != firestore ]; then
+            $FB functions:artifacts:setpolicy --days 1 --force || echo "::warning::Could not set the image cleanup policy"
+          fi
 
       - name: Clean up key
         if: always()
