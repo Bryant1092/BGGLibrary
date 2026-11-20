@@ -273,7 +273,10 @@ export class WatchService {
     const when = t ? `checked in ${formatLibraryTime(t)}` : '';
     const text = `${game.name} is back${when ? ' (' + when + ')' : ''}, shelf ${game.shelf}`;
     this.toast.show({ text, game: { name: game.name, image, shelf: game.shelf, detail: when }, actionLabel: 'View', action: () => this.router.navigate(['/alerts'], { queryParams: { game: game.id } }) }, 10_000);
-    this.showPhoneNotification(`${game.name} is back`, `Available on shelf ${game.shelf}${when ? ', ' + when : ''}.`, game.id);
+    // Same title as the server's: edition notes moved to the body so "is back" isn't cut off.
+    const short = shortGameName(game.name);
+    const full = short !== game.name.trim() ? `${game.name.trim()}. ` : '';
+    this.showPhoneNotification(`${short} is back`, `${full}Available on shelf ${game.shelf}${when ? ', ' + when : ''}.`, game.id);
     // Kept in the Alerts tab. Same id as the server's for this check-in, so it's listed once.
     this.alerts.record({ gameId: game.id, name: game.name, shelf: game.shelf || '', checkedInAt: t || 0,
       late: Date.now() < this.desk.catchUpUntil() });
@@ -339,4 +342,13 @@ export class WatchService {
       return new Map();
     }
   }
+}
+
+/**
+ * A game's name without trailing edition notes in parentheses ("Night at the Zoo (Capstone
+ * English edition)" → "Night at the Zoo"), for lock-screen titles. Matches functions/index.js.
+ */
+export function shortGameName(name: string): string {
+  const short = (name || '').replace(/(\s*\([^()]*\))+\s*$/, '').trim();
+  return short || (name || '').trim();
 }

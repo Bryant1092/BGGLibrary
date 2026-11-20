@@ -489,6 +489,16 @@ async function saveAlert(db, bell, game) {
   }).catch(err => { if (err.code !== 6) logger.warn('could not save alert', err.message); }); // 6 = already exists
 }
 
+/**
+ * A game's name without trailing edition notes in parentheses, for notification titles:
+ * "Night at the Zoo (Capstone English edition)" → "Night at the Zoo", so "is back" isn't cut
+ * off on the lock screen (2026-11-20). The full name goes in the body instead.
+ */
+function shortGameName(name) {
+  const short = String(name || '').replace(/(\s*\([^()]*\))+\s*$/, '').trim();
+  return short || String(name || '').trim();
+}
+
 /** Sends "X is back" to every phone of the bell's owner; returns how many were sent. */
 async function notifyOwner(db, bell, game) {
   const uid = bell.ref.parent.parent.id;
@@ -497,6 +507,8 @@ async function notifyOwner(db, bell, game) {
   const name = bell.data().name || game.name;
   const shelf = game.custom_fields?.Location || bell.data().shelf || '';
   const when = checkedInTime(game.last_checkin_date);
+  const short = shortGameName(name);
+  const fullName = short !== name.trim() ? `${name.trim()}. ` : '';
   // Angular's service worker shows `notification`; the tag replaces the in-app alert's
   // notification for the same game. On tap it opens that game's details (?game=, the same
   // link as sharing a game; 2026-11-18, it used to open My Lists). "navigate…" rather than
@@ -504,11 +516,11 @@ async function notifyOwner(db, bell, game) {
   // instead of just coming forward wherever it was.
   const payload = JSON.stringify({
     notification: {
-      title: `${name} is back`,
+      title: `${short} is back`,
       // _late: confirmed after a desk outage; the check-in time is when it was typed in.
       body: game._late
-        ? `Available${shelf ? ` on shelf ${shelf}` : ''}. The library's check-in was recorded late, so it may have been back a while.`
-        : `Available${shelf ? ` on shelf ${shelf}` : ''}${when ? `, checked in ${when}` : ''}.`,
+        ? `${fullName}Available${shelf ? ` on shelf ${shelf}` : ''}. The library's check-in was recorded late, so it may have been back a while.`
+        : `${fullName}Available${shelf ? ` on shelf ${shelf}` : ''}${when ? `, checked in ${when}` : ''}.`,
       icon: `${APP_URL}icons/icon-192x192.png`,
       tag: bell.id,
       // Opens the Alerts tab with this game's details (2026-11-20; before, the Library tab).
