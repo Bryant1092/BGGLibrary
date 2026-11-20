@@ -59,9 +59,11 @@ import { ThumbComponent } from './thumb.component';
     .tile-btn { border: 0; font: inherit; cursor: pointer; }
     .tile-link { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 700; }
     .cond.quiet { border: 0; padding: 0 2px; }
-    /* Pinned to the sheet's bottom edge: the negative margins cover the sheet's side and bottom padding. */
+    /* Pinned to the sheet's bottom edge. The sheet's own bottom padding moves into the bar
+       (styles.css, .bl-sheet:has(.action-bar)): iPhone Safari keeps sticky items clear of the
+       scroller's padding, so with it the bar floated ~60pt up with rows showing below (2026-11-20). */
     .action-bar { position: sticky; bottom: 0; z-index: 2; display: flex; gap: 10px;
-      margin: 0 -20px calc(-24px - env(safe-area-inset-bottom)); padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+      margin: 0 -20px; padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
       background: var(--bl-surface); border-top: 1px solid var(--bl-hair); box-shadow: 0 -6px 16px rgba(0, 0, 0, .06); }
     .action-bar .bl-btn { flex: 1; margin: 0; }
     .action-bar .bell { flex: none; padding: 0 16px; }

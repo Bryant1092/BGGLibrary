@@ -377,6 +377,8 @@ body {
   max-height: 90dvh; overflow-y: auto; box-shadow: 0 -8px 30px rgba(0, 0, 0, .2);
   /* Open/close motion is in SheetComponent. */
 }
+/* A sheet with a pinned action bar (game sheet): the bar carries the bottom padding instead. */
+.bl-sheet:has(.action-bar) { padding-bottom: 0; }
 @media (prefers-reduced-motion: reduce) { .bl-skel { animation: none; } }
 .bl-grab { width: 40px; height: 5px; border-radius: 3px; align-self: center; background: var(--bl-hair); flex: none; }
 .bl-sheet h2 { margin: 0; font-size: 20px; font-weight: 700; line-height: 25px; }
