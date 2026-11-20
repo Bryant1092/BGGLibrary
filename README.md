@@ -158,6 +158,13 @@ The `checks` job in `deploy-pages.yml` runs first; the deploy only starts if it 
 | Build (TypeScript `strict`, `strictTemplates`) | `ng build` in the deploy job | Yes |
 | Functions syntax | `node --check functions/index.js` | Yes (and `deploy-firebase.yml` also checks the file loads) |
 | Unit tests | `npx ng test --watch=false --browsers=ChromeHeadless` | **No, report only**: the old `*.spec.ts` files are Angular defaults and 6 of 10 fail |
+| Security audit of dependencies | `npm audit --omit=dev --audit-level=high` (app and `functions/`) | **No, report only**: on 2026-11-20 the app had 25 known issues (2 critical, 9 high) and the server 8 moderate; most need a newer Angular |
+
+**Secrets** are not checked by the deploy: GitHub **secret scanning with push protection** is on
+for this repo and rejects a push containing known key formats before it lands. Real secrets live
+only in Firebase secrets (`VAPID_PRIVATE_KEY`) and GitHub Secrets (`FIREBASE_SERVICE_ACCOUNT`).
+The Firebase web `apiKey` in `src/environments/` is public by design; `firestore.rules` is what
+protects people's data.
 
 Run `npm run lint` before pushing; `npx eslint --fix` fixes some warnings automatically.
 Selector prefixes: `app-` for screens and features, `bl-` for small shared pieces (`bl-icon`,
@@ -244,6 +251,11 @@ Start from what you see, then check the place listed.
       (drawing parsing and pickup deadlines), `util/library-time.ts`, `util/game-format.ts`
       (status wording), `shortGameName`, and the desk-outage rules. Then remove
       `continue-on-error` from the test step.
+- [ ] Upgrade Angular (19 → current) and the Firebase libraries (`@angular/fire`,
+      `firebase-admin`, `firebase-functions`), retest on an iPhone, then remove
+      `continue-on-error` from the security audit step so high and critical issues block deploys.
+- [ ] Turn on Dependabot **alerts** (Settings → Code security) after the upgrade, so the first
+      emails are about new issues, not the known backlog.
 - [ ] Add ESLint for `functions/index.js` and a small test for its alert rules (`heldBack`,
       late check-ins).
 - [ ] Replace Tabletop.Events' deprecated `/librarygames` endpoint and test it before the next con.
