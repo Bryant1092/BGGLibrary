@@ -57,7 +57,7 @@ export class AppComponent implements OnInit {
   /** "Sat 5 PM" / "5 PM today" for the "You won!" sheet, from the drawing's post (prizePickupDeadline). */
   pickupBy(win: PrizeWin): string {
     const post = this.prize.drawings().find(d => d.win?.key === win.key);
-    const by = post ? prizePickupDeadline(post.postedAt) : null;
+    const by = post ? post.statedDeadline ?? prizePickupDeadline(post.postedAt) : null;
     return by ? formatDeadline(by) : '';
   }
 

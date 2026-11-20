@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { IconComponent } from './icon.component';
+import { PrizeDrawing } from '../util/prize-drawing';
 import { dallasDateKey, formatDeadline, formatLibraryTime, prizePickupDeadline, shortDuration } from '../util/library-time';
 import { PrizeService } from '../service/prize.service';
 import { ToastService } from '../service/toast.service';
@@ -87,11 +88,11 @@ import { ToastService } from '../service/toast.service';
         <div class="draws">
           @for (d of shown(); track d.key) {
             @if (d.win; as w) {
-              <button type="button" class="draw" (click)="prize.open(w)" [attr.aria-label]="d.section + ': you won. ' + deadlineLabel(d.postedAt)">
+              <button type="button" class="draw" (click)="prize.open(w)" [attr.aria-label]="d.label + ': you won. ' + deadlineLabel(d)">
                 <span class="what">
-                  <strong>{{ d.section }}</strong>
-                  <span>Posted {{ time(d.postedAt) }}{{ w.bundle ? ' · bundle ' + w.bundle : '' }}</span>
-                  @if (deadline(d.postedAt); as dl) {
+                  <strong>{{ d.label }}</strong>
+                  <span>{{ dayName(d.postedAt) }} · posted {{ time(d.postedAt) }}{{ w.bundle ? ' · bundle ' + w.bundle : '' }}</span>
+                  @if (deadline(d); as dl) {
                     <span class="deadline" [class.closed]="dl.closed">
                       <bl-icon name="clock" [size]="16" [stroke]="2.4" />
                       <span class="lines">
@@ -106,7 +107,7 @@ import { ToastService } from '../service/toast.service';
               </button>
             } @else {
               <div class="draw">
-                <span class="what"><strong>{{ d.section }}</strong><span>Posted {{ time(d.postedAt) }}</span></span>
+                <span class="what"><strong>{{ d.label }}</strong><span>{{ dayName(d.postedAt) }} · posted {{ time(d.postedAt) }}</span></span>
                 @if (prize.badge()) { <span class="result">No win</span> } @else { <span class="result unchecked">Not checked</span> }
                 <span></span>
               </div>
@@ -116,7 +117,7 @@ import { ToastService } from '../service/toast.service';
             <button type="button" class="more" (click)="showAll.set(!showAll())">{{ showAll() ? 'Show fewer' : 'Show all ' + prize.drawings().length + ' drawings' }}</button>
           }
         </div>
-        <p class="note">{{ prize.badge() ? '' : 'Add your badge number to check these drawings. ' }}Drawings BGG has posted in the con news. Winners pick up at the Prize Booth the next day before the Exhibit Hall closes, or the prize goes into the next drawing.</p>
+        <p class="note">{{ prize.badge() ? '' : 'Add your badge number to check these drawings. ' }}Drawings BGG has posted in the con news. Daily drawing winners pick up at the Prize Booth the next day before the Exhibit Hall closes; other prizes use the deadline in BGG's post.</p>
       }
     </div>
   `,
@@ -140,8 +141,9 @@ export class PrizeCardComponent {
   }
 
   /** "5 PM today" + "6h 18m left" on pickup day; closed once it's passed; null if hours unknown. */
-  deadline(postedAt: number): { by: string; left: string; closed: boolean } | null {
-    const by = prizePickupDeadline(postedAt);
+  deadline(d: PrizeDrawing): { by: string; left: string; closed: boolean } | null {
+    // BGG's own deadline when the post states one (other prizes can differ), else the Exhibit Hall rule.
+    const by = d.statedDeadline ?? prizePickupDeadline(d.postedAt);
     if (!by) return null;
     const now = this.now();
     if (now >= by) return { by: '', left: '', closed: true };
@@ -149,9 +151,14 @@ export class PrizeCardComponent {
     return { by: formatDeadline(by, now), left: today ? shortDuration(by - now) : '', closed: false };
   }
 
-  deadlineLabel(postedAt: number): string {
-    const d = this.deadline(postedAt);
+  deadlineLabel(drawing: PrizeDrawing): string {
+    const d = this.deadline(drawing);
     return !d ? '' : d.closed ? 'Pickup closed.' : `Pick up by ${d.by}${d.left ? ', ' + d.left + ' left' : ''}.`;
+  }
+
+  /** The drawing's day ("Thursday"); a post before 6 AM belongs to the day before. */
+  dayName(postedAt: number): string {
+    return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long' }).format(postedAt - 6 * 3600_000);
   }
 
   save(value: string): void {

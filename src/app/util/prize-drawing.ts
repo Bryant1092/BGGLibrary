@@ -108,36 +108,87 @@ export interface PrizeDrawing {
   key: string;
   postId: string;
   postTitle: string;
-  /** The heading above the table, e.g. "Thursday Prize Drawing". */
+  /** What to call it: "Daily drawing #2" or e.g. "Big Group Game winners". */
+  label: string;
+  /** The heading above the table, e.g. "Daily Prize Drawing". */
   section: string;
+  /** True for the daily badge drawing (numbered); false for other prizes in the same posts. */
+  daily: boolean;
   postedAt: number;
+  /** BGG's own deadline when the post states one ("not picked up by 6PM on Friday"), else null. */
+  statedDeadline: number | null;
   /** Your row in it, or null (no win, or no badge number to check). */
   win: PrizeWin | null;
+}
+
+const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+/**
+ * "not picked up by 6PM on Friday" → that Friday 6 PM Dallas time (the first Friday after the
+ * drawing day). null when the text gives no clock time and weekday.
+ */
+export function statedPickupDeadline(text: string, postedAt: number): number | null {
+  const m = text.match(/\bby\s+(\d{1,2})(?::(\d{2}))?\s*([ap])\.?\s*m\.?\s+(?:on\s+)?(sun|mon|tues?|wed(?:nes)?|thu(?:rs)?|fri|sat(?:ur)?)[a-z]*/i);
+  if (!m) return null;
+  let hour = Number(m[1]) % 12 + (m[3].toLowerCase() === 'p' ? 12 : 0);
+  const minute = Number(m[2] || 0);
+  const want = WEEKDAYS.findIndex(d => d.startsWith(m[4].toLowerCase().slice(0, 3)));
+  // Walk forward from the day after the drawing (posts before 6 AM belong to the day before).
+  const drawing = new Date(postedAt - 6 * 3600_000);
+  for (let i = 1; i <= 7; i++) {
+    const day = new Date(drawing.getTime() + i * 86_400_000);
+    const key = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(day);
+    const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long' }).format(day).toLowerCase();
+    if (WEEKDAYS.indexOf(weekday) !== want) continue;
+    // That date at hour:minute in Dallas: start from UTC noon and correct by the zone offset.
+    const [y, mo, d] = key.split('-').map(Number);
+    const guess = Date.UTC(y, mo - 1, d, hour, minute);
+    const offset = Date.parse(new Date(guess).toLocaleString('en-US', { timeZone: 'UTC' })) - Date.parse(new Date(guess).toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    return guess + offset;
+  }
+  return null;
+}
+
+/** "Winners for Today's Players of The Big Group Game at the Con are:" → "Big Group Game winners". */
+function otherPrizeLabel(text: string): string {
+  const phrase = text.match(/winners?\s+(?:for|of)\s+([^.:]{3,80}?)\s+(?:are|is)\s*:/i)?.[1] || '';
+  const named = phrase.replace(/^(?:today'?s|tonight'?s|the)\s+/i, '').replace(/^players\s+of\s+(?:the\s+)?/i, '').replace(/\s+at\s+the\s+con$/i, '').trim();
+  return named ? `${named.replace(/^the\s+/i, '')} winners` : 'Other prize';
 }
 
 /**
  * Every prize drawing BGG has posted, newest first, each with your win if any (Account lists
  * them so "no win" is visible, not just silence; added 2026-11-20).
+ *
+ * BGG puts more than the daily drawing under the "Daily Prize Drawing" heading: on 2026-11-19
+ * the post also listed the Big Group Game winners (a different desk and a 6 PM deadline). The
+ * daily drawing is the table with a Bundle column; the others are named from BGG's "Winners for
+ * … are:" line. Daily drawings are numbered in the order they were posted.
  */
 export function findPrizeDrawings(posts: { id: string; title: string; html: string; postedAt: number }[], badgeInput: string): PrizeDrawing[] {
   const wins = findPrizeWins(posts, badgeInput);
-  const drawings: PrizeDrawing[] = [];
-  for (const post of [...posts].sort((a, b) => b.postedAt - a.postedAt)) {
+  const all: PrizeDrawing[] = [];
+  for (const post of [...posts].sort((a, b) => a.postedAt - b.postedAt)) {
     const html = post.html || '';
-    let tableNo = 0;
-    const found: PrizeDrawing[] = [];
+    let tableNo = 0, lastEnd = 0;
     for (const table of html.matchAll(/<table[\s\S]*?<\/table>/gi)) {
       tableNo++;
+      const start = table.index!;
+      const context = strip(html.slice(lastEnd, start));
+      lastEnd = start + table[0].length;
       const first = table[0].match(/<tr[\s\S]*?<\/tr>/i)?.[0] || '';
       const header = [...first.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map(c => strip(c[1]));
       if (!header.some(h => /badge/i.test(h))) continue;
-      const heading = [...html.slice(0, table.index).matchAll(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/gi)].pop();
+      const heading = [...html.slice(0, start).matchAll(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/gi)].pop();
+      const section = heading ? strip(heading[1]) : 'Prize drawing';
+      const other = /winners?\s+(?:for|of)\s+[^.:]{3,80}?\s+(?:are|is)\s*:/i.test(context) && !header.some(h => /bundle/i.test(h));
       const prefix = `${post.id}:${tableNo}:`;
-      found.push({ key: `${post.id}:${tableNo}`, postId: post.id, postTitle: post.title, postedAt: post.postedAt,
-        section: heading ? strip(heading[1]) : 'Prize drawing', win: wins.find(w => w.key.startsWith(prefix)) ?? null });
+      all.push({ key: `${post.id}:${tableNo}`, postId: post.id, postTitle: post.title, postedAt: post.postedAt, section,
+        daily: !other, label: other ? otherPrizeLabel(context) : '', statedDeadline: statedPickupDeadline(context, post.postedAt),
+        win: wins.find(w => w.key.startsWith(prefix)) ?? null });
     }
-    // Tables in a post read top to bottom; newest first overall means the last table first.
-    drawings.push(...found.reverse());
   }
-  return drawings;
+  let n = 0;
+  for (const d of all) if (d.daily) d.label = `Daily drawing #${++n}`;
+  return all.reverse();
 }
