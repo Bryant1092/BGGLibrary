@@ -1,0 +1,37 @@
+# Lists the convention's recent news posts and, in each, every table with a Badge column
+# (prize drawings): the heading and sentence before it and its row count. For checking how the
+# app reads BGG's prize posts, from a phone.
+name: Prize posts lookup (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: How many recent posts
+        default: '4'
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Look up
+        env:
+          N: ${{ inputs.count }}
+        run: |
+          curl -sS -G "https://tabletop.events/api/convention/CC4FC78E-17EC-11F1-9082-3FD444321FD1/updates" \
+            --data-urlencode "_items_per_page=$N" --data-urlencode "_order_by=date_published" --data-urlencode "_sort_order=desc" > /tmp/u.json
+          python3 - <<'PY'
+          import json, re, html
+          strip = lambda s: re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', s))).strip()
+          for u in json.load(open('/tmp/u.json'))['result']['items']:
+              body = u.get('body') or u.get('description') or ''
+              print('==', u.get('name'), '|', u.get('date_published'))
+              for m in re.finditer(r'<table[\s\S]*?</table>', body, re.I):
+                  rows = re.findall(r'<tr[\s\S]*?</tr>', m.group(0), re.I)
+                  head = [strip(c) for c in re.findall(r'<t[hd][^>]*>([\s\S]*?)</t[hd]>', rows[0] if rows else '', re.I)]
+                  if not any('badge' in h.lower() for h in head): continue
+                  before = body[:m.start()]
+                  hs = re.findall(r'<h[1-4][^>]*>([\s\S]*?)</h[1-4]>', before, re.I)
+                  print('  table | heading:', strip(hs[-1]) if hs else '-', '| headers:', head, '| rows:', len(rows) - 1)
+                  print('    before:', strip(before)[-220:])
+          PY
