@@ -8,10 +8,15 @@ import { ConCheckoutsService } from './con-checkouts.service';
 import { libraryOpenSince } from '../util/library-time';
 import { parseTteDate } from '../util/time-ago';
 
-interface DeskStatusDoc { lastScanAt?: { toMillis(): number }; catchUpUntil?: { toMillis(): number } }
+interface DeskStatusDoc { lastScanAt?: { toMillis(): number }; catchUpUntil?: { toMillis(): number }; outageFrom?: { toMillis(): number } }
 
 /** Alerts during catch-up wait this long after the check-in, like the server (functions ALERT_HOLD_MS). */
 export const ALERT_HOLD_MS = 10 * 60_000;
+
+/** The server's catch-up window after an outage (functions CATCH_UP_MS). */
+const CATCH_UP_MS = 90 * 60_000;
+/** Copies not scanned since an outage are flagged for this long after it (one con day). */
+const UNCONFIRMED_FOR_MS = 12 * 3600_000;
 
 /** No checkout or check-in recorded for this long while the library is open = the desk isn't scanning. */
 export const DESK_STALE_AFTER_MS = 30 * 60_000;
@@ -51,6 +56,23 @@ export class DeskActivity {
    * backlog. WatchService waits ALERT_HOLD_MS before alerting on those, like the server.
    */
   readonly catchUpUntil = computed(() => this.status()?.catchUpUntil?.toMillis?.() ?? 0);
+  private outageFrom = computed(() => this.status()?.outageFrom?.toMillis?.() ?? 0);
+
+  /**
+   * Copies whose last scan (check-in or checkout) is older than this may not be where Tabletop.Events
+   * says: during the outage, checkouts and returns went on paper and not all were typed in
+   * (2026-11-19: three "available" copies weren't on the shelf). A copy scanned after scanning
+   * came back is confirmed. While the desk is down that's every copy (now). After an outage, the
+   * time scanning came back, for UNCONFIRMED_FOR_MS; null otherwise.
+   */
+  readonly unconfirmedBefore = computed<number | null>(() => {
+    const now = this.now();
+    if (this.staleSince() != null) return now;
+    const until = this.catchUpUntil();
+    if (!this.outageFrom() || !until) return null;
+    const back = until - CATCH_UP_MS; // the server's catch-up window starts when scanning resumes
+    return back > this.outageFrom() && now - back < UNCONFIRMED_FOR_MS ? back : null;
+  });
   private now = signal(Date.now());
 
   /** Newest checkout or check-in the app knows about (ms), or 0 if none yet. */

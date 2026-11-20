@@ -1,4 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of, switchMap } from 'rxjs';
+import { BggService } from '../service/bgg.service';
+import { parseTteDate } from '../util/time-ago';
 import { ToastService } from '../service/toast.service';
 import { BggItem } from '../model/bgg.model';
 import { dueInfo, formatLibraryDate, formatLibraryTime, shortDuration } from '../util/library-time';
@@ -24,6 +28,16 @@ import { ThumbComponent } from './thumb.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .checked-in { display: block; margin-top: 6px; font-size: 14px; color: var(--bl-muted); }
+    .copies { display: flex; flex-direction: column; gap: 6px; }
+    .copies h3.sub { margin: 0 0 2px; }
+    .copy { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 8px 12px; border-radius: 10px; background: var(--bl-field); font-size: 15px; }
+    .copy.this { outline: 2px solid var(--bl-accent-text); outline-offset: -2px; }
+    .copy .code { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .copy .state { color: var(--bl-avail-text); font-weight: 600; }
+    .copy .state.out { color: var(--bl-muted); }
+    .copy .tag { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--bl-accent-text); text-transform: uppercase; letter-spacing: .04em; }
+    .copy .unconf { flex-basis: 100%; font-size: 13px; line-height: 17px; padding: 4px 8px; border-radius: 8px;
+      background: var(--bl-late-bg); color: var(--bl-late-fg); border: 1px solid var(--bl-late-border); }
     .desk-stale { display: block; padding: 6px 10px; border-radius: 10px; font-size: 14px; line-height: 19px;
       background: var(--bl-late-bg); color: var(--bl-late-fg); border: 1px solid var(--bl-late-border); }
     .head { display: flex; gap: 14px; align-items: flex-start; }
@@ -195,6 +209,28 @@ import { ThumbComponent } from './thumb.component';
         </div>
       }
 
+      <!--
+        Every copy with its barcode (added 2026-11-19): which one to look for, and after a desk
+        outage which ones haven't been scanned since (they may really be out, or back).
+      -->
+      @if (copies(); as list) {
+        @if (list.length > 1 || anyUnconfirmed()) {
+          <div class="copies">
+            <h3 class="sub">Copies · {{ inCount() }} of {{ list.length }} in</h3>
+            @for (c of list; track c.id) {
+              <div class="copy" [class.this]="c.id === game().id">
+                <span class="code">{{ c.catalog_number || 'No barcode' }}</span>
+                <span class="state" [class.out]="!!c.is_checked_out">{{ copyStatus(c) }}</span>
+                @if (c.id === game().id) { <span class="tag">This one</span> }
+                @if (unconfirmed(c)) {
+                  <span class="unconf">Unconfirmed: not scanned since the library's outage, so it may be {{ c.is_checked_out ? 'back' : 'out' }}</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      }
+
       @if (game().is_checked_out) {
         <button type="button" class="bl-btn secondary" [attr.aria-pressed]="watched()" (click)="watchToggle.emit()"
                 [style.color]="watched() ? 'var(--bl-accent-text)' : null" [style.border-color]="watched() ? 'var(--bl-accent-text)' : null">
@@ -256,6 +292,27 @@ export class GameSheetComponent {
   dur(minutes: number): string {
     return minutes < 60 ? `${Math.max(1, minutes)} min` : shortDuration(minutes * 60_000);
   }
+  private bggService = inject(BggService);
+  /** All copies of this game (BggService.copiesOf); null while loading or if it failed. */
+  copies = toSignal(toObservable(computed(() => this.game().name)).pipe(
+    switchMap(name => name ? this.bggService.copiesOf({ name }).pipe(catchError(() => of(null))) : of(null))), { initialValue: null });
+  inCount = computed(() => (this.copies() || []).filter(c => !c.is_checked_out).length);
+  private latestScan = (c: BggItem) => Math.max(parseTteDate(c.last_checkin_date)?.getTime() ?? 0, parseTteDate(c.last_checkout_date)?.getTime() ?? 0);
+  /** Not scanned since the desk outage (DeskActivity.unconfirmedBefore). */
+  unconfirmed(c: BggItem): boolean {
+    const before = this.desk.unconfirmedBefore();
+    return before != null && this.latestScan(c) < before;
+  }
+  anyUnconfirmed = computed(() => (this.copies() || []).some(c => this.unconfirmed(c)));
+  /** "On the shelf" or "Out 1h 20m" (a running time, or the date for one out a long time). */
+  copyStatus(c: BggItem): string {
+    if (!c.is_checked_out) return 'On the shelf';
+    const out = parseTteDate(c.last_checkout_date)?.getTime();
+    if (!out) return 'Checked out';
+    const ms = this.now() - out;
+    return ms > 2 * 86_400_000 ? `Out since ${formatLibraryDate(out)}` : `Out ${shortDuration(ms)}`;
+  }
+
   bgg = computed(() => bggUrl(this.game()));
   howToPlay = computed(() => howToPlayUrl(this.game()));
   hot = computed(() => isHotGame(this.game().name, this.now()));

@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { BggItem } from '../model/bgg.model';
 import { PLAYERS_TOP } from '../util/game-format';
 import { correctGame } from '../util/game-corrections';
-import { map } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 export interface SearchResult {
   result: {
@@ -102,6 +102,19 @@ export class BggService {
     // correctGame: fills player counts / times the library left blank (util/game-corrections.ts).
     return this.http.get<SearchResult>(this.libraryUrl, {params}).pipe(
       map((r: any) => r?.result?.items ? { ...r, result: { ...r.result, items: r.result.items.map(correctGame) } } : r));
+  }
+
+  /**
+   * Every copy of a game in the library (same name, exact), barcode order. For the Copies list in
+   * game details (added 2026-11-19, after a desk outage left some copies' status unconfirmed).
+   */
+  copiesOf(game: Pick<BggItem, 'name'>): Observable<BggItem[]> {
+    const name = (game.name || '').trim();
+    const params = new HttpParams().append('query', name).append('_items_per_page', '50').append('is_in_circulation', '1');
+    const same = (n?: string) => (n || '').trim().toLowerCase() === name.toLowerCase();
+    return this.http.get<SearchResult>(this.libraryUrl, { params }).pipe(
+      map((r: any) => ((r?.result?.items || []) as BggItem[]).filter(g => same(g.name))
+        .sort((a, b) => (a.catalog_number || '').localeCompare(b.catalog_number || '', undefined, { numeric: true }))));
   }
 
   // Only the game's own fields are used. The related library object and

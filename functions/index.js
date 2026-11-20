@@ -164,6 +164,9 @@ async function checkDesk(db, now, manual = null) {
     const first = desk.outageFrom !== manual.since;
     desk.outageFrom = manual.since;
     desk.catchUpUntil = now + CATCH_UP_MS;
+    // Counts as activity, so switching it off isn't then read as the end of a second outage
+    // (2026-11-19: outageFrom jumped from 1:39 PM to 8:46 PM when the switch went off).
+    desk.lastScanAt = now;
     if (first || now - desk.savedAt >= DESK_SAVE_EVERY_MS) {
       const ts = ms => ms ? admin.firestore.Timestamp.fromMillis(ms) : null;
       await db.doc(DESK_STATUS).set({ lastScanAt: ts(desk.lastScanAt), outageFrom: ts(desk.outageFrom),
