@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, OnDestroy, OnInit, signal, untracked } from '@angular/core';
+import { scrolledPast } from '../util/scrolled';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -125,6 +126,8 @@ export class ListsComponent implements OnInit, OnDestroy {
 
   /** "My lists" or "Friends' picks" (switch under the title). */
   view = signal<'lists' | 'picks' | 'buy'>('lists');
+  /** The list picker has scrolled away: the title row shows the list's name. */
+  readonly scrolled = scrolledPast(150);
   /**
    * Automatic bells: every checked-out game on the open list gets one (unless you
    * turned its bell off), so you're told when it's back. WatchService does the checking.

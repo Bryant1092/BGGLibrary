@@ -1,6 +1,6 @@
 import { Component, DestroyRef, inject, OnDestroy, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators, ValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { Subscription, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { HideNavService } from '../service/hide-nav.service';
@@ -36,11 +36,12 @@ export class LoginComponent implements OnInit, OnDestroy {
   cantRegister: boolean = false;
   redirectUrl = '/';
 
-  confirmPasswordValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
-    return control.value === this.loginForm?.get('password')?.value
-      ? null
-      : { PasswordNoMatch: true };
-  };
+  /**
+   * Set when Sign in / Create account is tapped with something missing. The buttons stay
+   * enabled (audit 2026-11-20): a greyed-out button never said what was wrong, so now the tap
+   * shows each problem under its field and moves to the first one.
+   */
+  submitted = false;
 
   constructor(private hideNavService: HideNavService) {
     this.createLoginForm();
@@ -74,16 +75,18 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   createRegisterForm() {
     this.loginForm = this.fb.group({
-      firstName: ['', [Validators.required]],
-      lastName: ['', [Validators.required]],
+      // One Name field (audit 2026-11-20): split into first name + last initial on save, the
+      // same way as Google sign-in names.
+      name: ['', [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
       // A 20-character cap blocks long passphrases and password-manager
       // passwords (NIST SP 800-63B says to allow at least 64), and the old
       // pattern only accepted the specials _@$!%*?&, rejecting common ones
       // like # - . or spaces. The upper/lower/number/special rule is kept,
       // but any non-alphanumeric character now counts as special.
+      // No "type it again" field: Show lets you check it, and the confirm field cost more
+      // sign-ups than it saved (GOV.UK removed theirs for the same reason).
       password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(128), Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,128}$/)]],
-      confirmPassword: ['', [Validators.required, this.confirmPasswordValidator]]
     });
   }
 
@@ -98,8 +101,6 @@ export class LoginComponent implements OnInit, OnDestroy {
         return 'Password must be no more than 128 characters long';
       } else if (passwordControl?.hasError('pattern')) {
         return 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character';
-      } else if (passwordControl?.hasError('PasswordNoMatch')) {
-        return 'Passwords do not match';
       }
     }
     return null;
@@ -117,7 +118,18 @@ export class LoginComponent implements OnInit, OnDestroy {
     return null;
   }
 
+  /** False when something is missing: shows every error and moves focus to the first one. */
+  private readyToSubmit(): boolean {
+    if (this.loginForm.valid) return true;
+    this.submitted = true;
+    this.loginForm.markAllAsTouched();
+    const first = ['name', 'email', 'password'].find(k => this.loginForm.get(k)?.invalid);
+    if (first) setTimeout(() => document.getElementById(first === 'name' ? 'login-name' : 'login-' + first)?.focus());
+    return false;
+  }
+
   toggleRegister() {
+    this.submitted = false;
     this.isReset = false;
     this.clearMessages();
     if (this.isRegister) {
@@ -216,7 +228,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   onSubmit() {
-    if (this.loginForm.invalid || this.busy) return;
+    if (this.busy || !this.readyToSubmit()) return;
     this.busy = true;
     this.clearMessages();
     this.userService.signUserIn(this.loginForm.value.email, this.loginForm.value.password).then((userCredential: any) => {
@@ -232,7 +244,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   onSubmitRegister() {
-    if (this.loginForm.invalid || this.busy) return;
+    if (this.busy || !this.readyToSubmit()) return;
     this.busy = true;
     this.clearMessages();
     this.userService.createUser(this.loginForm.value.email, this.loginForm.value.password).then((userCredential: any) => {
@@ -240,8 +252,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       // Wait for the profile to save so pages that need it don't load first.
       return this.userService.addUser({
         uid: userCredential.user.uid,
-        firstName: this.loginForm.value.firstName?.trim(),
-        lastName: this.loginForm.value.lastName?.trim(),
+        ...UserService.splitDisplayName(this.loginForm.value.name, userCredential.user.email),
         provider: (additionalInfo?.providerId || 'firebase'),
         // Firestore rejects documents with undefined fields, so fall back to ''.
         email: userCredential.user.email?.toLocaleLowerCase() || ''

@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FriendsCardComponent } from '../shared/friends-card.component';
 import { InstallStepsComponent } from '../shared/install-steps.component';
 import { PrizeCardComponent } from '../shared/prize-card.component';
+import { PrizeService } from '../service/prize.service';
 import { IconComponent } from '../shared/icon.component';
 import { EMPTY, switchMap } from 'rxjs';
 import { CONVENTIONS, LibraryDay } from '../config/conventions';
@@ -84,6 +85,14 @@ import { currentOrNextConvention } from '../util/library-time';
       </header>
 
       <main>
+        <!--
+          During the con the prize card comes first: a win has a pickup deadline, and everything
+          else here is set once (audit 2026-11-20). Before any drawing it stays in its usual place.
+        -->
+        @if (prizeFirst()) {
+          <app-prize-card />
+        }
+
         <!--
           Install help. The full card shows until "Not now"; after that a small row keeps the
           steps one tap away (before, "Not now" hid them for good, and on iPhone they're needed
@@ -179,7 +188,9 @@ import { currentOrNextConvention } from '../util/library-time';
         }
 
         <!-- Badge number for BGG's daily prize drawings (works signed out too, on this phone). -->
-        <app-prize-card />
+        @if (!prizeFirst()) {
+          <app-prize-card />
+        }
 
         <!-- Appearance lives here, not on the Library screen: it's set once and rarely changed. -->
         <div class="card">
@@ -237,6 +248,9 @@ export class AccountComponent implements OnInit {
   reminders = inject(EventRemindersService);
   offline = inject(OfflineReadyService);
   updates = inject(AppUpdateService);
+  private prize = inject(PrizeService);
+  /** BGG has posted at least one drawing (the con is on): show the prize card first. */
+  readonly prizeFirst = computed(() => this.prize.drawings().length > 0);
   readonly reminderChoices = REMINDER_CHOICES;
 
   readonly themeOptions: { value: ThemeChoice; label: string }[] = [

@@ -3,6 +3,12 @@
     <div class="bl-title-row">
       <img src="icons/icon-72x72.png" alt="" width="30" height="30">
       <h1>My Lists</h1>
+      @if (scrolled() && view() === 'lists' && selectedList(); as list) {
+        <!-- The list picker scrolled away: the list's name stays reachable here (audit 2026-11-20). -->
+        <button type="button" class="bl-title-list" (click)="sheet.set('lists')" [attr.aria-label]="'Showing ' + list.name + '. Change list'">
+          <span>{{ list.name }}</span><bl-icon name="chevronDown" [size]="16" [stroke]="2.4" />
+        </button>
+      }
       @if (selectedList() && view() === 'lists') {
         @if (!selecting()) {
           <!-- Re-downloads availability for every game in the list. -->
@@ -24,37 +30,40 @@
         <button type="button" role="tab" [attr.aria-selected]="view() === 'buy'" (click)="stopSelecting(); view.set('buy')">Buy list</button>
       </div>
     }
-    @if (lists()?.length && view() === 'lists') {
-      <!--
-        Same switcher and sheet as the Library. It replaced a row of chips: past ~5 lists most were
-        off-screen, a mouse couldn't scroll them, and choosing a list worked differently per tab.
-        "New list" is in the sheet and in the ⋯ menu.
-      -->
-      <button type="button" class="bl-list-switch" style="flex: none; width: 100%" (click)="sheet.set('lists')"
-              [attr.aria-label]="'Showing ' + (selectedList()?.name || 'no list') + '. Change list'">
-        <span class="label">List</span>
-        <strong>{{ selectedList()?.name || 'Choose a list' }}</strong>
-        <bl-icon name="chevronDown" [size]="18" [stroke]="2.4" />
-      </button>
-      <div class="bl-subrow">
-        <span>{{ summary() }}</span>
-        <span>{{ refreshing() ? 'Checking…' : updatedText() }}</span>
-      </div>
-      @if (games()?.length) {
-        <!-- Liked / Want to buy are your own ratings; To play hides what the group already played. -->
-        <div class="bl-chips" role="radiogroup" aria-label="Show">
-          @for (c of [{ v: 'all', l: 'All' }, { v: 'toplay', l: 'To play' }, { v: 'liked', l: 'Liked' }, { v: 'buy', l: 'Want to buy' }]; track c.v) {
-            <button type="button" class="bl-chip" role="radio" [class.on]="filter() === c.v" [attr.aria-checked]="filter() === c.v" (click)="filter.set($any(c.v))">
-              {{ c.l }} · {{ $any(filterCounts())[c.v] }}
-            </button>
-          }
-        </div>
-      }
-    }
     <app-offline-bar />
   </header>
 
   <main>
+    @if (lists()?.length && view() === 'lists') {
+      <!-- List picker, summary and chips scroll with the games; the title row and view switch stay pinned. -->
+      <div class="bl-controls">
+        <!--
+          Same switcher and sheet as the Library. It replaced a row of chips: past ~5 lists most were
+          off-screen, a mouse couldn't scroll them, and choosing a list worked differently per tab.
+          "New list" is in the sheet and in the ⋯ menu.
+        -->
+        <button type="button" class="bl-list-switch" style="flex: none; width: 100%" (click)="sheet.set('lists')"
+                [attr.aria-label]="'Showing ' + (selectedList()?.name || 'no list') + '. Change list'">
+          <span class="label">List</span>
+          <strong>{{ selectedList()?.name || 'Choose a list' }}</strong>
+          <bl-icon name="chevronDown" [size]="18" [stroke]="2.4" />
+        </button>
+        <div class="bl-subrow">
+          <span>{{ summary() }}</span>
+          <span>{{ refreshing() ? 'Checking…' : updatedText() }}</span>
+        </div>
+        @if (games()?.length) {
+          <!-- Liked / Want to buy are your own ratings; To play hides what the group already played. -->
+          <div class="bl-chips" role="radiogroup" aria-label="Show">
+            @for (c of [{ v: 'all', l: 'All' }, { v: 'toplay', l: 'To play' }, { v: 'liked', l: 'Liked' }, { v: 'buy', l: 'Marked to buy' }]; track c.v) {
+              <button type="button" class="bl-chip" role="radio" [class.on]="filter() === c.v" [attr.aria-checked]="filter() === c.v" (click)="filter.set($any(c.v))">
+                {{ c.l }} · {{ $any(filterCounts())[c.v] }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
     @if (showNotifyCard() && view() === 'lists') {
       <!--
         Asked here, in context, after a bell exists: never on page load (web.dev / Apple

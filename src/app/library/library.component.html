@@ -10,60 +10,10 @@
           <span class="lines"><strong>{{ s.title }}</strong><span>{{ s.detail }}</span></span>
         </span>
       }
-    </div>
-
-    <div class="bl-search" role="search">
-      <label class="visually-hidden" for="library-search">Search games</label>
-      <bl-icon name="search" />
-      <!-- type="search" gives phones a Search key; autocorrect/autocapitalize/spellcheck are off because they mangle game names (e.g. "Azul" -> "Azure"). -->
-      <input #searchInput id="library-search" type="search" placeholder="Search games" autocomplete="off" autocorrect="off"
-             autocapitalize="off" spellcheck="false" enterkeyhint="search"
-             [value]="filters().query" (input)="onQuery(searchInput.value)" (keydown.enter)="searchInput.blur()">
-      @if (filters().query) {
-        <button type="button" class="bl-icon-btn" aria-label="Clear search" (click)="clearQuery(searchInput)"><bl-icon name="close" [size]="18" /></button>
-      }
-    </div>
-
-    <div class="bl-chips">
-      <!-- Browse a shelf: first, because it's what you reach for while standing at the shelves. -->
-      <button type="button" class="bl-chip" [class.on]="!!filters().shelf" (click)="sheet.set('shelf')">
-        <bl-icon name="shelves" [size]="16" /> {{ shelfChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
-      </button>
-      <!-- Hidden while browsing a shelf: availability is only known for the rows checked so far. -->
-      @if (!filters().shelf) {
-        <button type="button" class="bl-chip" [class.on]="filters().availableOnly" [attr.aria-pressed]="filters().availableOnly" (click)="toggleAvailable()">
-          @if (filters().availableOnly) { <bl-icon name="check" [size]="16" [stroke]="2.6" /> }
-          {{ availableChip() }}
-        </button>
-      }
-      <button type="button" class="bl-chip" [class.on]="!!filters().players" (click)="sheet.set('players')">
-        {{ playersChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
-      </button>
-      <button type="button" class="bl-chip" [class.on]="!!filters().playTime" (click)="sheet.set('time')">
-        {{ playTimeChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
-      </button>
-    </div>
-
-    <div class="bl-subrow">
-      @if (signedIn()) {
-        <!-- Same switcher and sheet as My Lists (one way to choose a list everywhere). -->
-        <button type="button" class="bl-list-switch" (click)="sheet.set('lists')"
-                [attr.aria-label]="'Adding to ' + (currentList()?.name || 'no list') + '. Change list'">
-          <span class="label">Adding to</span>
-          <strong>{{ currentList()?.name || (listsLoaded() ? 'Choose a list' : 'Loading…') }}</strong>
-          <bl-icon name="chevronDown" [size]="18" [stroke]="2.4" />
-        </button>
-      } @else {
-        <span>Sign in to save games to lists</span>
-      }
-      <!--
-        Sort lives here rather than in the chip row: as a fourth chip it was
-        scrolled off-screen on phones, so people didn't know it existed.
-      -->
-      <!-- A shelf is always in its own (A–Z) order, so Sort only shows for the whole library. -->
-      @if (!filters().shelf) {
-        <button type="button" class="bl-link-btn" style="flex: none" (click)="sheet.set('sort')" [attr.aria-label]="'Sort: ' + sortChip() + '. Change sort'">
-          <bl-icon name="sort" [size]="15" /> {{ sortChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+      @if (scrolled()) {
+        <!-- Search and filters scrolled away with the list: one tap brings them back, focused. -->
+        <button type="button" class="bl-icon-btn accent" aria-label="Search and filters" style="margin-right: -8px" (click)="showControls(searchInput)">
+          <bl-icon name="search" [size]="22" />
         </button>
       }
     </div>
@@ -71,6 +21,75 @@
   </header>
 
   <main>
+    <!--
+      Search, filters and the list/sort row scroll with the results; only the title row stays
+      pinned, so more games fit on screen (audit 2026-11-20; Events works the same way).
+    -->
+    @if (win(); as w) {
+      <button type="button" class="bl-win-banner" (click)="prize.open(w.win)">
+        <bl-icon name="trophy" [size]="26" />
+        <span class="text"><strong>You won! {{ w.label }}</strong>
+          <span>Pick up by {{ w.by }}{{ w.left ? ' · ' + w.left + ' left' : '' }}</span></span>
+        <bl-icon name="chevronRight" [size]="20" />
+      </button>
+    }
+    <div class="bl-controls">
+      <div class="bl-search" role="search">
+        <label class="visually-hidden" for="library-search">Search games</label>
+        <bl-icon name="search" />
+        <!-- type="search" gives phones a Search key; autocorrect/autocapitalize/spellcheck are off because they mangle game names (e.g. "Azul" -> "Azure"). -->
+        <input #searchInput id="library-search" type="search" placeholder="Search games" autocomplete="off" autocorrect="off"
+               autocapitalize="off" spellcheck="false" enterkeyhint="search"
+               [value]="filters().query" (input)="onQuery(searchInput.value)" (keydown.enter)="searchInput.blur()">
+        @if (filters().query) {
+          <button type="button" class="bl-icon-btn" aria-label="Clear search" (click)="clearQuery(searchInput)"><bl-icon name="close" [size]="18" /></button>
+        }
+      </div>
+
+      <div class="bl-chips">
+        <!-- Browse a shelf: first, because it's what you reach for while standing at the shelves. -->
+        <button type="button" class="bl-chip" [class.on]="!!filters().shelf" (click)="sheet.set('shelf')">
+          <bl-icon name="shelves" [size]="16" /> {{ shelfChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+        </button>
+        <!-- Hidden while browsing a shelf: availability is only known for the rows checked so far. -->
+        @if (!filters().shelf) {
+          <button type="button" class="bl-chip" [class.on]="filters().availableOnly" [attr.aria-pressed]="filters().availableOnly" (click)="toggleAvailable()">
+            @if (filters().availableOnly) { <bl-icon name="check" [size]="16" [stroke]="2.6" /> }
+            {{ availableChip() }}
+          </button>
+        }
+        <button type="button" class="bl-chip" [class.on]="!!filters().players" (click)="sheet.set('players')">
+          {{ playersChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+        </button>
+        <button type="button" class="bl-chip" [class.on]="!!filters().playTime" (click)="sheet.set('time')">
+          {{ playTimeChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+        </button>
+      </div>
+
+      <div class="bl-subrow">
+        @if (signedIn()) {
+          <!-- Same switcher and sheet as My Lists (one way to choose a list everywhere). -->
+          <button type="button" class="bl-list-switch" (click)="sheet.set('lists')"
+                  [attr.aria-label]="'Adding to ' + (currentList()?.name || 'no list') + '. Change list'">
+            <span class="label">Adding to</span>
+            <strong>{{ currentList()?.name || (listsLoaded() ? 'Choose a list' : 'Loading…') }}</strong>
+            <bl-icon name="chevronDown" [size]="18" [stroke]="2.4" />
+          </button>
+        } @else {
+          <span>Sign in to save games to lists</span>
+        }
+        <!--
+          Sort lives here rather than in the chip row: as a fourth chip it was
+          scrolled off-screen on phones, so people didn't know it existed.
+        -->
+        <!-- A shelf is always in its own (A–Z) order, so Sort only shows for the whole library. -->
+        @if (!filters().shelf) {
+          <button type="button" class="bl-link-btn" style="flex: none" (click)="sheet.set('sort')" [attr.aria-label]="'Sort: ' + sortChip() + '. Change sort'">
+            <bl-icon name="sort" [size]="15" /> {{ sortChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
+          </button>
+        }
+      </div>
+    </div>
     <!-- Your next starred event (within the hour): "Up next · starts in 12 min". -->
     <app-up-next />
     @if (filters().shelf) {

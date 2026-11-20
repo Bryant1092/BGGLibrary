@@ -56,6 +56,16 @@ import { ThumbComponent } from './thumb.component';
     .note-box div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .note-box small { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-muted); }
     .note-box span { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+    .tile-btn { border: 0; font: inherit; cursor: pointer; }
+    .tile-link { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 700; }
+    .cond.quiet { border: 0; padding: 0 2px; }
+    /* Pinned to the sheet's bottom edge: the negative margins cover the sheet's side and bottom padding. */
+    .action-bar { position: sticky; bottom: 0; z-index: 2; display: flex; gap: 10px;
+      margin: 0 -20px calc(-24px - env(safe-area-inset-bottom)); padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+      background: var(--bl-surface); border-top: 1px solid var(--bl-hair); box-shadow: 0 -6px 16px rgba(0, 0, 0, .06); }
+    .action-bar .bl-btn { flex: 1; margin: 0; }
+    .action-bar .bell { flex: none; padding: 0 16px; }
+    .action-bar .bell.on { color: var(--bl-accent-text); border-color: var(--bl-accent-text); }
     .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
     /* Label and value both centered: three equal tiles read as a row of stats, and
        keeping label and value on one alignment keeps each tile easy to scan. */
@@ -110,7 +120,14 @@ import { ThumbComponent } from './thumb.component';
       </div>
 
       <div class="tiles">
-        <div class="tile accent"><small>Location</small><strong>{{ shelf() }}</strong></div>
+        <!-- Tappable when the map has the library room: first-timers don't know where shelf K is (audit 2026-11-20). -->
+        @if (libraryMap()) {
+          <button type="button" class="tile accent tile-btn" (click)="showLibraryMap()" [attr.aria-label]="'Location ' + shelf() + '. Show the library on the map'">
+            <small>Location</small><strong>{{ shelf() }}</strong><span class="tile-link"><bl-icon name="map" [size]="14" [stroke]="2.4" /> Map</span>
+          </button>
+        } @else {
+          <div class="tile accent"><small>Location</small><strong>{{ shelf() }}</strong></div>
+        }
         <div class="tile"><small>Players</small><strong>{{ players() }}</strong></div>
         <div class="tile"><small>Play time</small><strong>{{ minutes() }}m</strong></div>
       </div>
@@ -196,7 +213,8 @@ import { ThumbComponent } from './thumb.component';
         sooner" above switches to this con's average at PLAY_MIN_SAMPLES plays.
       -->
       @if (conStats(); as s) {
-        <div class="cond" role="note">
+        <!-- Plain facts, so no box: the bordered and amber boxes stay for things that change your plans. -->
+        <div class="cond quiet" role="note">
           <bl-icon name="clock" [size]="22" />
           <div>
             <small>This con{{ s.updatedAt ? ' · updated ' + time(s.updatedAt) : '' }}</small>
@@ -246,16 +264,8 @@ import { ThumbComponent } from './thumb.component';
         }
       }
 
-      @if (game().is_checked_out) {
-        <button type="button" class="bl-btn secondary" [attr.aria-pressed]="watched()" (click)="watchToggle.emit()"
-                [style.color]="watched() ? 'var(--bl-accent-text)' : null" [style.border-color]="watched() ? 'var(--bl-accent-text)' : null">
-          <bl-icon [name]="watched() ? 'bell' : 'bellOff'" [size]="20" />
-          {{ watched() ? "We'll tell you when it's back" : "Notify me when it's back" }}
-        </button>
-      }
       <!-- Extra controls from the page that opened the sheet (e.g. Liked / Want to buy). -->
       <ng-content />
-      <button type="button" class="bl-btn" [class.secondary]="inList()" [disabled]="busy()" (click)="toggle.emit()">{{ actionLabel() }}</button>
       <!-- Learning the rules before checking a game out saves table time. -->
       <a class="bl-btn secondary" style="text-decoration: none" [href]="howToPlay()" target="_blank" rel="noopener"
          [attr.aria-label]="'Watch how to play ' + game().name + ' (opens a YouTube search)'">
@@ -271,6 +281,20 @@ import { ThumbComponent } from './thumb.component';
         View on BoardGameGeek <bl-icon name="external" [size]="18" />
       </a>
       <span class="note" style="text-align: center; margin-top: -8px">Ratings, rules and photos on BoardGameGeek</span>
+      <!--
+        The two things you came to do stay pinned to the bottom of the sheet while the details
+        scroll (audit 2026-11-20): before, they came after up to six info boxes.
+      -->
+      <div class="action-bar">
+        <button type="button" class="bl-btn" [class.secondary]="inList()" [disabled]="busy()" (click)="toggle.emit()">{{ actionLabel() }}</button>
+        @if (game().is_checked_out) {
+          <button type="button" class="bl-btn secondary bell" [class.on]="watched()" [attr.aria-pressed]="watched()" (click)="watchToggle.emit()"
+                  [attr.aria-label]="watched() ? &quot;Notifying you when it&#39;s back. Turn off&quot; : &quot;Notify me when it&#39;s back&quot;">
+            <bl-icon [name]="watched() ? 'bell' : 'bellOff'" [size]="20" />
+            {{ watched() ? 'Notifying' : 'Notify me' }}
+          </button>
+        }
+      </div>
     </app-sheet>
   `,
 })
@@ -352,6 +376,11 @@ export class GameSheetComponent {
   private map = inject(MapService);
   /** Where the Hot Games room is on this convention's venue map (null if no map). */
   hotMap = computed(() => this.hot() ? this.map.hotGamesRequest() : null);
+  libraryMap = computed(() => this.map.libraryRequest(this.shelf()));
+  showLibraryMap(): void {
+    const request = this.libraryMap();
+    if (request) this.map.show(request);
+  }
 
   /** Opens the venue map over this sheet; closing the map comes back here. */
   showHotMap(): void {

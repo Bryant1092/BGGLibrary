@@ -55,7 +55,7 @@
           <label for="login-email">Email</label>
           <input id="login-email" class="bl-input" type="email" formControlName="email" autocomplete="email" inputmode="email"
                  autocapitalize="off" spellcheck="false" placeholder="you@example.com">
-          @if (loginForm.get('email')?.dirty && checkEmailErrors()) { <small class="field-error">{{ checkEmailErrors() }}</small> }
+          @if ((loginForm.get('email')?.dirty || submitted) && checkEmailErrors()) { <small class="field-error" role="alert">{{ checkEmailErrors() }}</small> }
 
           <div class="label-row">
             <label for="login-password">Password</label>
@@ -65,28 +65,23 @@
             <input id="login-password" class="bl-input" [type]="showPassword ? 'text' : 'password'" formControlName="password" autocomplete="current-password">
             <button type="button" class="show" (click)="showPassword = !showPassword" [attr.aria-pressed]="showPassword">{{ showPassword ? 'Hide' : 'Show' }}</button>
           </div>
+          @if (submitted && loginForm.get('password')?.invalid) { <small class="field-error" role="alert">Enter your password (at least 8 characters).</small> }
 
-          <button type="submit" class="bl-btn" [disabled]="loginForm.invalid || busy">{{ busy ? 'Signing in…' : 'Sign in' }}</button>
+          <!-- Always tappable: a tap with something missing says what (audit 2026-11-20). -->
+          <button type="submit" class="bl-btn" [disabled]="busy">{{ busy ? 'Signing in…' : 'Sign in' }}</button>
         </form>
         <p class="switch">New here? <button type="button" class="bl-link-btn" (click)="toggleRegister()">Create an account</button></p>
       } @else {
         <form [formGroup]="loginForm" (ngSubmit)="onSubmitRegister()">
-          <div class="names">
-            <div>
-              <label for="login-first">First name</label>
-              <input id="login-first" class="bl-input" formControlName="firstName" autocomplete="given-name" autocapitalize="words">
-            </div>
-            <div>
-              <label for="login-last">Last name</label>
-              <input id="login-last" class="bl-input" formControlName="lastName" autocomplete="family-name" autocapitalize="words">
-            </div>
-          </div>
+          <label for="login-name">Name</label>
+          <input id="login-name" class="bl-input" formControlName="name" autocomplete="name" autocapitalize="words">
+          @if (submitted && loginForm.get('name')?.invalid) { <small class="field-error" role="alert">Enter your name.</small> }
           <small class="hint">Friends see your first name and last initial.</small>
 
           <label for="login-email">Email</label>
           <input id="login-email" class="bl-input" type="email" formControlName="email" autocomplete="email" inputmode="email"
                  autocapitalize="off" spellcheck="false" placeholder="you@example.com">
-          @if (loginForm.get('email')?.dirty && checkEmailErrors()) { <small class="field-error">{{ checkEmailErrors() }}</small> }
+          @if ((loginForm.get('email')?.dirty || submitted) && checkEmailErrors()) { <small class="field-error" role="alert">{{ checkEmailErrors() }}</small> }
 
           <label for="login-password">Password</label>
           <div class="password">
@@ -100,13 +95,9 @@
             }
           </ul>
 
-          <label for="login-confirm">Type the password again</label>
-          <input id="login-confirm" class="bl-input" [type]="showPassword ? 'text' : 'password'" formControlName="confirmPassword" autocomplete="new-password">
-          @if (loginForm.get('confirmPassword')?.dirty && loginForm.get('confirmPassword')?.hasError('PasswordNoMatch')) {
-            <small class="field-error">The passwords don't match.</small>
-          }
+          @if (submitted && loginForm.get('password')?.invalid) { <small class="field-error" role="alert">The password doesn't meet every rule above yet.</small> }
 
-          <button type="submit" class="bl-btn" [disabled]="loginForm.invalid || busy">{{ busy ? 'Creating…' : 'Create account' }}</button>
+          <button type="submit" class="bl-btn" [disabled]="busy">{{ busy ? 'Creating…' : 'Create account' }}</button>
         </form>
         <p class="switch">Have an account? <button type="button" class="bl-link-btn" (click)="toggleRegister()">Sign in</button></p>
       }

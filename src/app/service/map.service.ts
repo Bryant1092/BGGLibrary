@@ -117,6 +117,13 @@ export class MapService {
     return this.hallRequest();
   }
 
+  /** The checkout library's room, for the game sheet's Location tile (audit 2026-11-20). */
+  libraryRequest(shelf?: string): MapRequest | null {
+    const room = this.maps()?.rooms.find(r => r.kind === 'library');
+    return room ? { select: ['room:' + room.id], label: shelf ? `Library · shelf ${shelf}` : `Library · ${room.sub}` } : null;
+  }
+
+
   /**
    * The Hot Games room (BGG.CON: Cumberland E–H on the Exhibition level), for the
    * "Show on map" buttons next to Hot Games notes. Uses the room marked kind "hot" in

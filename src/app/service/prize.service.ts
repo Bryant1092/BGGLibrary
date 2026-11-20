@@ -1,3 +1,4 @@
+import { prizePickupDeadline } from '../util/library-time';
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { doc, Firestore, getDoc, serverTimestamp, setDoc, deleteDoc } from '@angular/fire/firestore';
@@ -53,6 +54,21 @@ export class PrizeService {
   /** A win opened from Account (tapping "You won!"); shown in the same sheet. */
   private opened = signal<PrizeWin | null>(null);
   /** What the "You won!" sheet shows: one you opened, else the first new win. */
+  /** When a drawing's prize must be picked up: BGG's stated deadline, else the Exhibit Hall rule. */
+  pickupBy(d: PrizeDrawing): number | null {
+    return d.statedDeadline ?? prizePickupDeadline(d.postedAt);
+  }
+
+  /** Your newest win that can still be picked up at `now`, for the Library banner (audit 2026-11-20). */
+  activeWin(now: number): { drawing: PrizeDrawing; by: number } | null {
+    for (const d of this.drawings()) {
+      if (!d.win) continue;
+      const by = this.pickupBy(d);
+      if (by && by > now) return { drawing: d, by };
+    }
+    return null;
+  }
+
   readonly sheetWin = computed(() => this.opened() ?? this.unseen()[0] ?? null);
   open(win: PrizeWin): void {
     this.opened.set(win);

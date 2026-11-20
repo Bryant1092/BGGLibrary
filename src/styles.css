@@ -206,6 +206,17 @@ body {
 /* Filled dot = open; hollow ring = closed or not started, so the shape differs too, not just the color. */
 .bl-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; box-sizing: border-box; border: 2px solid currentColor; }
 .bl-status.open .bl-dot, .bl-status.closingSoon .bl-dot { background: currentColor; }
+/* Search, filters and sub-rows that scroll with the page under a slim pinned title row
+   (Library, My Lists; Events has its own copy). Audit 2026-11-20: the whole block used to be
+   pinned and took ~290pt of the screen. */
+.bl-title-list { flex: 0 1 auto; min-width: 0; max-width: 45%; height: 36px; display: flex; align-items: center; gap: 4px; padding: 0 10px; border: 0; border-radius: 18px; background: var(--bl-field); color: var(--bl-text); font: inherit; font-size: 15px; font-weight: 600; }
+.bl-title-list span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bl-win-banner { margin: 10px 16px 0; width: calc(100% - 32px); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--bl-accent-text); background: var(--bl-accent-soft); color: var(--bl-text); font: inherit; text-align: left; }
+.bl-win-banner > bl-icon { flex: none; color: var(--bl-accent-text); }
+.bl-win-banner .text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bl-win-banner strong { font-size: 16px; }
+.bl-win-banner .text span { font-size: 14px; color: var(--bl-muted); }
+.bl-controls { display: flex; flex-direction: column; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--bl-hair); }
 .bl-subrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; font-size: 14px; color: var(--bl-muted); }
 .bl-section { margin: 0; padding: 16px 16px 6px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-muted); }
 

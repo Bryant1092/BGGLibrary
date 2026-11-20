@@ -18,7 +18,7 @@ import { ThumbComponent } from '../shared/thumb.component';
 import { OfflineBarComponent } from '../shared/offline-bar.component';
 import { ShelfIndex, ShelfInfo, ShelfService } from '../service/shelf.service';
 import { ShelfListComponent } from './shelf-list.component';
-import { currentOrNextConvention, formatLibraryTime, libraryStatus, shortDuration } from '../util/library-time';
+import { currentOrNextConvention, dallasDateKey, formatDeadline, formatLibraryTime, libraryStatus, shortDuration } from '../util/library-time';
 import { deskDownSince, deskManual } from '../util/desk-state';
 import { isNewArrival, minutesText, playerChoiceText, playersFilterText, playersText, returnedText, shelfText, statusText } from '../util/game-format';
 import { isHotGame, matchHotGames } from '../util/hot-games';
@@ -28,6 +28,8 @@ import { ConPopularComponent } from '../shared/con-popular.component';
 import { LocalResultsComponent } from './local-results.component';
 import { LocalSearchService } from '../service/local-search.service';
 import { ConCheckoutsService } from '../service/con-checkouts.service';
+import { revealControls, scrolledPast } from '../util/scrolled';
+import { PrizeService } from '../service/prize.service';
 import { InViewDirective } from '../shared/in-view.directive';
 import { RatingControlsComponent } from '../shared/rating-controls.component';
 import { NoticeTagComponent } from '../shared/notice-tag.component';
@@ -125,7 +127,21 @@ export class LibraryComponent implements OnInit, OnDestroy {
 
   /** Ticks every minute so "Out 45m", due times and library hours stay current without a reload. */
   now = signal(Date.now());
+  /** Search and filters have scrolled out of view: the title row shows a search button. */
+  readonly scrolled = scrolledPast(170);
   private clock = setInterval(() => this.now.set(Date.now()), 60_000);
+  readonly prize = inject(PrizeService);
+  /**
+   * A prize you won that can still be picked up: a banner above the results until the deadline
+   * (audit 2026-11-20). Before, it lived only in the one-time "You won!" sheet and on Account.
+   */
+  readonly win = computed(() => {
+    const now = this.now();
+    const w = this.prize.activeWin(now);
+    if (!w) return null;
+    const left = dallasDateKey(w.by) === dallasDateKey(now) ? shortDuration(w.by - now) : '';
+    return { win: w.drawing.win!, label: w.drawing.label, by: formatDeadline(w.by, now), left };
+  });
 
   signedIn = signal(false);
   uid = signal<string | undefined>(undefined);
@@ -532,6 +548,10 @@ export class LibraryComponent implements OnInit, OnDestroy {
   }
 
   /** The + / check button and the details sheet's main button. */
+  showControls(input: HTMLInputElement): void {
+    revealControls(input);
+  }
+
   toggleGame(item: BggItem): void {
     if (!this.signedIn()) {
       this.sheet.set(null);
@@ -569,7 +589,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
       .then(() => {
         this.listGameIds.update(ids => new Set(ids).add(item.id));
         if (offerUndo) {
-          this.toast.show({ text: `Added to ${list.name}`, actionLabel: 'Undo', action: () => this.removeGame(item, list, false) });
+          this.toast.show({ text: `Added ${item.name} to ${list.name}`, actionLabel: 'Undo', action: () => this.removeGame(item, list, false) });
         }
       })
       .catch(err => {
@@ -590,7 +610,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
           return next;
         });
         if (offerUndo) {
-          this.toast.show({ text: `Removed from ${list.name}`, actionLabel: 'Undo', action: () => this.addGame(item, list, false) });
+          this.toast.show({ text: `Removed ${item.name} from ${list.name}`, actionLabel: 'Undo', action: () => this.addGame(item, list, false) });
         }
       })
       .catch(err => {
