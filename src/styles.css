@@ -189,7 +189,9 @@ body {
   flex-direction: column;
   gap: 10px;
 }
-.bl-title-row { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+/* Same height with or without its 44pt icon buttons, so switching views (My Lists → Friends' picks,
+   Select mode) doesn't shift the content below by 8pt (2026-11-20). */
+.bl-title-row { display: flex; align-items: center; gap: 10px; min-height: 44px; }
 .bl-title-row img { width: 30px; height: 30px; border-radius: 8px; }
 .bl-title-row h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; flex: 1; }
 /* Library status badge in the header: tinted pill, two short lines, colored by state. */
