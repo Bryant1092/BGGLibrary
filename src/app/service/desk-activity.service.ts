@@ -2,10 +2,15 @@ import { computed, DestroyRef, effect, inject, Injectable, signal } from '@angul
 import { deskDownSince } from '../util/desk-state';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
-import { catchError, map, Observable, of } from 'rxjs';
+import { catchError, Observable, of } from 'rxjs';
 import { ConCheckoutsService } from './con-checkouts.service';
 import { libraryOpenSince } from '../util/library-time';
 import { parseTteDate } from '../util/time-ago';
+
+interface DeskStatusDoc { lastScanAt?: { toMillis(): number }; catchUpUntil?: { toMillis(): number } }
+
+/** Alerts during catch-up wait this long after the check-in, like the server (functions ALERT_HOLD_MS). */
+export const ALERT_HOLD_MS = 10 * 60_000;
 
 /** No checkout or check-in recorded for this long while the library is open = the desk isn't scanning. */
 export const DESK_STALE_AFTER_MS = 30 * 60_000;
@@ -32,11 +37,16 @@ export class DeskActivity {
   private conCheckouts = inject(ConCheckoutsService);
   private seen = signal(0);
   /** meta/deskStatus (functions/index.js, checkDesk): when the server last saw the checked-out count change. */
-  private serverScan = toSignal(
-    (docData(doc(inject(Firestore), 'meta', 'deskStatus')) as Observable<{ lastScanAt?: { toMillis(): number } } | undefined>)
-      .pipe(map(d => d?.lastScanAt?.toMillis?.() ?? 0), catchError(() => of(0))),
-    { initialValue: 0 },
+  private status = toSignal(
+    (docData(doc(inject(Firestore), 'meta', 'deskStatus')) as Observable<DeskStatusDoc | undefined>)
+      .pipe(catchError(() => of(undefined))),
   );
+  private serverScan = computed(() => this.status()?.lastScanAt?.toMillis?.() ?? 0);
+  /**
+   * End of the server's catch-up window after an outage (0 if none): check-ins typed in from the
+   * backlog. WatchService waits ALERT_HOLD_MS before alerting on those, like the server.
+   */
+  readonly catchUpUntil = computed(() => this.status()?.catchUpUntil?.toMillis?.() ?? 0);
   private now = signal(Date.now());
 
   /** Newest checkout or check-in the app knows about (ms), or 0 if none yet. */

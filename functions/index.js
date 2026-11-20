@@ -107,10 +107,9 @@ async function loadBellKeys(db, now) {
 // typed, so for a while: "game is back" alerts fire for games that came back hours ago
 // (and may be out again), and play times get made-up lengths.
 //
-// So every 2 minutes (inside checkWatchedGames) the server asks how many games are checked
-// out: one small request that needs no sorting (Tabletop.Events' sort by checkout / check-in
-// time failed that day). Any scan changes that number. A gap of DESK_OUTAGE_MS or more that
-// started during the day, then changes again = staff catching up. For CATCH_UP_MS after:
+// So every 2 minutes (inside checkWatchedGames) the server reads the newest check-in times
+// (checkDesk). A gap of DESK_OUTAGE_MS or more that started during the day, then a new
+// check-in = staff catching up. For CATCH_UP_MS after:
 // - alerts wait ALERT_HOLD_MS and are re-checked before sending (heldBack below), and
 // - play times ignore checkouts / check-ins stamped in that window (trackPlayTimes).
 // Saved in meta/deskStatus (public: the app reads lastScanAt to tell whether the desk is
@@ -129,38 +128,41 @@ function libraryDaytime(ms) {
   return hour >= 9 && hour < 23;
 }
 
-/** Desk state after checking the checked-out count; catchingUp = in the window after an outage. */
+/**
+ * Desk state after looking at the newest check-ins; catchingUp = in the window after an outage.
+ *
+ * Reads the 5 most recent check-ins (sorted by Tabletop.Events) and uses their real times.
+ * First version (same evening) counted checked-out games instead, but Tabletop.Events refuses
+ * that filter, so it never saw the desk come back. An out-of-order answer is ignored, not trusted.
+ */
 async function checkDesk(db, now) {
   if (!desk) {
     const saved = (await db.doc(DESK_STATUS).get()).data() || {};
     const ms = v => v?.toMillis?.() || 0;
-    // watchingSince: when this server started counting, so an outage already under way when it
-    // started (e.g. deployed mid-outage) still counts once scanning resumes.
-    desk = { outCount: saved.outCount ?? null, lastScanAt: ms(saved.lastScanAt), watchingSince: now,
+    desk = { lastScanAt: ms(saved.lastScanAt), watchingSince: now,
       outageFrom: ms(saved.outageFrom), catchUpUntil: ms(saved.catchUpUntil), savedAt: 0 };
   }
-  const r = await tteJson(`${LIBRARY_GAMES}?_items_per_page=1&is_in_circulation=1&is_checked_out=1`);
-  const count = Number(r?.paging?.total_items);
-  if (!Number.isFinite(count)) return { catchingUp: now < desk.catchUpUntil };
+  const r = await tteJson(`${LIBRARY_GAMES}?_items_per_page=5&_order_by=last_checkin_date&_sort_order=desc`);
+  const items = r?.items || [];
+  if (!items.length || !newestFirst(items, 'last_checkin_date')) return { catchingUp: now < desk.catchUpUntil };
+  const newest = tteTime(items[0].last_checkin_date);
+  if (!newest || newest > now + 5 * 60 * 1000) return { catchingUp: now < desk.catchUpUntil };
 
-  let save = false;
-  if (desk.outCount !== count) {
-    if (desk.outCount != null) {
-      const since = desk.lastScanAt || desk.watchingSince;
-      if (now - since >= DESK_OUTAGE_MS && libraryDaytime(since)) {
-        desk.outageFrom = since;
-        desk.catchUpUntil = now + CATCH_UP_MS;
-        save = true;
-        logger.warn(`desk: scanning resumed after ${Math.round((now - since) / 60000)} min; holding alerts and skipping play times for ${CATCH_UP_MS / 60000} min`);
-      }
-      desk.lastScanAt = now;
+  let save = !desk.savedAt; // once after a start, so the app has a fresh time
+  if (newest > desk.lastScanAt) {
+    const since = desk.lastScanAt || desk.watchingSince;
+    if (newest - since >= DESK_OUTAGE_MS && libraryDaytime(since)) {
+      desk.outageFrom = since;
+      desk.catchUpUntil = now + CATCH_UP_MS;
+      save = true;
+      logger.warn(`desk: scanning resumed after ${Math.round((newest - since) / 60000)} min; holding alerts and skipping play times for ${CATCH_UP_MS / 60000} min`);
     }
-    desk.outCount = count;
+    desk.lastScanAt = newest;
     if (now - desk.savedAt >= DESK_SAVE_EVERY_MS) save = true;
   }
   if (save) {
     const ts = ms => ms ? admin.firestore.Timestamp.fromMillis(ms) : null;
-    await db.doc(DESK_STATUS).set({ outCount: count, lastScanAt: ts(desk.lastScanAt), outageFrom: ts(desk.outageFrom),
+    await db.doc(DESK_STATUS).set({ lastScanAt: ts(desk.lastScanAt), outageFrom: ts(desk.outageFrom),
       catchUpUntil: ts(desk.catchUpUntil), updatedAt: ts(now) });
     desk.savedAt = now;
   }

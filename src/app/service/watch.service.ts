@@ -7,6 +7,7 @@ import { BggItem } from '../model/bgg.model';
 import { BggService } from './bgg.service';
 import { ToastService } from './toast.service';
 import { UserService } from './user.service';
+import { ALERT_HOLD_MS, DeskActivity } from './desk-activity.service';
 import { PushService } from './push.service';
 import { parseTteDate } from '../util/time-ago';
 import { formatLibraryTime } from '../util/library-time';
@@ -54,6 +55,7 @@ export class WatchService {
   private router = inject(Router);
   private firestore = inject(Firestore);
   private push = inject(PushService);
+  private desk = inject(DeskActivity);
 
   /** Watched games by id, for the signed-in account (or "guest"). */
   readonly watched = signal<Map<string, WatchedGame>>(new Map());
@@ -239,6 +241,11 @@ export class WatchService {
         const response: any = await firstValueFrom(this.bggService.getBggGameInfo(game.id).pipe(catchError(() => of(null))));
         const item = response?.result as BggItem | undefined;
         if (item && !item.is_checked_out && this.isWatched(game.id)) {
+          // After a desk outage, staff type in the backlog: a "fresh" check-in may be hours old, and
+          // the game may be out again moments later. Wait until it has stayed in ALERT_HOLD_MS (the
+          // bell stays on; a later check alerts), like the server does.
+          const checkedIn = parseTteDate(item.last_checkin_date)?.getTime() ?? 0;
+          if (Date.now() < this.desk.catchUpUntil() && Date.now() - checkedIn < ALERT_HOLD_MS) continue;
           this.update(map => map.delete(game.id));
           this.alert({ ...game, shelf: item.custom_fields?.Location || game.shelf }, item.last_checkin_date);
         }
