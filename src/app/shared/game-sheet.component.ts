@@ -28,15 +28,20 @@ import { ThumbComponent } from './thumb.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .checked-in { display: block; margin-top: 6px; font-size: 14px; color: var(--bl-muted); }
-    .copies { display: flex; flex-direction: column; gap: 6px; }
-    .copies h3.sub { margin: 0 0 2px; }
-    .copy { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 8px 12px; border-radius: 10px; background: var(--bl-field); font-size: 15px; }
+    .copies { display: flex; flex-direction: column; gap: 8px; }
+    .copies h3.sub { margin: 0; }
+    .copies-note { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; font-size: 14px; line-height: 19px;
+      background: var(--bl-late-bg); color: var(--bl-late-fg); border: 1px solid var(--bl-late-border); }
+    .copies-note bl-icon { flex: none; margin-top: 1px; }
+    .copy { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; background: var(--bl-field); }
     .copy.this { outline: 2px solid var(--bl-accent-text); outline-offset: -2px; }
-    .copy .code { font-weight: 700; font-variant-numeric: tabular-nums; }
-    .copy .state { color: var(--bl-avail-text); font-weight: 600; }
-    .copy .state.out { color: var(--bl-muted); }
-    .copy .tag { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--bl-accent-text); text-transform: uppercase; letter-spacing: .04em; }
-    .copy .unconf { flex-basis: 100%; font-size: 13px; line-height: 17px; padding: 4px 8px; border-radius: 8px;
+    .copy-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .copy .code { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .copy .tag { margin-left: 8px; font-size: 12px; font-weight: 700; color: var(--bl-accent-text); text-transform: uppercase; letter-spacing: .04em; }
+    .copy .line { font-size: 14px; }
+    .copy .in { color: var(--bl-avail-text); font-weight: 600; }
+    .copy .muted { color: var(--bl-muted); }
+    .copy .maybe { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px; font-size: 13px; font-weight: 700;
       background: var(--bl-late-bg); color: var(--bl-late-fg); border: 1px solid var(--bl-late-border); }
     .desk-stale { display: block; padding: 6px 10px; border-radius: 10px; font-size: 14px; line-height: 19px;
       background: var(--bl-late-bg); color: var(--bl-late-fg); border: 1px solid var(--bl-late-border); }
@@ -214,16 +219,27 @@ import { ThumbComponent } from './thumb.component';
         outage which ones haven't been scanned since (they may really be out, or back).
       -->
       @if (copies(); as list) {
-        @if (list.length > 1 || anyUnconfirmed()) {
+        @if (list.length > 1 || unconfirmedCount()) {
           <div class="copies">
-            <h3 class="sub">Copies · {{ inCount() }} of {{ list.length }} in</h3>
+            <h3 class="sub">Copies · {{ inCount() }} of {{ list.length }} in{{ unconfirmedCount() ? ' · ' + unconfirmedCount() + ' may be wrong' : '' }}</h3>
+            <!-- One explanation for all tagged copies, not a sentence on each (NN/g: indicators add noise). -->
+            @if (unconfirmedCount()) {
+              <div class="copies-note" role="note">
+                <bl-icon name="alert" [size]="18" />
+                <span>{{ unconfirmedText() }}</span>
+              </div>
+            }
             @for (c of list; track c.id) {
               <div class="copy" [class.this]="c.id === game().id">
-                <span class="code">{{ c.catalog_number || 'No barcode' }}</span>
-                <span class="state" [class.out]="!!c.is_checked_out">{{ copyStatus(c) }}</span>
-                @if (c.id === game().id) { <span class="tag">This one</span> }
+                <div class="copy-text">
+                  <span class="code">{{ c.catalog_number || 'No barcode' }}@if (c.id === game().id) { <span class="tag">This one</span> }</span>
+                  <span class="line">
+                    @if (c.is_checked_out) { <span class="muted">{{ copyStatus(c) }}</span> } @else { <span class="in">On the shelf</span> }
+                    @if (lastScan(c); as t) { <span class="muted"> · last scan {{ t }}</span> }
+                  </span>
+                </div>
                 @if (unconfirmed(c)) {
-                  <span class="unconf">Unconfirmed: not scanned since the library's outage, so it may be {{ c.is_checked_out ? 'back' : 'out' }}</span>
+                  <span class="maybe"><bl-icon name="info" [size]="14" [stroke]="2.4" />{{ c.is_checked_out ? 'May be back' : 'May be out' }}</span>
                 }
               </div>
             }
@@ -303,7 +319,18 @@ export class GameSheetComponent {
     const before = this.desk.unconfirmedBefore();
     return before != null && this.latestScan(c) < before;
   }
-  anyUnconfirmed = computed(() => (this.copies() || []).some(c => this.unconfirmed(c)));
+  unconfirmedCount = computed(() => (this.copies() || []).filter(c => this.unconfirmed(c)).length);
+  /** The one explanation above the copies: why some are tagged, and what to do. */
+  unconfirmedText = computed(() => {
+    if (this.desk.downNow()) return "The library desk isn't scanning right now, so every copy's status may be wrong. Check the shelf.";
+    const back = this.desk.unconfirmedBefore();
+    return `Tagged copies haven't been scanned since the desk came back${back ? ' at ' + formatLibraryTime(back, this.now()) : ''}, so their status may be wrong. Check the shelf.`;
+  });
+  /** "8:51 PM" (with "yesterday" / a day when older): the copy's last checkout or check-in. */
+  lastScan(c: BggItem): string {
+    const t = this.latestScan(c);
+    return t ? formatLibraryTime(t, this.now()) : '';
+  }
   /** "On the shelf" or "Out 1h 20m" (a running time, or the date for one out a long time). */
   copyStatus(c: BggItem): string {
     if (!c.is_checked_out) return 'On the shelf';

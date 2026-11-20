@@ -68,11 +68,16 @@ export class DeskActivity {
   readonly unconfirmedBefore = computed<number | null>(() => {
     const now = this.now();
     if (this.staleSince() != null) return now;
+    // The owner's time scanning really came back wins (notice.json deskBackAt).
+    const manualBack = this.notice.deskBackAt();
+    if (manualBack != null) return now - manualBack < UNCONFIRMED_FOR_MS && manualBack <= now ? manualBack : null;
     const until = this.catchUpUntil();
     if (!this.outageFrom() || !until) return null;
     const back = until - CATCH_UP_MS; // the server's catch-up window starts when scanning resumes
     return back > this.outageFrom() && now - back < UNCONFIRMED_FOR_MS ? back : null;
   });
+  /** True while the desk is down right now (every copy is unconfirmed then). */
+  readonly downNow = computed(() => this.staleSince() != null);
   private now = signal(Date.now());
 
   /** Newest checkout or check-in the app knows about (ms), or 0 if none yet. */

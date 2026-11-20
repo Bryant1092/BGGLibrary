@@ -23,7 +23,12 @@ import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core'
  * and the server holds alerts and skips play times (it reads this same file).
  * deskDownSince: when it started (ISO), for the warning's text. Both end with "until".
  */
-interface Notice { message?: string; until?: string; deskDown?: boolean; deskDownSince?: string; }
+/*
+ * deskBackAt: when scanning really came back after the switch was on (ISO). Turning the switch
+ * off can lag the desk (2026-11-19: off at 9:56 PM, scanning back about 9:10), and copies scanned
+ * in between are fine; this time sets which copies get "May be out / May be back" in game details.
+ */
+interface Notice { message?: string; until?: string; deskDown?: boolean; deskDownSince?: string; deskBackAt?: string; }
 
 const POLL_MS = 5 * 60_000;
 const DISMISSED_KEY = 'bgg-notice-dismissed';
@@ -51,6 +56,12 @@ export class NoticeService {
     if (!isNaN(until) && this.now() > until) return null;
     const since = n.deskDownSince ? Date.parse(n.deskDownSince) : NaN;
     return isNaN(since) ? this.now() : since;
+  });
+
+  /** When scanning came back after a manual outage (notice.json deskBackAt), ms or null. */
+  readonly deskBackAt = computed<number | null>(() => {
+    const t = Date.parse(this.notice()?.deskBackAt || '');
+    return isNaN(t) ? null : t;
   });
 
   constructor() {
