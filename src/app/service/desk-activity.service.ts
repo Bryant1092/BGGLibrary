@@ -1,5 +1,8 @@
 import { computed, DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { deskDownSince } from '../util/desk-state';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { doc, docData, Firestore } from '@angular/fire/firestore';
+import { catchError, map, Observable, of } from 'rxjs';
 import { ConCheckoutsService } from './con-checkouts.service';
 import { libraryOpenSince } from '../util/library-time';
 import { parseTteDate } from '../util/time-ago';
@@ -18,19 +21,26 @@ const FUTURE_SLACK_MS = 5 * 60_000;
  *
  * Tabletop.Events has no "is the desk working" flag, and its sort by checkout / check-in time
  * failed during that outage, so it can't simply be asked for the latest scan. Instead this
- * keeps the newest checkout or check-in time from two places the app already has:
+ * keeps the newest checkout or check-in time from three places the app already has:
  * - every library game in any Tabletop.Events answer (tteResilience calls note()), and
  * - the server's "Most played" ranking, saved whenever it sees new checkouts (every 10 min).
- * Either one moving forward clears the warning, so a single working signal is enough.
+ * - the server's desk watcher (meta/deskStatus), which needs no sorting: added the same evening.
+ * Any one moving forward clears the warning, so a single working signal is enough.
  */
 @Injectable({ providedIn: 'root' })
 export class DeskActivity {
   private conCheckouts = inject(ConCheckoutsService);
   private seen = signal(0);
+  /** meta/deskStatus (functions/index.js, checkDesk): when the server last saw the checked-out count change. */
+  private serverScan = toSignal(
+    (docData(doc(inject(Firestore), 'meta', 'deskStatus')) as Observable<{ lastScanAt?: { toMillis(): number } } | undefined>)
+      .pipe(map(d => d?.lastScanAt?.toMillis?.() ?? 0), catchError(() => of(0))),
+    { initialValue: 0 },
+  );
   private now = signal(Date.now());
 
   /** Newest checkout or check-in the app knows about (ms), or 0 if none yet. */
-  readonly newest = computed(() => Math.max(this.seen(), this.conCheckouts.updatedAt() ?? 0));
+  readonly newest = computed(() => Math.max(this.seen(), this.conCheckouts.updatedAt() ?? 0, this.serverScan()));
 
   /**
    * When scanning last worked, if the library is open and nothing has been recorded for

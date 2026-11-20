@@ -99,6 +99,84 @@ async function loadBellKeys(db, now) {
   return [...new Set([...Object.keys(data.bells || {}), ...Object.keys(bells)])];
 }
 
+// ---------------------------------------------------------------------------
+// Library desk watcher (added 2026-11-19, BGG.CON day 2).
+//
+// That afternoon the desk's scanning went down for hours and staff wrote barcodes by hand.
+// When they type the backlog in, Tabletop.Events stamps every entry with the time it was
+// typed, so for a while: "game is back" alerts fire for games that came back hours ago
+// (and may be out again), and play times get made-up lengths.
+//
+// So every 2 minutes (inside checkWatchedGames) the server asks how many games are checked
+// out: one small request that needs no sorting (Tabletop.Events' sort by checkout / check-in
+// time failed that day). Any scan changes that number. A gap of DESK_OUTAGE_MS or more that
+// started during the day, then changes again = staff catching up. For CATCH_UP_MS after:
+// - alerts wait ALERT_HOLD_MS and are re-checked before sending (heldBack below), and
+// - play times ignore checkouts / check-ins stamped in that window (trackPlayTimes).
+// Saved in meta/deskStatus (public: the app reads lastScanAt to tell whether the desk is
+// scanning). Written at most every 5 minutes, or when catch-up starts.
+// ---------------------------------------------------------------------------
+const DESK_STATUS = 'meta/deskStatus';
+const DESK_OUTAGE_MS = 30 * 60 * 1000;
+const CATCH_UP_MS = 90 * 60 * 1000;
+const ALERT_HOLD_MS = 10 * 60 * 1000;
+const DESK_SAVE_EVERY_MS = 5 * 60 * 1000;
+let desk = null;
+
+/** 9 AM-11 PM Dallas: a silent desk then is an outage, not a quiet night. */
+function libraryDaytime(ms) {
+  const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hourCycle: 'h23' }).format(ms));
+  return hour >= 9 && hour < 23;
+}
+
+/** Desk state after checking the checked-out count; catchingUp = in the window after an outage. */
+async function checkDesk(db, now) {
+  if (!desk) {
+    const saved = (await db.doc(DESK_STATUS).get()).data() || {};
+    const ms = v => v?.toMillis?.() || 0;
+    // watchingSince: when this server started counting, so an outage already under way when it
+    // started (e.g. deployed mid-outage) still counts once scanning resumes.
+    desk = { outCount: saved.outCount ?? null, lastScanAt: ms(saved.lastScanAt), watchingSince: now,
+      outageFrom: ms(saved.outageFrom), catchUpUntil: ms(saved.catchUpUntil), savedAt: 0 };
+  }
+  const r = await tteJson(`${LIBRARY_GAMES}?_items_per_page=1&is_in_circulation=1&is_checked_out=1`);
+  const count = Number(r?.paging?.total_items);
+  if (!Number.isFinite(count)) return { catchingUp: now < desk.catchUpUntil };
+
+  let save = false;
+  if (desk.outCount !== count) {
+    if (desk.outCount != null) {
+      const since = desk.lastScanAt || desk.watchingSince;
+      if (now - since >= DESK_OUTAGE_MS && libraryDaytime(since)) {
+        desk.outageFrom = since;
+        desk.catchUpUntil = now + CATCH_UP_MS;
+        save = true;
+        logger.warn(`desk: scanning resumed after ${Math.round((now - since) / 60000)} min; holding alerts and skipping play times for ${CATCH_UP_MS / 60000} min`);
+      }
+      desk.lastScanAt = now;
+    }
+    desk.outCount = count;
+    if (now - desk.savedAt >= DESK_SAVE_EVERY_MS) save = true;
+  }
+  if (save) {
+    const ts = ms => ms ? admin.firestore.Timestamp.fromMillis(ms) : null;
+    await db.doc(DESK_STATUS).set({ outCount: count, lastScanAt: ts(desk.lastScanAt), outageFrom: ts(desk.outageFrom),
+      catchUpUntil: ts(desk.catchUpUntil), updatedAt: ts(now) });
+    desk.savedAt = now;
+  }
+  return { catchingUp: now < desk.catchUpUntil };
+}
+
+/**
+ * Alerts waiting to be confirmed: gameId -> first time it was seen back. Used during catch-up,
+ * and when several belled games come back in one run (a burst of late entries looks like that).
+ * In memory: on a restart the bells are all checked directly again (checkinCursor = 0), so a
+ * held game is found again rather than lost.
+ */
+const heldBack = new Map();
+/** This many belled games back in one run = probably a backlog being typed in. */
+const BURST = 3;
+
 exports.checkWatchedGames = onSchedule({
   schedule: 'every 2 minutes',
   timeZone: 'America/Chicago',
@@ -117,7 +195,8 @@ exports.checkWatchedGames = onSchedule({
   // Starred-event reminders: every run, day and night (late-night events exist).
   await sendEventReminders(db, now).catch(err => logger.error('event reminders failed', err));
 
-  if (libraryQuietHours(now)) return;
+  if (libraryQuietHours(now) || tteCoolingDown()) return;
+  const { catchingUp } = await checkDesk(db, now).catch(err => { logger.error('desk check failed', err); return { catchingUp: false }; });
   const keys = await loadBellKeys(db, now);
   if (!keys.length) return;
 
@@ -131,7 +210,28 @@ exports.checkWatchedGames = onSchedule({
   }
 
   if (tteCoolingDown()) return;
-  const back = await gamesBack(byGame, now);
+  const found = await gamesBack(byGame, now);
+
+  // Hold instead of sending when the check-ins may be late entries; send held games once
+  // they've stayed on the shelf ALERT_HOLD_MS (re-checked directly), drop them if out again.
+  const back = new Map();
+  const hold = catchingUp || found.size >= BURST;
+  for (const [id, game] of found) {
+    if (!byGame.has(id)) continue;
+    if (hold || heldBack.has(id)) { if (!heldBack.has(id)) heldBack.set(id, now); }
+    else back.set(id, game);
+  }
+  for (const [id, since] of heldBack) {
+    if (!byGame.has(id)) { heldBack.delete(id); continue; }
+    if (now - since < ALERT_HOLD_MS) continue;
+    const { status, result: game } = await fetchGame(id);
+    if (status === 404 || (game && Number(game.is_checked_out) !== 0)) { heldBack.delete(id); continue; }
+    if (!game) continue; // couldn't reach Tabletop.Events: try again next run
+    heldBack.delete(id);
+    back.set(id, { ...game, _late: true });
+  }
+  if (found.size && hold) logger.info(`holding ${found.size} alerts for ${ALERT_HOLD_MS / 60000} min (${catchingUp ? 'desk catching up' : 'burst'})`);
+
   let sent = 0;
   for (const [gameId, game] of back) {
     {
@@ -177,10 +277,28 @@ exports.checkWatchedGames = onSchedule({
  */
 let checkinCursor = 0;
 const knownBells = new Set();
+let sortBrokenUntil = 0, lastFullCheck = 0;
+const SORT_DISTRUST_MS = 30 * 60 * 1000;
+const SORT_FALLBACK_EVERY_MS = 6 * 60 * 1000;
+
+/** True when items are newest first by that date field (a few seconds' slack for ties). */
+function newestFirst(items, field) {
+  for (let i = 1; i < items.length; i++) {
+    if (tteTime(items[i][field]) > tteTime(items[i - 1][field]) + 5000) return false;
+  }
+  return true;
+}
 
 async function gamesBack(byGame, now) {
   const back = new Map();
+  // Sorted list known to be unreliable: check every bell directly, but only every
+  // SORT_FALLBACK_EVERY_MS (not every 2 min), to stay gentle with Tabletop.Events.
+  if (now < sortBrokenUntil) {
+    if (now - lastFullCheck < SORT_FALLBACK_EVERY_MS) return new Map();
+    checkinCursor = 0;
+  }
   const direct = checkinCursor ? [...byGame.keys()].filter(id => !knownBells.has(id)) : [...byGame.keys()];
+  if (!checkinCursor) lastFullCheck = now;
   let ok = true;
 
   if (checkinCursor) {
@@ -189,6 +307,13 @@ async function gamesBack(byGame, now) {
     for (let page = 1; page <= 20; page++) {
       const r = await tteJson(`${LIBRARY_GAMES}?_items_per_page=100&_page_number=${page}&_order_by=last_checkin_date&_sort_order=desc`);
       if (!r?.items) { ok = false; break; }
+      if (!newestFirst(r.items, 'last_checkin_date')) {
+        // 2026-11-19: Tabletop.Events returned this list out of order. Read as sorted, the first
+        // old game ended the scan and alerts silently stopped. Distrust it for a while instead.
+        sortBrokenUntil = now + SORT_DISTRUST_MS;
+        logger.warn(`check-in list out of order: checking bells directly every ${SORT_FALLBACK_EVERY_MS / 60000} min for ${SORT_DISTRUST_MS / 60000} min`);
+        ok = false; break;
+      }
       let older = false;
       for (const g of r.items) {
         if (tteTime(g.last_checkin_date) < since) { older = true; break; }
@@ -328,7 +453,10 @@ async function notifyOwner(db, bell, game) {
   const payload = JSON.stringify({
     notification: {
       title: `${name} is back`,
-      body: `Available${shelf ? ` on shelf ${shelf}` : ''}${when ? `, checked in ${when}` : ''}.`,
+      // _late: confirmed after a desk outage; the check-in time is when it was typed in.
+      body: game._late
+        ? `Available${shelf ? ` on shelf ${shelf}` : ''}. The library's check-in was recorded late, so it may have been back a while.`
+        : `Available${shelf ? ` on shelf ${shelf}` : ''}${when ? `, checked in ${when}` : ''}.`,
       icon: `${APP_URL}icons/icon-192x192.png`,
       tag: bell.id,
       data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url: `${APP_URL}library/home?game=${encodeURIComponent(bell.id)}` } } },
@@ -540,6 +668,7 @@ async function trackConCheckouts(db, con) {
     const batch = await Promise.all(Array.from({ length: PARALLEL }, (_, i) => tteJson(url(page + i))));
     for (const r of batch) {
       if (!r?.items) return; // Tabletop.Events unreachable: keep the last list, try again next run
+      if (!newestFirst(r.items, 'last_checkout_date')) { logger.warn('checkout list out of order: skipping this run'); return; }
       for (const g of r.items) {
         const at = tteTime(g.last_checkout_date);
         if (at < cutoff) { done = true; break; }
@@ -641,6 +770,11 @@ async function trackPlayTimes(db, con, base, recentCheckouts) {
     // between runs (and copies seen twice) never counts one twice.
     state = { conId: con.id, inSeenUntil: base.open, lastIn: {}, lastOut: {}, sums: {} };
   }
+  // Times typed in after a desk outage are when they were entered, not when the game moved
+  // (checkDesk / meta/deskStatus): leave anything stamped from the outage to the end of catch-up out.
+  const deskDoc = (await db.doc(DESK_STATUS).get()).data() || {};
+  const outageFrom = deskDoc.outageFrom?.toMillis?.() || 0, catchUpUntil = deskDoc.catchUpUntil?.toMillis?.() || 0;
+  const typedLate = t => outageFrom && t >= outageFrom && t <= catchUpUntil;
   let changed = false;
   const add = (g, field, ms) => {
     const k = playKey(g);
@@ -653,6 +787,7 @@ async function trackPlayTimes(db, con, base, recentCheckouts) {
   const play = (g, out, back) => {
     if (!out || !(back > out) || state.lastIn[g.id] === back) return;
     state.lastIn[g.id] = back;
+    if (typedLate(out) || typedLate(back)) return;
     (state.inAt ||= {})[g.id] = Math.max(state.inAt[g.id] || 0, back);
     // A real play this con: checked out after opening. Over 10 open hours is a check-in
     // that was never scanned, not a play.
@@ -685,7 +820,7 @@ async function trackPlayTimes(db, con, base, recentCheckouts) {
     (state.outAt ||= {})[g.id] = out;
     state.lastOut[g.id] = out;
     // Shelf time only from a check-in during this con (not the pre-con intake scan).
-    if (shelfFrom >= base.open && shelfFrom < out) add(g, 's', openMs(shelfFrom, out));
+    if (shelfFrom >= base.open && shelfFrom < out && !typedLate(shelfFrom) && !typedLate(out)) add(g, 's', openMs(shelfFrom, out));
   }
 
   // Time out: copies checked in since the last run, newest first; stop at older ones.
@@ -695,6 +830,7 @@ async function trackPlayTimes(db, con, base, recentCheckouts) {
   outer: for (let page = 1; page <= 40; page++) {
     const r = await tteJson(url(page));
     if (!r?.items) return; // Tabletop.Events unreachable: nothing saved, try again next run
+    if (!newestFirst(r.items, 'last_checkin_date')) { logger.warn('check-in list out of order: play times skipped this run'); return; }
     for (const g of r.items) {
       const back = tteTime(g.last_checkin_date), out = tteTime(g.last_checkout_date);
       if (back < cutoff) break outer;

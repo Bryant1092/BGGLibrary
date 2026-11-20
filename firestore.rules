@@ -206,6 +206,11 @@ service cloud.firestore {
     match /meta/conPlayTimes {
       allow read: if true;
     }
+    // Whether the library desk is scanning (functions/index.js, checkDesk): when the server last
+    // saw the checked-out count change, and the catch-up window after an outage. No people.
+    match /meta/deskStatus {
+      allow read: if true;
+    }
 
     // Meeple codes: codes/{MEEP-XXXX} -> { uid }. Claimed once, in a transaction, so a
     // code can never belong to two people. Looked up one code at a time, never listed.
