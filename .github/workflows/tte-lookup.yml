@@ -1,0 +1,24 @@
+# Looks up library copies in Tabletop.Events (public data) and prints each copy's status,
+# shelf and barcode. For checking the app against what's on the shelves, from a phone.
+name: Library lookup (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      query:
+        description: Game name to search
+        required: true
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Look up
+        env:
+          Q: ${{ inputs.query }}
+        run: |
+          url="https://tabletop.events/api/library/0AEB11DA-2B7D-11EC-B400-855F800FD618/librarygames"
+          curl -sS -G "$url" --data-urlencode "query=$Q" --data-urlencode "_items_per_page=50" \
+            | jq -r '.result.items[] | [ .name, (.catalog_number // "-"), (if .is_checked_out == 1 then "OUT" else "in" end),
+                  ("out " + (.last_checkout_date // "-")), ("in " + (.last_checkin_date // "-")),
+                  ("shelf " + ((.custom_fields.Location // "-")|tostring)), ("circ " + ((.is_in_circulation // "-")|tostring)) ] | @tsv'
