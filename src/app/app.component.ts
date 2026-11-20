@@ -14,6 +14,7 @@ import { FirestoreConnection } from './service/firestore-connection';
 import { EventRemindersService } from './service/event-reminders.service';
 import { ReactionsService } from './service/reactions.service';
 import { PushService } from './service/push.service';
+import { NotificationTapsService } from './service/notification-taps.service';
 import { PrizeService } from './service/prize.service';
 import { NewsPromptComponent } from './shared/news-prompt.component';
 import { MapViewerComponent } from './shared/map-viewer.component';
@@ -42,6 +43,8 @@ export class AppComponent implements OnInit {
   private deskActivity = inject(DeskActivity);
   private reactions = inject(ReactionsService);
   private push = inject(PushService);
+  // Notification taps open their page (iPhone ignores the service worker's own navigation).
+  private notificationTaps = inject(NotificationTapsService);
   prize = inject(PrizeService);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);

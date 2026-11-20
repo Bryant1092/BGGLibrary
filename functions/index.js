@@ -421,7 +421,7 @@ async function remindOwner(db, star, start, now) {
       icon: `${APP_URL}icons/icon-192x192.png`,
       tag: `event-${star.id}`,
       // Opens the event's details in the Events tab.
-      data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url: `${APP_URL}events?event=${encodeURIComponent(star.id)}` } } },
+      data: { onActionClick: { default: { operation: 'focusLastFocusedOrOpen', url: `${APP_URL}events?event=${encodeURIComponent(star.id)}` } } },
     },
   });
   let sent = 0;
@@ -512,7 +512,7 @@ async function notifyOwner(db, bell, game) {
       icon: `${APP_URL}icons/icon-192x192.png`,
       tag: bell.id,
       // Opens the Alerts tab with this game's details (2026-11-20; before, the Library tab).
-      data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url: `${APP_URL}alerts?game=${encodeURIComponent(bell.id)}` } } },
+      data: { onActionClick: { default: { operation: 'focusLastFocusedOrOpen', url: `${APP_URL}alerts?game=${encodeURIComponent(bell.id)}` } } },
     },
   });
   let sent = 0;

@@ -290,7 +290,7 @@ export class WatchService {
     const url = new URL(`alerts?game=${encodeURIComponent(tag)}`, document.baseURI).href;
     const options: NotificationOptions & { data: unknown } = {
       body, tag, icon: new URL('icons/icon-192x192.png', document.baseURI).href,
-      data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url } } },
+      data: { onActionClick: { default: { operation: 'focusLastFocusedOrOpen', url } } },
     };
     try {
       const registration = await navigator.serviceWorker?.getRegistration();
