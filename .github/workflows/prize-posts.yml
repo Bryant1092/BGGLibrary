@@ -19,13 +19,15 @@ jobs:
           N: ${{ inputs.count }}
         run: |
           curl -sS -G "https://tabletop.events/api/convention/CC4FC78E-17EC-11F1-9082-3FD444321FD1/updates" \
-            --data-urlencode "_items_per_page=$N" --data-urlencode "_order_by=date_published" --data-urlencode "_sort_order=desc" > /tmp/u.json
+            --data-urlencode "_items_per_page=100" > /tmp/u.json
           python3 - <<'PY'
           import json, re, html
           strip = lambda s: re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', s))).strip()
-          for u in json.load(open('/tmp/u.json'))['result']['items']:
-              body = u.get('body') or u.get('description') or ''
-              print('==', u.get('name'), '|', u.get('date_published'))
+          import os
+          items = [u for u in json.load(open('/tmp/u.json'))['result']['items'] if u.get('published') == 1 and u.get('date_posted')]
+          for u in sorted(items, key=lambda u: u['date_posted'], reverse=True)[:int(os.environ['N'])]:
+              body = u.get('body_html') or ''
+              print('==', u.get('name'), '|', u.get('date_posted'))
               for m in re.finditer(r'<table[\s\S]*?</table>', body, re.I):
                   rows = re.findall(r'<tr[\s\S]*?</tr>', m.group(0), re.I)
                   head = [strip(c) for c in re.findall(r'<t[hd][^>]*>([\s\S]*?)</t[hd]>', rows[0] if rows else '', re.I)]
