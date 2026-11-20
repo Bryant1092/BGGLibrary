@@ -280,6 +280,7 @@ exports.checkWatchedGames = onSchedule({
           await db.doc(WATCH_INDEX).update(new admin.firestore.FieldPath('bells', uid + KEY_SEP + gameId), admin.firestore.FieldValue.delete()).catch(() => {});
           continue;
         }
+        await saveAlert(db, bell, game);
         const n = await notifyOwner(db, bell, game);
         sent += n;
         if (n === 0) {
@@ -474,6 +475,20 @@ function fetchGame(id) {
   return tteGet(TTE_GAME(id), 15000);
 }
 
+/**
+ * Keeps the alert for the app's Alerts tab: users/{uid}/alerts/{gameId}_{checkedInMs}. The app saves
+ * the alerts it shows under the same id, so each check-in is listed once. create() (not set): an alert
+ * already there keeps its time, so a bell kept for the app (no push address) isn't "new" every run.
+ */
+async function saveAlert(db, bell, game) {
+  const uid = bell.ref.parent.parent.id;
+  const checkedInAt = tteTime(game.last_checkin_date) || 0;
+  await db.collection('users').doc(uid).collection('alerts').doc(`${game.id}_${checkedInAt}`).create({
+    gameId: game.id, name: bell.data().name || game.name || '', shelf: String(game.custom_fields?.Location || bell.data().shelf || ''),
+    checkedInAt, createdAt: Date.now(), late: !!game._late,
+  }).catch(err => { if (err.code !== 6) logger.warn('could not save alert', err.message); }); // 6 = already exists
+}
+
 /** Sends "X is back" to every phone of the bell's owner; returns how many were sent. */
 async function notifyOwner(db, bell, game) {
   const uid = bell.ref.parent.parent.id;
@@ -496,7 +511,8 @@ async function notifyOwner(db, bell, game) {
         : `Available${shelf ? ` on shelf ${shelf}` : ''}${when ? `, checked in ${when}` : ''}.`,
       icon: `${APP_URL}icons/icon-192x192.png`,
       tag: bell.id,
-      data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url: `${APP_URL}library/home?game=${encodeURIComponent(bell.id)}` } } },
+      // Opens the Alerts tab with this game's details (2026-11-20; before, the Library tab).
+      data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url: `${APP_URL}alerts?game=${encodeURIComponent(bell.id)}` } } },
     },
   });
   let sent = 0;

@@ -447,7 +447,7 @@ body {
   /* Its own layer: iPhone then draws it apart from the scrolling page, so fast flick-scrolling
      doesn't make it jump (2026-11-19). */
   transform: translateZ(0);
-  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing: border-box; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   border-top: 1px solid var(--bl-hair); background: var(--bl-surface);
 }
 /* Hidden while typing on a phone (AppComponent.hideTabBarWhileTyping): the keyboard covers

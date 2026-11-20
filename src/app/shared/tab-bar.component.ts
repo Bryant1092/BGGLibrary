@@ -2,10 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ConInfoService } from '../service/con-info.service';
 import { FriendsService } from '../service/friends.service';
+import { AlertsService } from '../service/alerts.service';
 import { IconComponent } from './icon.component';
 
 /**
- * Bottom navigation (Library / My Lists / Events / Account), replacing the top navbar
+ * Bottom navigation (Library / My Lists / Events / Alerts / Account), replacing the top navbar
  * and its hamburger menu. With only four places to go, tabs keep them one tap
  * away and within thumb reach on a phone, which is how both iOS and Android
  * apps place top-level navigation (both allow up to 5 tabs).
@@ -37,6 +38,14 @@ import { IconComponent } from './icon.component';
         </span>
         Events
       </a>
+      <!-- "Game is back" alerts not seen yet (AlertsService; added 2026-11-20). Opening the tab clears it. -->
+      <a routerLink="/alerts" routerLinkActive="active" ariaCurrentWhenActive="page" [attr.aria-label]="alertsLabel()">
+        <span class="bl-tab-icon">
+          <bl-icon name="bellOutline" [size]="24" />
+          @if (alerts()) { <span class="bl-count" aria-hidden="true">{{ alerts() > 9 ? '9+' : alerts() }}</span> }
+        </span>
+        Alerts
+      </a>
       <!-- Friend requests waiting for an answer: same number badge as Events. -->
       <a routerLink="/account" routerLinkActive="active" ariaCurrentWhenActive="page" [attr.aria-label]="accountLabel()">
         <span class="bl-tab-icon">
@@ -52,6 +61,11 @@ export class TabBarComponent {
   private info = inject(ConInfoService);
   unread = this.info.unreadCount;
   private friends = inject(FriendsService);
+  alerts = inject(AlertsService).unseen;
+  alertsLabel = computed(() => {
+    const n = this.alerts();
+    return n ? `Alerts, ${n} new` : null;
+  });
   requests = computed(() => this.friends.incoming().length);
   accountLabel = computed(() => {
     const n = this.requests();

@@ -9,6 +9,7 @@ import { ToastService } from './toast.service';
 import { UserService } from './user.service';
 import { ALERT_HOLD_MS, DeskActivity } from './desk-activity.service';
 import { PushService } from './push.service';
+import { AlertsService } from './alerts.service';
 import { parseTteDate } from '../util/time-ago';
 import { formatLibraryTime } from '../util/library-time';
 
@@ -56,6 +57,7 @@ export class WatchService {
   private firestore = inject(Firestore);
   private push = inject(PushService);
   private desk = inject(DeskActivity);
+  private alerts = inject(AlertsService);
 
   /** Watched games by id, for the signed-in account (or "guest"). */
   readonly watched = signal<Map<string, WatchedGame>>(new Map());
@@ -270,8 +272,11 @@ export class WatchService {
     const t = parseTteDate(checkedIn)?.getTime();
     const when = t ? `checked in ${formatLibraryTime(t)}` : '';
     const text = `${game.name} is back${when ? ' (' + when + ')' : ''}, shelf ${game.shelf}`;
-    this.toast.show({ text, actionLabel: 'My Lists', action: () => this.router.navigate(['/library/user']) }, 10_000);
+    this.toast.show({ text, actionLabel: 'View', action: () => this.router.navigate(['/alerts'], { queryParams: { game: game.id } }) }, 10_000);
     this.showPhoneNotification(`${game.name} is back`, `Available on shelf ${game.shelf}${when ? ', ' + when : ''}.`, game.id);
+    // Kept in the Alerts tab. Same id as the server's for this check-in, so it's listed once.
+    this.alerts.record({ gameId: game.id, name: game.name, shelf: game.shelf || '', checkedInAt: t || 0,
+      late: Date.now() < this.desk.catchUpUntil() });
   }
 
   /**
@@ -281,8 +286,8 @@ export class WatchService {
    */
   private async showPhoneNotification(title: string, body: string, tag: string): Promise<void> {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    // Opens that game's details (the tag is the game id), like the server's notification.
-    const url = new URL(`library/home?game=${encodeURIComponent(tag)}`, document.baseURI).href;
+    // Opens the Alerts tab with that game's details (the tag is the game id), like the server's.
+    const url = new URL(`alerts?game=${encodeURIComponent(tag)}`, document.baseURI).href;
     const options: NotificationOptions & { data: unknown } = {
       body, tag, icon: new URL('icons/icon-192x192.png', document.baseURI).href,
       data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url } } },

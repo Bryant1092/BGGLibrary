@@ -96,6 +96,19 @@ service cloud.firestore {
       // phone that allowed notifications (its web push address). Only you. The server
       // job (functions/index.js) reads them with admin access and removes a bell
       // once it has fired.
+      // "Game is back" history for the Alerts tab (src/app/service/alerts.service.ts). Saved once
+      // per check-in by the app or the server (the server skips these rules); never changed after,
+      // so a re-check can't mark an old alert new again. Only the owner reads them.
+      match /alerts/{alertId} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['gameId', 'name', 'shelf', 'checkedInAt', 'createdAt', 'late'])
+          && request.resource.data.gameId is string && request.resource.data.gameId.size() <= 100
+          && request.resource.data.name is string && request.resource.data.name.size() <= 200
+          && request.resource.data.shelf is string && request.resource.data.shelf.size() <= 40
+          && request.resource.data.checkedInAt is number && request.resource.data.createdAt is number
+          && request.resource.data.late is bool;
+      }
       match /watches/{gameId} {
         allow read, delete: if signedIn() && request.auth.uid == uid;
         allow create, update: if signedIn() && request.auth.uid == uid

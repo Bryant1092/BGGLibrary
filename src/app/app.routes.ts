@@ -17,6 +17,7 @@ export const routes: Routes = [
     { path: 'library/home', component: LibraryComponent, title: 'Library - BGG Library'},
     { path: 'library/user', loadComponent: () => import('./lists/lists.component').then(m => m.ListsComponent), title: 'My Lists - BGG Library', canActivate: [authGuard]},
     { path: 'events', loadComponent: () => import('./events/events.component').then(m => m.EventsComponent), title: 'Events - BGG Library'},
+    { path: 'alerts', loadComponent: () => import('./alerts/alerts.component').then(m => m.AlertsComponent), title: 'Alerts - BGG Library'},
     { path: 'account', loadComponent: () => import('./account/account.component').then(m => m.AccountComponent), title: 'Account - BGG Library'},
     { path: '**', loadComponent: () => import('./page-not-fount/page-not-fount.component').then(m => m.PageNotFountComponent), title: 'Page Not Found - BGG Library' }
 ];
