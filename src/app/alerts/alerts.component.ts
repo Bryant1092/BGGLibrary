@@ -61,33 +61,24 @@ const REFRESH_MS = 2 * 60_000;
           @for (s of sections(); track s.key) {
             <h2 class="bl-section">{{ s.title }}</h2>
             @for (g of s.groups; track g.key) {
+              <!-- A burst (a backlog typed in at once) gets a heading; its games are normal rows below it. -->
               @if (g.burst) {
-                <div class="burst">
-                  <div class="burst-head"><strong>{{ g.title }}</strong><span>{{ g.when }}</span></div>
-                  @for (r of g.rows; track r.alert.id) {
-                    <button type="button" class="burst-row" (click)="open(r.alert)" [attr.aria-label]="label(r)">
-                      @if (r.isNew) { <span class="new-dot" aria-hidden="true"></span> }
-                      <span class="name">{{ r.alert.name }}</span>
-                      <span class="status small" [class]="r.status.kind" aria-hidden="true">
-                        {{ r.status.text }}@if (r.status.shelf) { <bl-icon name="pin" [size]="12" [stroke]="2.6" />{{ r.status.shelf }} }
-                      </span>
-                    </button>
-                  }
-                </div>
-              } @else {
-                @for (r of g.rows; track r.alert.id) {
-                  <button type="button" class="row" [class.is-new]="r.isNew" (click)="open(r.alert)" [attr.aria-label]="label(r)">
-                    <span class="dot-slot">@if (r.isNew) { <span class="new-dot" aria-hidden="true"></span> }</span>
-                    <app-thumb [src]="r.thumb" [name]="r.alert.name" [size]="48" [radius]="8" />
-                    <span class="text">
-                      <strong>{{ r.alert.name }} is back</strong>
-                      <span>{{ r.when }}</span>
-                    </span>
-                    <span class="status" [class]="r.status.kind" aria-hidden="true">
-                      {{ r.status.text }}@if (r.status.shelf) { <bl-icon name="pin" [size]="13" [stroke]="2.6" />{{ r.status.shelf }} }
-                    </span>
-                  </button>
-                }
+                <div class="burst-head"><strong>{{ g.title }}</strong><span>{{ g.when }}</span></div>
+              }
+              @for (r of g.rows; track r.alert.id) {
+                <button type="button" class="row" [class.is-new]="r.isNew" (click)="open(r.alert)" [attr.aria-label]="label(r)">
+                  <span class="dot-slot">@if (r.isNew) { <span class="new-dot" aria-hidden="true"></span> }</span>
+                  <app-thumb [src]="r.thumb" [name]="r.alert.name" [size]="44" [radius]="8" />
+                  <span class="text">
+                    <strong>{{ r.alert.name }}</strong>
+                    <span>{{ r.when }}</span>
+                  </span>
+                  <!-- Fixed-width column: every pill the same width, location under it, so the eye runs straight down. -->
+                  <span class="status-col" aria-hidden="true">
+                    <span class="status" [class]="r.status.kind">{{ r.status.text }}</span>
+                    @if (r.status.shelf) { <span class="where"><bl-icon name="pin" [size]="13" [stroke]="2.4" />{{ r.status.shelf }}</span> }
+                  </span>
+                </button>
               }
             }
           }
@@ -110,29 +101,27 @@ const REFRESH_MS = 2 * 60_000;
   `,
   styles: `
     .intro { margin: 0; padding: 12px 16px 0; font-size: 14px; line-height: 19px; color: var(--bl-muted); }
-    .row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 68px; padding: 10px 16px 10px 8px; border: 0;
-      border-bottom: 1px solid var(--bl-hair); background: none; color: inherit; font: inherit; text-align: left; }
+    .row { display: grid; grid-template-columns: 10px 44px minmax(0, 1fr) 108px; align-items: center; column-gap: 10px;
+      width: 100%; min-height: 64px; padding: 8px 16px 8px 6px; border: 0; background: none; color: inherit; font: inherit;
+      text-align: left; position: relative; }
+    /* Thin divider from the name to the right edge (iOS list style), so each status reads with its own game. */
+    .row::after { content: ""; position: absolute; left: 70px; right: 0; bottom: 0; height: 1px; background: var(--bl-hair); }
     .row.is-new { background: var(--bl-field); }
-    .dot-slot { width: 10px; flex: none; display: flex; justify-content: center; }
-    .new-dot { width: 8px; height: 8px; border-radius: 4px; background: var(--bl-accent-text); flex: none; }
-    .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    .text strong { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .text span { font-size: 14px; color: var(--bl-muted); }
-    .status { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; }
-    .status.small { padding: 3px 9px; font-size: 12px; }
-    .status bl-icon { margin-left: 2px; }
+    .dot-slot { display: flex; justify-content: center; }
+    .new-dot { width: 8px; height: 8px; border-radius: 4px; background: var(--bl-accent-text); }
+    .text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .text strong { font-size: 16px; line-height: 20px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .text span { font-size: 13px; color: var(--bl-muted); }
+    .status-col { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+    .status { display: block; padding: 5px 0; border-radius: 999px; font-size: 13px; font-weight: 700; text-align: center; white-space: nowrap; }
     .status.in { background: var(--bl-avail-bg); color: var(--bl-avail-fg); }
     .status.out { background: var(--bl-out-bg); color: var(--bl-out-fg); }
-    .status.maybe { background: var(--bl-late-bg); color: var(--bl-late-fg); border: 1px solid var(--bl-late-border); }
-    .status.checking { background: var(--bl-field); color: var(--bl-muted); }
-    .burst { padding: 10px 16px 6px 26px; border-bottom: 1px solid var(--bl-hair); display: flex; flex-direction: column; }
-    .burst-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
-    .burst-head strong { flex: 1; font-size: 16px; }
-    .burst-head span { font-size: 14px; color: var(--bl-muted); }
-    .burst-row { display: flex; align-items: center; gap: 8px; min-height: 44px; border: 0; background: none; color: inherit;
-      font: inherit; font-size: 15px; text-align: left; padding: 0; position: relative; }
-    .burst-row .new-dot { position: absolute; left: -14px; }
-    .burst-row .name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .status.maybe { background: var(--bl-late-bg); color: var(--bl-late-fg); box-shadow: inset 0 0 0 1px var(--bl-late-border); }
+    .status.checking { background: var(--bl-field); color: var(--bl-muted); font-weight: 600; }
+    .where { display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 13px; font-weight: 700; color: var(--bl-text); }
+    .burst-head { display: flex; align-items: baseline; gap: 8px; padding: 10px 16px 4px 30px; }
+    .burst-head strong { flex: 1; font-size: 15px; }
+    .burst-head span { font-size: 13px; color: var(--bl-muted); }
     .kept { margin: 0; padding: 16px; font-size: 13px; color: var(--bl-muted); text-align: center; }
     .empty { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 80px 40px; text-align: center; }
     .empty-icon { width: 72px; height: 72px; border-radius: 36px; background: var(--bl-field); color: var(--bl-accent-text); display: flex; align-items: center; justify-content: center; }
