@@ -101,7 +101,7 @@ const REFRESH_MS = 2 * 60_000;
   `,
   styles: `
     .intro { margin: 0; padding: 12px 16px 0; font-size: 14px; line-height: 19px; color: var(--bl-muted); }
-    .row { display: grid; grid-template-columns: 10px 44px minmax(0, 1fr) 108px; align-items: center; column-gap: 10px;
+    .row { display: grid; grid-template-columns: 10px 44px minmax(0, 1fr) minmax(108px, max-content); align-items: center; column-gap: 10px;
       width: 100%; min-height: 64px; padding: 8px 16px 8px 6px; border: 0; background: none; color: inherit; font: inherit;
       text-align: left; position: relative; }
     /* Thin divider from the name to the right edge (iOS list style), so each status reads with its own game. */
@@ -113,7 +113,7 @@ const REFRESH_MS = 2 * 60_000;
     .text strong { font-size: 16px; line-height: 20px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .text span { font-size: 13px; color: var(--bl-muted); }
     .status-col { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
-    .status { display: block; padding: 5px 0; border-radius: 999px; font-size: 13px; font-weight: 700; text-align: center; white-space: nowrap; }
+    .status { display: block; padding: 5px 10px; box-sizing: border-box; border-radius: 999px; font-size: 13px; font-weight: 700; text-align: center; white-space: nowrap; }
     .status.in { background: var(--bl-avail-bg); color: var(--bl-avail-fg); }
     .status.out { background: var(--bl-out-bg); color: var(--bl-out-fg); }
     .status.maybe { background: var(--bl-late-bg); color: var(--bl-late-fg); box-shadow: inset 0 0 0 1px var(--bl-late-border); }
@@ -246,7 +246,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
     if (item === undefined) return { kind: 'checking', text: 'Checking…', shelf: '' };
     if (item === null) return { kind: 'checking', text: "Couldn't check", shelf: '' };
     const latest = Math.max(parseTteDate(item.last_checkin_date)?.getTime() ?? 0, parseTteDate(item.last_checkout_date)?.getTime() ?? 0);
-    if (unconfirmedBefore != null && latest < unconfirmedBefore) return { kind: 'maybe', text: 'May be wrong', shelf: '' };
+    if (unconfirmedBefore != null && latest < unconfirmedBefore) return { kind: 'maybe', text: 'Not sure', shelf: '' };
     return item.is_checked_out ? { kind: 'out', text: 'Out again', shelf: '' } : { kind: 'in', text: 'Available', shelf: shelfText(item) };
   }
 

@@ -1,11 +1,19 @@
 <router-outlet />
 <!-- Hidden only on the 404 page, which has its own full-screen layout. -->
 @if (!isHideNav) {
-  <app-toast />
-  <!-- "A new version of the app is ready · Update" (AppUpdateService). -->
-  <app-update-bar />
-  <!-- "New from BGG" message above the tab bar (see NewsPromptComponent). -->
-  <app-news-prompt />
+  <!--
+    One stack above the tab bar for everything that pops up there, so they never cover
+    each other (asked 2026-11-21: a "game is back" toast landed on top of "New from BGG").
+    Quick messages sit on top, the ones that wait for you sit next to the tab bar, like
+    Material's rule that snackbars go above other bottom elements, not in front of them.
+  -->
+  <div class="bl-dock">
+    <app-toast />
+    <!-- "A new version of the app is ready · Update" (AppUpdateService). -->
+    <app-update-bar />
+    <!-- "New from BGG" message above the tab bar (see NewsPromptComponent). -->
+    <app-news-prompt />
+  </div>
   <app-tab-bar />
 }
 

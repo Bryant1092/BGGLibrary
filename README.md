@@ -368,6 +368,8 @@ Built from an iPhone during the con (Nov 18–22). Newest first; the commit hist
 
 | Date | Change |
 |---|---|
+| Nov 21 | Pop-ups above the tab bar stack instead of overlapping (toast above "New from BGG"); Alerts tab status "May be wrong" → "Not sure" so it fits its pill |
+| Nov 21 | Tabletop.Events outage handling: games open offline, Library lists all games from the phone, fast-fail requests, one banner |
 | Nov 20 | Bells answer to any copy of a game (5-copy games like Hell of a Deal); 15-minute quiet period for automatic bells |
 | Nov 20 | Pre-deploy checks (lint, functions syntax, tests report-only) in gentle mode |
 | Nov 20 | Notification titles drop edition notes so "is back" fits |
