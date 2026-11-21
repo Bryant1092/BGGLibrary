@@ -26,12 +26,12 @@ jobs:
           pt = datetime.now(ZoneInfo('America/Los_Angeles'))
           start = pt.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
           month = pt.replace(day=1, hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
-          def total(metric, since, extra=''):
+          def total(metric, since, extra='', until=None):
               q = {
                 'filter': f'metric.type="{metric}"{extra}',
                 'interval.startTime': since.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                'interval.endTime': now.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                'aggregation.alignmentPeriod': f'{int((now - since).total_seconds()) + 60}s',
+                'interval.endTime': (until or now).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'aggregation.alignmentPeriod': f'{int(((until or now) - since).total_seconds()) + 60}s',
                 'aggregation.perSeriesAligner': 'ALIGN_SUM',
                 'aggregation.crossSeriesReducer': 'REDUCE_SUM',
               }
@@ -52,6 +52,13 @@ jobs:
                   print(f'{label:34} {value}'); return
               pct = f'{100 * value / limit:5.1f}% of {limit:,}' if limit else ''
               print(f'{label:34} {value:>12,.0f}   {pct}')
+          def firestore(title, since, until=None):
+              print(title)
+              show('  Firestore reads', total('firestore.googleapis.com/document/read_ops_count', since, until=until), 50000)
+              show('  Firestore writes', total('firestore.googleapis.com/document/write_ops_count', since, until=until), 20000)
+              show('  Firestore deletes', total('firestore.googleapis.com/document/delete_ops_count', since, until=until), 20000)
+          firestore(f'Yesterday, full free-quota day ({start - timedelta(days=1):%a %b %d}, midnight-midnight Pacific):', start - timedelta(days=1), start)
+          firestore('Last 24 hours:', now - timedelta(hours=24))
           hours = (now - start).total_seconds() / 3600
           print(f'Since midnight Pacific ({hours:.1f} h ago):')
           show('Firestore reads', total('firestore.googleapis.com/document/read_ops_count', start), 50000)
