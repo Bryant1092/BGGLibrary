@@ -64,6 +64,20 @@ jobs:
           show('Firestore reads', total('firestore.googleapis.com/document/read_ops_count', start), 50000)
           show('Firestore writes', total('firestore.googleapis.com/document/write_ops_count', start), 20000)
           show('Firestore deletes', total('firestore.googleapis.com/document/delete_ops_count', start), 20000)
+          # Bells right now, from the one summary document (1 read). Counts only, no ids printed.
+          url = f'https://firestore.googleapis.com/v1/projects/{P}/databases/(default)/documents/meta/watchIndex'
+          try:
+              doc = json.load(urllib.request.urlopen(urllib.request.Request(url, headers={'Authorization': 'Bearer ' + os.environ['TOKEN']})))
+              keys = list(doc.get('fields', {}).get('bells', {}).get('mapValue', {}).get('fields', {}).keys())
+              per = {}
+              for k in keys:
+                  uid, _, game = k.partition('__')
+                  per.setdefault(uid, set()).add(game)
+              games = {k.partition('__')[2] for k in keys}
+              sizes = sorted((len(v) for v in per.values()), reverse=True)
+              print(f'\nBells now: {len(keys)} bells, {len(per)} people, {len(games)} different games; per person: {sizes}')
+          except Exception as e:
+              print('\nBells now: could not read', e)
           print(f'\nThis month (since {month:%b} 1):')
           show('Function requests', total('run.googleapis.com/request_count', month), 2000000)
           show('Function billable time (seconds)', total('run.googleapis.com/container/billable_instance_time', month), 0)
