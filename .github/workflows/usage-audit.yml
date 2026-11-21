@@ -1,0 +1,88 @@
+# One-off deep check of what Firebase/Google Cloud usage is made of (bgg-library-test), to
+# confirm the free-tier math before changing the watcher. Totals and settings only.
+name: Usage audit (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    if: github.repository == 'Bryant1092/BGGLibrary'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Service account
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+      - name: Function settings
+        run: |
+          gcloud auth activate-service-account --key-file="$RUNNER_TEMP/sa.json" --quiet
+          for f in checkwatchedgames checkprizedrawings syncwatchindex; do
+            echo "== $f"
+            gcloud run services describe "$f" --project bgg-library-test --region us-central1 --format=json 2>&1 \
+              | python3 -c "
+          import json,sys
+          try: d=json.load(sys.stdin)
+          except Exception as e: print('  not readable'); sys.exit()
+          t=d['spec']['template']; a=t['metadata'].get('annotations',{}); c=t['spec']['containers'][0]
+          print('  cpu', c['resources']['limits'].get('cpu'), 'memory', c['resources']['limits'].get('memory'))
+          print('  cpu throttling (true = billed only while running):', a.get('run.googleapis.com/cpu-throttling','(default: true)'))
+          print('  min instances:', a.get('autoscaling.knative.dev/minScale','0'), ' max instances:', a.get('autoscaling.knative.dev/maxScale'))
+          print('  concurrency:', t['spec'].get('containerConcurrency'), ' timeout:', t['spec'].get('timeoutSeconds'))
+          "
+          done
+      - name: Scheduler jobs, image storage
+        run: |
+          echo "== Scheduler jobs (3 free per billing account)"
+          gcloud scheduler jobs list --project bgg-library-test --location us-central1 --format="value(name.basename(),schedule,state)" 2>&1 | tail -5
+          echo "== Artifact Registry (0.5 GB free)"
+          gcloud artifacts repositories list --project bgg-library-test --format="value(name.basename(),sizeBytes)" 2>&1 | tail -5
+      - name: Usage breakdown
+        run: |
+          export TOKEN=$(gcloud auth print-access-token)
+          python3 - <<'EOF'
+          import json, os, urllib.parse, urllib.request
+          from datetime import datetime, timedelta, timezone
+          from zoneinfo import ZoneInfo
+          P = 'bgg-library-test'
+          now = datetime.now(timezone.utc)
+          pt = datetime.now(ZoneInfo('America/Los_Angeles'))
+          today = pt.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+          month = pt.replace(day=1, hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+          def series(metric, since, until, align, aligner='ALIGN_SUM', group=None, reducer='REDUCE_SUM'):
+              q = {'filter': f'metric.type="{metric}"', 'interval.startTime': since.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                   'interval.endTime': until.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                   'aggregation.alignmentPeriod': f'{align}s', 'aggregation.perSeriesAligner': aligner,
+                   'aggregation.crossSeriesReducer': reducer}
+              if group: q['aggregation.groupByFields'] = group
+              url = f'https://monitoring.googleapis.com/v3/projects/{P}/timeSeries?' + urllib.parse.urlencode(q)
+              try:
+                  return json.load(urllib.request.urlopen(urllib.request.Request(url, headers={'Authorization': 'Bearer ' + os.environ['TOKEN']}))).get('timeSeries', [])
+              except urllib.error.HTTPError as e:
+                  print('  error', e.code, e.read().decode()[:150]); return []
+          val = lambda p: float(p['value'].get('int64Value', p['value'].get('doubleValue', 0)))
+          span = lambda a, b: int((b - a).total_seconds()) + 60
+          print('== Functions this month, per service')
+          for m, label in [('run.googleapis.com/request_count', 'runs'), ('run.googleapis.com/container/billable_instance_time', 'billable s')]:
+              for ts in series(m, month, now, span(month, now), group='resource.label.service_name'):
+                  name = ts['resource']['labels'].get('service_name', '?')
+                  print(f'  {name:22} {label:11} {sum(val(p) for p in ts["points"]):>10,.0f}')
+          print('== Functions, last 6 hours (billable seconds per hour, checkwatchedgames)')
+          for ts in series('run.googleapis.com/container/billable_instance_time', now - timedelta(hours=6), now, 3600, group='resource.label.service_name'):
+              if ts['resource']['labels'].get('service_name') == 'checkwatchedgames':
+                  pts = sorted(ts['points'], key=lambda p: p['interval']['endTime'])
+                  print('  ' + ', '.join(f"{datetime.fromisoformat(p['interval']['endTime'].replace('Z','+00:00')).astimezone(ZoneInfo('America/Chicago')):%H:%M} {val(p):.0f}s" for p in pts))
+          print('== Firestore reads per hour, Friday (Central time)')
+          fri0 = today - timedelta(days=1)
+          for m in ['firestore.googleapis.com/document/read_ops_count', 'firestore.googleapis.com/document/write_ops_count']:
+              for ts in series(m, fri0, today, 3600):
+                  pts = sorted(ts['points'], key=lambda p: p['interval']['endTime'])
+                  print('  ' + m.split('/')[-1] + ': ' + ', '.join(f"{datetime.fromisoformat(p['interval']['endTime'].replace('Z','+00:00')).astimezone(ZoneInfo('America/Chicago')):%-I%p} {val(p):.0f}" for p in pts))
+          print('== Firestore reads by day this month')
+          for ts in series('firestore.googleapis.com/document/read_ops_count', month, today, 86400):
+              print('  ' + ', '.join(f"{datetime.fromisoformat(p['interval']['startTime'].replace('Z','+00:00')).astimezone(ZoneInfo('America/Los_Angeles')):%b %d} {val(p):.0f}" for p in sorted(ts['points'], key=lambda p: p['interval']['endTime'])))
+          print('== Network egress this month (1 GiB free in North America)')
+          for ts in series('run.googleapis.com/container/network/sent_bytes_count', month, now, span(month, now), group='resource.label.service_name'):
+              print(f"  {ts['resource']['labels'].get('service_name'):22} {sum(val(p) for p in ts['points'])/1e6:,.1f} MB sent")
+          EOF
+      - name: Clean up key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
