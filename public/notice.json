@@ -1,7 +1,7 @@
 {
-  "message": "Tabletop.Events (the library's scanning and checkout system) has not been responding since about 1:05 PM. The desk may be writing checkouts by hand, so game statuses are frozen and \"is back\" alerts are paused until it recovers.",
-  "until": "2026-11-21T23:59:00-06:00",
-  "deskDown": true,
-  "deskDownSince": "2026-11-21T13:05:00-06:00",
-  "deskBackAt": "2026-11-19T21:10:00-06:00"
+  "message": "",
+  "until": "",
+  "deskDown": false,
+  "deskDownSince": "",
+  "deskBackAt": "2026-11-21T13:30:00-06:00"
 }
