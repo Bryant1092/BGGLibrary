@@ -82,6 +82,12 @@ jobs:
           show('Function requests', total('run.googleapis.com/request_count', month), 2000000)
           show('Function billable time (seconds)', total('run.googleapis.com/container/billable_instance_time', month), 0)
           EOF
+      - name: Function sizes (CPU and memory)
+        run: |
+          for f in checkwatchedgames checkprizedrawings; do
+            gcloud run services describe "$f" --project bgg-library-test --region us-central1 \
+              --format="value(metadata.name,spec.template.spec.containers[0].resources.limits.cpu,spec.template.spec.containers[0].resources.limits.memory)" 2>&1 | tail -1
+          done
       - name: Clean up key
         if: always()
         run: rm -f "$RUNNER_TEMP/sa.json"
