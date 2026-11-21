@@ -77,6 +77,11 @@ export class LocalSearchService {
    * Games whose name contains every word typed, in any order ("dragon dice" finds
    * "Dice & Dragons"). A–Z, the same order as the saved list.
    */
+  /** Every saved game, A–Z: the Library list while Tabletop.Events can't be reached. */
+  all(): SearchGame[] {
+    return this.ready() ? this.games : [];
+  }
+
   search(query: string): SearchGame[] {
     const words = searchKey(query).trim().split(' ').filter(Boolean);
     if (!words.length || !this.ready()) return [];

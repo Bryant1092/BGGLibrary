@@ -1,5 +1,6 @@
 import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpRequest, HttpResponse } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
+import { deskManual } from '../util/desk-state';
 import { Observable, retry, tap, throwError, timeout, timer } from 'rxjs';
 import { DeskActivity } from './desk-activity.service';
 
@@ -14,6 +15,8 @@ import { DeskActivity } from './desk-activity.service';
 const ATTEMPT_TIMEOUT_MS = 15_000;
 /** Retries after the first try (3 tries in all). */
 const RETRIES = 2;
+/** One-try limit while Tabletop.Events is known to be down (just over the service worker's 8 s). */
+const FAST_FAIL_MS = 9_000;
 /** Base waits before retry 1 and 2. */
 const BACKOFF_MS = [1_500, 4_000];
 /** Longest Retry-After we'll honor; longer than this and the user is better off with saved data. */
@@ -71,10 +74,14 @@ export function tteResilience(req: HttpRequest<unknown>, next: HttpHandlerFn): O
   if (req.method !== 'GET' || !req.url.startsWith('https://tabletop.events/api')) return next(req);
   const health = inject(NetworkHealth);
   const desk = inject(DeskActivity);
+  // Tabletop.Events clearly down (desk-down switch on, or several failures in a row): one try,
+  // no retries. Before (Nov 21 outage) every screen spun ~50 s (3 tries x 15 s) before giving
+  // up. FAST_FAIL_MS stays above the service worker's 8 s so a saved copy can still answer.
+  const down = deskManual() || health.struggling();
   return next(req).pipe(
-    timeout(ATTEMPT_TIMEOUT_MS),
+    timeout(down ? FAST_FAIL_MS : ATTEMPT_TIMEOUT_MS),
     retry({
-      count: RETRIES,
+      count: down ? 0 : RETRIES,
       delay: (err, attempt) => retryable(err) ? timer(retryDelay(err, attempt)) : throwError(() => err),
     }),
     tap({

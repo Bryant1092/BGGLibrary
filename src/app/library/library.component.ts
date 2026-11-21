@@ -219,7 +219,11 @@ export class LibraryComponent implements OnInit, OnDestroy {
   private localSearch = inject(LocalSearchService);
   localMatches = computed(() => {
     const f = this.filters();
-    return f.query && !f.shelf ? this.localSearch.search(f.query) : [];
+    if (f.query && !f.shelf) return this.localSearch.search(f.query);
+    // No search typed and Tabletop.Events down (desk-down switch on, or the list failed to
+    // load): show every saved game instead of "Couldn't reach the game library" (Nov 21).
+    if (!f.query && !f.shelf && (deskManual() || this.loadError())) return this.localSearch.all();
+    return [];
   });
   localMode = computed(() => !this.conMode() && this.filters().sort !== 'returned' && this.localMatches().length > 0);
 

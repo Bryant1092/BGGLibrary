@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { NetworkHealth } from '../service/network-health';
 import { timeout } from 'rxjs';
 import { deskManual } from '../util/desk-state';
 import { GameDetailsCache } from '../service/game-details-cache';
@@ -46,6 +47,13 @@ const STATUS_ALL_MAX = 120;
             <span class="bl-status-line">
               @if (live().get(g.id); as item) {
                 <span class="bl-pill" [class.out]="item.is_checked_out">{{ status(item) }}</span>
+              } @else if (down()) {
+                <!-- Tabletop.Events down: the last status this phone saw ("Likely…"), else unknown. -->
+                @if (details.items().get(g.id); as saved) {
+                  <span class="bl-pill" [class.out]="saved.is_checked_out">{{ status(saved) }}</span>
+                } @else {
+                  <span class="bl-pill checking">Status unknown</span>
+                }
               } @else {
                 <span class="bl-pill checking">Checking…</span>
               }
@@ -91,7 +99,10 @@ export class LocalResultsComponent {
   shelf = inject(ShelfService);
   private bgg = inject(BggService);
   private toast = inject(ToastService);
-  private details = inject(GameDetailsCache);
+  readonly details = inject(GameDetailsCache);
+  private health = inject(NetworkHealth);
+  /** Tabletop.Events known to be down: rows stop waiting for a live status. */
+  readonly down = computed(() => deskManual() || this.health.struggling());
 
   /** Matches for the search, A–Z (LocalSearchService.search). */
   games = input.required<SearchGame[]>();

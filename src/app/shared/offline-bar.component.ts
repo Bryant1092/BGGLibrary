@@ -55,7 +55,9 @@ import { formatLibraryTime } from '../util/library-time';
              stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.8a15 15 0 0 1 4.2-2.6M9.5 5.3a15 15 0 0 1 12.5 3.5M5 12.6a10 10 0 0 1 3.2-2M12.6 10a10 10 0 0 1 6.4 2.6M8.6 16.4a5 5 0 0 1 6.8 0M12 20h.01M2 2l20 20"/></svg>
         <span><strong>You're offline.</strong> Availability may be out of date.</span>
       </div>
-    } @else if (health.struggling()) {
+    } @else if (health.struggling() && !desk.manual()) {
+      <!-- Not while the desk-down switch is on: then requests fail because Tabletop.Events is
+           down, not the phone's Wi-Fi (Nov 21 outage), and the desk bar below says so. -->
       <div class="bar" role="status">
         <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.6a10 10 0 0 1 14 0M8.6 16.4a5 5 0 0 1 6.8 0M12 20h.01M2 8.8a15 15 0 0 1 20 0"/></svg>
