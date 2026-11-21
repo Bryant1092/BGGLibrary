@@ -246,6 +246,21 @@ Start from what you see, then check the place listed.
 5. For the next con: run `npm run shelves`, check the convention appears (it's looked up
    automatically), rebuild the venue map if the hall changed, and re-enable the functions.
 
+**To do during the con: offline fixes not built yet** (from the Nov 21 Tabletop.Events outage
+check; 1, 2 and 4 of that list were built first)
+
+- [ ] Shelf rows stuck on "Checking…" forever: show "Status unknown" once Tabletop.Events is
+      down or the desk-down switch is on.
+- [ ] Two banners say the same thing when the switch is on (the `notice.json` message and the
+      built-in "writing check-ins by hand" bar): show only one.
+- [ ] Adding a game from search fails while Tabletop.Events is down ("Couldn't add the game"):
+      add it from the on-phone data (`bgg_id` is optional; fill it in later).
+- [ ] Game details: the copies list silently disappears when Tabletop.Events fails; say
+      "Copies unavailable while Tabletop.Events is down".
+- [ ] After the con: show the outage banner automatically when Tabletop.Events stops answering
+      (today only the manual switch can, because the detector needs data to notice scans
+      stopped), and save the Exhibitors list on the phone like the schedule.
+
 **To do after the con (code quality)**
 
 Background for these: the [UX/UI audit](https://claude.ai/artifact/4NaKjszMag4BVq8yHxmbVc) and the
