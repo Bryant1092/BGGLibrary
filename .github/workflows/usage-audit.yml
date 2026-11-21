@@ -39,15 +39,13 @@ jobs:
         run: |
           echo "== Cloud Build this month (free: 2,500 build-minutes/month)"
           gcloud builds list --project bgg-library-test --region us-central1 --limit 200 \
-            --filter="createTime>=$(date -u +%Y-%m-01T00:00:00Z)" --format="value(createTime,duration)" 2>&1 \
+            --filter="createTime>=$(date -u +%Y-%m-01T00:00:00Z)" --format="value(startTime,finishTime)" 2>/dev/null \
             | python3 -c "
-          import sys,re
-          rows=[l.split() for l in sys.stdin if l.strip()]
-          secs=0
-          for r in rows:
-              m=re.match(r'(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]+)S)?', (r[1] if len(r)>1 else '').replace('PT',''))
-              if m: secs+=int(m.group(1) or 0)*3600+int(m.group(2) or 0)*60+float(m.group(3) or 0)
-          print(f'  {len(rows)} builds, {secs/60:.1f} build-minutes; last: {rows[0][0] if rows else \"-\"}')"
+          import sys
+          from datetime import datetime
+          t=[l.split() for l in sys.stdin if len(l.split())==2]
+          secs=sum((datetime.fromisoformat(b)-datetime.fromisoformat(a)).total_seconds() for a,b in t)
+          print(f'  {len(t)} builds, {secs/60:.1f} build-minutes')"
           echo "== Artifact Registry images (free: 0.5 GB)"
           gcloud artifacts repositories describe gcf-artifacts --project bgg-library-test --location us-central1 --format="value(sizeBytes)" 2>&1 | tail -1 | awk '{printf "  %.1f MB stored\n", $1/1e6}'
           gcloud artifacts docker images list us-central1-docker.pkg.dev/bgg-library-test/gcf-artifacts --include-tags --format="value(package.basename(),createTime.date('%m-%d %H:%M'))" 2>&1 | sort | uniq -c | head -12
@@ -74,7 +72,7 @@ jobs:
                    'aggregation.alignmentPeriod': f'{align}s', 'aggregation.perSeriesAligner': aligner,
                    'aggregation.crossSeriesReducer': reducer}
               if group: q['aggregation.groupByFields'] = group
-              url = f'https://monitoring.googleapis.com/v3/projects/{P}/timeSeries?' + urllib.parse.urlencode(q)
+              url = f'https://monitoring.googleapis.com/v3/projects/{P}/timeSeries?' + urllib.parse.urlencode(q, doseq=True)
               try:
                   return json.load(urllib.request.urlopen(urllib.request.Request(url, headers={'Authorization': 'Bearer ' + os.environ['TOKEN']}))).get('timeSeries', [])
               except urllib.error.HTTPError as e:
