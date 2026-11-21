@@ -157,7 +157,7 @@ The `checks` job in `deploy-pages.yml` runs first; the deploy only starts if it 
 | Lint (TypeScript + templates, incl. accessibility rules) | `npm run lint` | **Errors** block. Rules in the `GENTLE` list in `eslint.config.js` only warn for now. |
 | Build (TypeScript `strict`, `strictTemplates`) | `ng build` in the deploy job | Yes |
 | Functions syntax | `node --check functions/index.js` | Yes (and `deploy-firebase.yml` also checks the file loads) |
-| Unit tests | `npx ng test --watch=false --browsers=ChromeHeadless` | **No, report only**: most `*.spec.ts` files are old Angular defaults (5 of 14 tests fail; the `BggService` sharing tests pass) |
+| Unit tests | `npx ng test --watch=false --browsers=ChromeHeadless` | **No, report only** (for the con): 55 tests, all passing, covering prize parsing and deadlines, library hours and due times, status wording during desk outages, filters, notification titles and `BggService` sharing |
 | Security audit of dependencies | `npm audit --omit=dev --audit-level=high` (app and `functions/`) | **No, report only**: on 2026-11-20 the app had 25 known issues (2 critical, 9 high) and the server 8 moderate; most need a newer Angular |
 
 **Secrets** are not checked by the deploy: GitHub **secret scanning with push protection** is on
@@ -191,7 +191,7 @@ allowance; a $1 budget alert is set). See [After the convention](#after-the-conv
 
 ## Testing
 
-- `npx ng test` runs the few Karma unit tests (`*.spec.ts`). Most are stale Angular defaults (5 of 14 fail; `bgg.service.spec.ts` is real and passes) and
+- `npx ng test` runs the Karma unit tests (55, all passing; `util/*.spec.ts`, `service/bgg.service.spec.ts`). They use this con's real cases (two prize tables in one post, 1:27 PM → 5:27 PM due time, the Nov 19 outage wording) and pass in any time zone. They
   don't block deploys yet; see [Checks before deploy](#checks-before-deploy).
 - `npm run lint` runs ESLint (angular-eslint) on TypeScript and templates.
 - Features were verified end to end on the live test site with Playwright scripts driving WebKit in
@@ -247,10 +247,9 @@ Start from what you see, then check the place listed.
 - [ ] Fix the lint warnings (`npm run lint` lists them; ~130 on 2026-11-20, mostly `any` in
       Tabletop.Events responses: give those responses proper types), then delete the `GENTLE`
       block in `eslint.config.js` so every rule blocks deploys.
-- [ ] Rewrite the unit tests (`*.spec.ts`) to test real logic first: `util/prize-drawing.ts`
-      (drawing parsing and pickup deadlines), `util/library-time.ts`, `util/game-format.ts`
-      (status wording), `shortGameName`, and the desk-outage rules. Then remove
-      `continue-on-error` from the test step.
+- [ ] Make the unit tests blocking: remove `continue-on-error` from the test step (55 tests for
+      prize parsing, library time, status wording and lookups were added 2026-11-20 and pass).
+      Then add tests for `DeskActivity` and the remaining default specs (guards, 404 page).
 - [ ] Upgrade Angular (19 → current) and the Firebase libraries (`@angular/fire`,
       `firebase-admin`, `firebase-functions`), retest on an iPhone, then remove
       `continue-on-error` from the security audit step so high and critical issues block deploys.
