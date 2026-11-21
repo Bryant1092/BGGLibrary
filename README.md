@@ -244,6 +244,10 @@ Start from what you see, then check the place listed.
 
 **To do after the con (code quality)**
 
+Background for these: the [UX/UI audit](https://claude.ai/artifact/4NaKjszMag4BVq8yHxmbVc) and the
+[code quality and structure review](https://claude.ai/artifact/D1WJiA8ZNDyawBwWwjKJkz) (Nov 20 2026;
+private to the repo owner, so other contributors will need them shared).
+
 - [ ] Fix the lint warnings (`npm run lint` lists them; ~130 on 2026-11-20, mostly `any` in
       Tabletop.Events responses: give those responses proper types), then delete the `GENTLE`
       block in `eslint.config.js` so every rule blocks deploys.
@@ -268,6 +272,18 @@ Start from what you see, then check the place listed.
 - [ ] **Speed:** switch to Angular's zoneless change detection (`provideZonelessChangeDetection`,
       drop `zone.js`). 32 of 35 components are already OnPush with signals; convert the last
       three (`app`, `login`, `page-not-fount`) first.
+- [ ] **Structure** (from the code review, in this order):
+      1. A `common/` folder shared by the app and `functions/`: move prize parsing, Dallas time
+         math, `shortGameName` and the alert-hold rules there (today they're copied and kept in
+         step by hand).
+      2. Convert `functions/index.js` to TypeScript and split it (desk, alerts, reminders, prizes,
+         con stats, Tabletop.Events client); save the 429 backoff in Firestore.
+      3. Feature folders (`core/`, `common/`, `ui/`, `library/`, `lists/`, `events/`, `alerts/`,
+         `account/`), one commit per folder, and rename `page-not-fount`.
+      4. One `ClockService` and one background scheduler instead of 20 timers.
+      5. One game repository: typed `bgg.game(id)`, an app-wide request queue, merged caches.
+      6. Split `lists`, `library`, `events` and `map-viewer` into a store plus smaller views.
+      7. Font sizes as rem tokens (also unlocks Dynamic Type); styles next to their components.
 - [ ] From the UX audit, not built yet: Dynamic Type (iPhone Text Size), 11pt minimum text,
       Clear all on Alerts, unread dot on Events → Info, pull-to-refresh on My Lists, shorter
       add/remove button label in the game sheet.
