@@ -36,6 +36,8 @@ export interface BggItem {
   min_play_time: number
   missing_components: number
   due_for_triage: number
+  /** App-only: opened from offline search data while Tabletop.Events couldn't be reached. */
+  status_unknown?: boolean
 }
 
 export interface Options {

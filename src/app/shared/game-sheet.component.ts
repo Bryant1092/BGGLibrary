@@ -106,7 +106,12 @@ import { ThumbComponent } from './thumb.component';
         <app-thumb [src]="game().bgg_icon_uri" [name]="game().name" [size]="112" [radius]="14" [lazy]="false" />
         <div class="text">
           <h2>{{ game().name }}</h2>
-          <span class="bl-pill" [class.out]="game().is_checked_out">{{ game().is_checked_out ? 'Checked out' : 'Available now' }}</span>
+          @if (game().status_unknown) {
+            <!-- Opened from offline data: don't guess (Tabletop.Events unreachable, 2026-11-21). -->
+            <span class="bl-pill out">Status unknown</span>
+          } @else {
+            <span class="bl-pill" [class.out]="game().is_checked_out">{{ game().is_checked_out ? 'Checked out' : 'Available now' }}</span>
+          }
           <!-- When it came back, so you know it was just returned. -->
           @if (checkedIn()) { <span class="checked-in">{{ checkedIn() }}</span> }
           <!-- Desk scanning is down (DeskActivity): the pill above is as of the last scan. -->

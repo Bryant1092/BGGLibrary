@@ -1,4 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { timeout } from 'rxjs';
+import { deskManual } from '../util/desk-state';
+import { GameDetailsCache } from '../service/game-details-cache';
 import { BggItem } from '../model/bgg.model';
 import { BggService, LibrarySort, PlayTimeFilter } from '../service/bgg.service';
 import { SearchGame } from '../service/local-search.service';
@@ -88,6 +91,7 @@ export class LocalResultsComponent {
   shelf = inject(ShelfService);
   private bgg = inject(BggService);
   private toast = inject(ToastService);
+  private details = inject(GameDetailsCache);
 
   /** Matches for the search, A–Z (LocalSearchService.search). */
   games = input.required<SearchGame[]>();
@@ -155,7 +159,26 @@ export class LocalResultsComponent {
   openGame(g: SearchGame): void {
     const item = this.live().get(g.id);
     if (item) { this.open.emit(item); return; }
-    this.bgg.getBggGameInfo(g.id).subscribe({ next: (r: any) => { if (r?.result?.id) this.open.emit(r.result); }, error: () => { /* offline: nothing to open */ } });
+    // Tabletop.Events down (switch on) or no connection: open right away from what the phone
+    // has. Before 2026-11-21 the tap fetched first and did nothing when that failed.
+    if (deskManual() || !navigator.onLine) { this.open.emit(this.offlineItem(g)); return; }
+    this.bgg.getBggGameInfo(g.id).pipe(timeout(3000)).subscribe({
+      next: (r: any) => this.open.emit(r?.result?.id ? r.result : this.offlineItem(g)),
+      error: () => this.open.emit(this.offlineItem(g)),
+    });
+  }
+
+  /** The last saved details for this game, or one built from the on-phone search list. */
+  private offlineItem(g: SearchGame): BggItem {
+    const saved = this.details.items().get(g.id);
+    if (saved) return saved;
+    return {
+      id: g.id, name: g.name, bgg_icon_uri: g.thumb,
+      min_players: g.minPlayers, max_players: g.maxPlayers, min_play_time: g.minMinutes, max_play_time: g.maxMinutes,
+      custom_fields: { Location: g.shelf } as BggItem['custom_fields'],
+      checkout_count: g.checkouts, is_checked_out: 0, last_checkout_date: '', last_checkin_date: '',
+      status_unknown: true,
+    } as BggItem;
   }
 
   /** Games whose record is being fetched because + was tapped before it arrived. */
