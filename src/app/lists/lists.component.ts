@@ -553,6 +553,8 @@ export class ListsComponent implements OnInit, OnDestroy {
    */
   refresh(): void {
     if (this.refreshing() || !this.games()?.length) return;
+    // A tap means "check now", so don't reuse answers from the last 90 s.
+    this.bggService.forgetGameInfo();
     const before = new Map([...this.details()].map(([id, item]) => [id, !!item.is_checked_out]));
     const started = Date.now();
     this.afterRefresh = () => {

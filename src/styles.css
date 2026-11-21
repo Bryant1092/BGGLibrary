@@ -1,6 +1,7 @@
-/* Bootstrap still styles the login and 404 pages; Bootstrap Icons is used on the login page. */
+/* Bootstrap still styles the login and 404 pages and provides base styles (README → After the
+   convention: remove it). Bootstrap Icons was removed 2026-11-20: no screen used it any more, and
+   its 98 KB of CSS was parsed on every launch before the first screen. */
 @import 'bootstrap/dist/css/bootstrap.min.css';
-@import "bootstrap-icons/font/bootstrap-icons.css";
 
 /*
  * Design tokens for the Library / My Lists / Account screens.

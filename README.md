@@ -157,7 +157,7 @@ The `checks` job in `deploy-pages.yml` runs first; the deploy only starts if it 
 | Lint (TypeScript + templates, incl. accessibility rules) | `npm run lint` | **Errors** block. Rules in the `GENTLE` list in `eslint.config.js` only warn for now. |
 | Build (TypeScript `strict`, `strictTemplates`) | `ng build` in the deploy job | Yes |
 | Functions syntax | `node --check functions/index.js` | Yes (and `deploy-firebase.yml` also checks the file loads) |
-| Unit tests | `npx ng test --watch=false --browsers=ChromeHeadless` | **No, report only**: the old `*.spec.ts` files are Angular defaults and 6 of 10 fail |
+| Unit tests | `npx ng test --watch=false --browsers=ChromeHeadless` | **No, report only**: most `*.spec.ts` files are old Angular defaults (5 of 14 tests fail; the `BggService` sharing tests pass) |
 | Security audit of dependencies | `npm audit --omit=dev --audit-level=high` (app and `functions/`) | **No, report only**: on 2026-11-20 the app had 25 known issues (2 critical, 9 high) and the server 8 moderate; most need a newer Angular |
 
 **Secrets** are not checked by the deploy: GitHub **secret scanning with push protection** is on
@@ -191,7 +191,7 @@ allowance; a $1 budget alert is set). See [After the convention](#after-the-conv
 
 ## Testing
 
-- `npx ng test` runs the few Karma unit tests (`*.spec.ts`). They're stale (6 of 10 fail) and
+- `npx ng test` runs the few Karma unit tests (`*.spec.ts`). Most are stale Angular defaults (5 of 14 fail; `bgg.service.spec.ts` is real and passes) and
   don't block deploys yet; see [Checks before deploy](#checks-before-deploy).
 - `npm run lint` runs ESLint (angular-eslint) on TypeScript and templates.
 - Features were verified end to end on the live test site with Playwright scripts driving WebKit in
@@ -261,6 +261,14 @@ Start from what you see, then check the place listed.
 - [ ] Replace Tabletop.Events' deprecated `/librarygames` endpoint and test it before the next con.
 - [ ] Optional: give the deploy account the Monitoring Viewer role so free-tier usage can be
       checked from a phone.
+- [ ] **Speed:** remove Bootstrap's CSS (232 KB, ~4 classes still used: `visually-hidden`,
+      `card`, `spinner`, `row`) and `@ng-bootstrap/ng-bootstrap` (unused). Bootstrap's base styles
+      touch every screen, so check each one on an iPhone after. Bootstrap Icons is already gone.
+- [ ] **Speed:** load Firebase's database code only when needed. It's most of the biggest file
+      loaded at launch (487 KB of 1.4 MB), yet the Library tab and search don't need it.
+- [ ] **Speed:** switch to Angular's zoneless change detection (`provideZonelessChangeDetection`,
+      drop `zone.js`). 32 of 35 components are already OnPush with signals; convert the last
+      three (`app`, `login`, `page-not-fount`) first.
 - [ ] From the UX audit, not built yet: Dynamic Type (iPhone Text Size), 11pt minimum text,
       Clear all on Alerts, unread dot on Events → Info, pull-to-refresh on My Lists, shorter
       add/remove button label in the game sheet.

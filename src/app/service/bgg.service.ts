@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { BggItem } from '../model/bgg.model';
 import { PLAYERS_TOP } from '../util/game-format';
 import { correctGame } from '../util/game-corrections';
-import { map, Observable } from 'rxjs';
+import { map, Observable, shareReplay, tap } from 'rxjs';
 
 export interface SearchResult {
   result: {
@@ -63,6 +63,9 @@ const PLAY_TIME_CONDITIONS: Record<PlayTimeFilter, string> = {
   over60: '>60',
 };
 
+/** How long a game's live record is shared between callers (getBggGameInfo). */
+const GAME_INFO_TTL_MS = 90_000;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -120,10 +123,34 @@ export class BggService {
   // Only the game's own fields are used. The related library object and
   // relationship links that were also requested made each response ~2.5x larger
   // (about 1.9 KB -> 0.76 KB), which adds up because the lists page requests one per game.
-  getBggGameInfo(id: string) {
+  /**
+   * One game's live record. Answers are shared for GAME_INFO_TTL_MS: My Lists re-checks its
+   * checked-out games every 2 minutes and the bell watcher checks the same games on its own
+   * 2-minute timer, so without sharing the same game was often fetched twice (~100 requests
+   * per 2 minutes on a 50-out list, 2026-11-20). A request already in flight is shared too.
+   * Failed requests aren't kept. `forgetGameInfo()` drops everything (the refresh button).
+   */
+  getBggGameInfo(id: string): Observable<any> {
+    const now = Date.now();
+    const hit = this.gameInfo.get(id);
+    if (hit && now - hit.at < GAME_INFO_TTL_MS) return hit.req;
     const params = new HttpParams()
         .append('_include', 'bgg_icon_uri');
-    return this.http.get<BggItem>(this.itemUrl(id), {params}).pipe(
-      map((r: any) => r?.result ? { ...r, result: correctGame(r.result) } : r));
+    const req = this.http.get<BggItem>(this.itemUrl(id), {params}).pipe(
+      map((r: any) => r?.result ? { ...r, result: correctGame(r.result) } : r),
+      tap({ error: () => { if (this.gameInfo.get(id)?.req === req) this.gameInfo.delete(id); } }),
+      shareReplay({ bufferSize: 1, refCount: false }));
+    if (this.gameInfo.size > 400) {
+      for (const [key, v] of this.gameInfo) if (now - v.at >= GAME_INFO_TTL_MS) this.gameInfo.delete(key);
+    }
+    this.gameInfo.set(id, { at: now, req });
+    return req;
   }
+
+  /** Next lookups go to Tabletop.Events again (a tap on "Refresh" wants it fresh). */
+  forgetGameInfo(): void {
+    this.gameInfo.clear();
+  }
+
+  private readonly gameInfo = new Map<string, { at: number; req: Observable<any> }>();
 }

@@ -49,7 +49,7 @@ jobs:
           npm audit --omit=dev --audit-level=high
           cd functions && npm audit --omit=dev --audit-level=high
 
-      # Reports only, for now: the old *.spec.ts files are Angular defaults and 6 of 10 fail.
+      # Reports only, for now: most *.spec.ts files are old Angular defaults (5 of 14 tests fail).
       # After the con: rewrite them and remove continue-on-error.
       - name: Unit tests (not blocking yet)
         continue-on-error: true
