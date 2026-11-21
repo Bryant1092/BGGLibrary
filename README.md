@@ -40,7 +40,10 @@ shared "want to play" lists, and sends alerts when a checked-out game comes back
 | **Account** | Prize drawings first during the con (each drawing, win or not, pickup deadline and countdown), sign in, Meeple code to add friends, alert and reminder settings, appearance, offline status, library hours, app version. |
 
 Notifications (game is back, event reminder, prize won) work with the app closed when it was added
-to the Home Screen and notifications were allowed. iPhone shows web-app notifications as text with
+to the Home Screen and notifications were allowed. A bell answers to **any copy** of the game (same
+name, so other editions don't count): the push says "Copy BGG-260038 available…" when it's not the
+copy on your list. After an alert, the automatic bell for that game waits 15 minutes before coming
+back. A copy checked in and out again between two 2-minute checks is not reported. iPhone shows web-app notifications as text with
 the app icon only (no game covers); the in-app "is back" toast does show the cover. Titles drop
 trailing edition notes ("Night at the Zoo is back") so "is back" isn't cut off; the full name
 leads the body.
@@ -157,6 +160,7 @@ The `checks` job in `deploy-pages.yml` runs first; the deploy only starts if it 
 | Lint (TypeScript + templates, incl. accessibility rules) | `npm run lint` | **Errors** block. Rules in the `GENTLE` list in `eslint.config.js` only warn for now. |
 | Build (TypeScript `strict`, `strictTemplates`) | `ng build` in the deploy job | Yes |
 | Functions syntax | `node --check functions/index.js` | Yes (and `deploy-firebase.yml` also checks the file loads) |
+| Functions tests | `node --test "functions/test/*.test.js"` | Yes (8 tests for bells on any copy) |
 | Unit tests | `npx ng test --watch=false --browsers=ChromeHeadless` | **No, report only** (for the con): 55 tests, all passing, covering prize parsing and deadlines, library hours and due times, status wording during desk outages, filters, notification titles and `BggService` sharing |
 | Security audit of dependencies | `npm audit --omit=dev --audit-level=high` (app and `functions/`) | **No, report only**: on 2026-11-20 the app had 25 known issues (2 critical, 9 high) and the server 8 moderate; most need a newer Angular |
 
@@ -294,6 +298,7 @@ Built from an iPhone during the con (Nov 18–22). Newest first; the commit hist
 
 | Date | Change |
 |---|---|
+| Nov 20 | Bells answer to any copy of a game (5-copy games like Hell of a Deal); 15-minute quiet period for automatic bells |
 | Nov 20 | Pre-deploy checks (lint, functions syntax, tests report-only) in gentle mode |
 | Nov 20 | Notification titles drop edition notes so "is back" fits |
 | Nov 20 | Game sheet action bar pinned to the bottom (fixed iPhone gap); "is back" toast with cover and location pin |

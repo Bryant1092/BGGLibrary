@@ -39,6 +39,7 @@ const { defineSecret } = require('firebase-functions/params');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
 const webpush = require('web-push');
+const { copyKey, matchCheckins } = require('./copies');
 
 admin.initializeApp();
 
@@ -204,7 +205,8 @@ async function checkDesk(db, now, manual = null) {
 }
 
 /**
- * Alerts waiting to be confirmed: gameId -> first time it was seen back. Used during catch-up,
+ * Alerts waiting to be confirmed: bell's gameId -> { since: first time seen back, copyId: the
+ * copy that came back (the bell's own or, since 2026-11-20, another copy of the same game) }. Used during catch-up,
  * and when several belled games come back in one run (a burst of late entries looks like that).
  * In memory: on a restart the bells are all checked directly again (checkinCursor = 0), so a
  * held game is found again rather than lost.
@@ -255,13 +257,14 @@ exports.checkWatchedGames = onSchedule({
   const hold = catchingUp || found.size >= BURST;
   for (const [id, game] of found) {
     if (!byGame.has(id)) continue;
-    if (hold || heldBack.has(id)) { if (!heldBack.has(id)) heldBack.set(id, now); }
+    if (hold || heldBack.has(id)) { if (!heldBack.has(id)) heldBack.set(id, { since: now, copyId: game.id }); }
     else back.set(id, game);
   }
-  for (const [id, since] of heldBack) {
+  for (const [id, { since, copyId }] of heldBack) {
     if (!byGame.has(id)) { heldBack.delete(id); continue; }
     if (now - since < ALERT_HOLD_MS) continue;
-    const { status, result: game } = await fetchGame(id);
+    // Re-check the copy that came back (it may not be the bell's own).
+    const { status, result: game } = await fetchGame(copyId);
     if (status === 404 || (game && Number(game.is_checked_out) !== 0)) { heldBack.delete(id); continue; }
     if (!game) continue; // couldn't reach Tabletop.Events: try again next run
     heldBack.delete(id);
@@ -314,6 +317,12 @@ exports.checkWatchedGames = onSchedule({
  *   failed request, so nothing returned in the meantime is missed.
  */
 let checkinCursor = 0;
+/**
+ * Bell's gameId -> copies key of its name (copies.js), learned when the bell's own record is
+ * fetched or seen. Every bell is fetched directly once (new bells and the first run after a
+ * restart), so its name is known before the check-in list is used for it.
+ */
+const bellNames = new Map();
 const knownBells = new Set();
 let sortBrokenUntil = 0, lastFullCheck = 0;
 const SORT_DISTRUST_MS = 30 * 60 * 1000;
@@ -352,12 +361,12 @@ async function gamesBack(byGame, now) {
         logger.warn(`check-in list out of order: checking bells directly every ${SORT_FALLBACK_EVERY_MS / 60000} min for ${SORT_DISTRUST_MS / 60000} min`);
         ok = false; break;
       }
-      let older = false;
-      for (const g of r.items) {
-        if (tteTime(g.last_checkin_date) < since) { older = true; break; }
-        if (byGame.has(g.id) && Number(g.is_checked_out) === 0) back.set(g.id, g);
-      }
-      if (older || r.items.length < 100) break;
+      // Any copy of a belled game counts, not just the bell's own record (copies.js).
+      const bells = new Map([...byGame.keys()].map(id => [id, bellNames.get(id) || '']));
+      const match = matchCheckins(r.items, bells, since, tteTime);
+      for (const [id, g] of match.back) if (!back.has(id)) back.set(id, g);
+      for (const g of r.items) if (byGame.has(g.id)) bellNames.set(g.id, copyKey(g.name));
+      if (match.older || r.items.length < 100) break;
     }
   }
 
@@ -366,6 +375,9 @@ async function gamesBack(byGame, now) {
       const { status, result: game } = await fetchGame(id);
       if (status === 404) return; // gone from the library: nothing to wait for
       if (!game) { ok = false; return; }
+      bellNames.set(id, copyKey(game.name));
+      // Direct checks (first run, new bells, untrusted list) only see the bell's own copy;
+      // other copies are caught by the check-in list on the next run.
       if (Number(game.is_checked_out) === 0) back.set(id, game);
     }));
   }
@@ -509,6 +521,8 @@ async function notifyOwner(db, bell, game) {
   const when = checkedInTime(game.last_checkin_date);
   const short = shortGameName(name);
   const fullName = short !== name.trim() ? `${name.trim()}. ` : '';
+  // Another copy than the one on your list (bells on any copy, 2026-11-20).
+  const copy = game.id !== bell.id ? `Copy ${game.catalog_number || ''}`.trim() + ' ' : '';
   // Angular's service worker shows `notification`; the tag replaces the in-app alert's
   // notification for the same game. On tap it opens that game's details (?game=, the same
   // link as sharing a game; 2026-11-18, it used to open My Lists). "navigate…" rather than
@@ -519,12 +533,12 @@ async function notifyOwner(db, bell, game) {
       title: `${short} is back`,
       // _late: confirmed after a desk outage; the check-in time is when it was typed in.
       body: game._late
-        ? `${fullName}Available${shelf ? ` on shelf ${shelf}` : ''}. The library's check-in was recorded late, so it may have been back a while.`
-        : `${fullName}Available${shelf ? ` on shelf ${shelf}` : ''}${when ? `, checked in ${when}` : ''}.`,
+        ? `${fullName}${copy ? copy + 'available' : 'Available'}${shelf ? ` on shelf ${shelf}` : ''}. The library's check-in was recorded late, so it may have been back a while.`
+        : `${fullName}${copy ? copy + 'available' : 'Available'}${shelf ? ` on shelf ${shelf}` : ''}${when ? `, checked in ${when}` : ''}.`,
       icon: `${APP_URL}icons/icon-192x192.png`,
       tag: bell.id,
       // Opens the Alerts tab with this game's details (2026-11-20; before, the Library tab).
-      data: { onActionClick: { default: { operation: 'focusLastFocusedOrOpen', url: `${APP_URL}alerts?game=${encodeURIComponent(bell.id)}` } } },
+      data: { onActionClick: { default: { operation: 'focusLastFocusedOrOpen', url: `${APP_URL}alerts?game=${encodeURIComponent(game.id)}` } } },
     },
   });
   let sent = 0;

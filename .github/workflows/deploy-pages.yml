@@ -39,6 +39,11 @@ jobs:
       - name: Functions syntax
         run: node --check functions/index.js
 
+      # Blocks: the server's pure logic (functions/copies.js: bells on any copy). Node's own
+      # test runner, no install needed.
+      - name: Functions tests
+        run: node --test "functions/test/*.test.js"
+
       # Reports only, for now: known security issues in the libraries the app and the server
       # use. On 2026-11-20: app 25 (2 critical, 9 high; most fixed by a newer Angular),
       # functions 8 moderate. After the con: upgrade, then drop continue-on-error so high and

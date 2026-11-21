@@ -34,7 +34,7 @@ jobs:
       # top-level crash). Added 2026-11-20; README → Checks before deploy.
       - name: Check functions load
         if: inputs.target != 'firestore'
-        run: node --check functions/index.js && node -e "require('./functions/index.js')"
+        run: node --check functions/index.js && node --test "functions/test/*.test.js" && node -e "require('./functions/index.js')"
 
       - name: Deploy
         env:

@@ -48,6 +48,9 @@ const ASK_DISMISSED_KEY = 'bgglibrary.notifyAskDismissed';
  * Alerts while the app is fully closed would need a server (a scheduled
  * Firebase function sending web push); these bells would carry over to that.
  */
+/** After an alert, the automatic bell for that game waits this long before coming back. */
+const AUTO_QUIET_MS = 15 * 60_000;
+
 @Injectable({ providedIn: 'root' })
 export class WatchService {
   private bggService = inject(BggService);
@@ -174,7 +177,18 @@ export class WatchService {
    */
   autoWatch(game: WatchedGame): void {
     if (!this.autoAlerts() || this.muted.has(game.id) || this.isWatched(game.id)) return;
+    // Bells answer to any copy since 2026-11-20: after an alert your own copy can still be out,
+    // and this would switch the bell straight back on. A busy game (5 copies) could then alert
+    // every few minutes, so wait AUTO_QUIET_MS after an alert for the same game first.
+    if (this.alertedRecently(game.name)) return;
     this.update(map => map.set(game.id, game));
+  }
+
+  /** An alert for a game with this name in the last AUTO_QUIET_MS (any copy). */
+  private alertedRecently(name: string): boolean {
+    const key = (name || '').trim().toLowerCase();
+    const since = Date.now() - AUTO_QUIET_MS;
+    return !!key && this.alerts.alerts().some(a => a.createdAt > since && (a.name || '').trim().toLowerCase() === key);
   }
 
   setAutoAlerts(on: boolean): void {
