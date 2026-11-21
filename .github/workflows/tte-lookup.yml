@@ -18,6 +18,11 @@ jobs:
           Q: ${{ inputs.query }}
         run: |
           url="https://tabletop.events/api/library/0AEB11DA-2B7D-11EC-B400-855F800FD618/librarygames"
+          # Health check first: status, time and the start of the body, so an outage is visible.
+          for u in "$url?_items_per_page=1" "https://tabletop.events/api/convention/CC4FC78E-17EC-11F1-9082-3FD444321FD1"; do
+            curl -s -m 45 -o /tmp/body -w "HEALTH %{http_code} %{time_total}s  $u\n" "$u" || echo "HEALTH failed $u"
+            echo "BODY $(head -c 200 /tmp/body | tr '\n' ' ')"
+          done
           curl -sS -G "$url" --data-urlencode "query=$Q" --data-urlencode "_items_per_page=50" \
             | jq -r '.result.items[] | [ .name, (.catalog_number // "-"), (if .is_checked_out == 1 then "OUT" else "in" end),
                   ("out " + (.last_checkout_date // "-")), ("in " + (.last_checkin_date // "-")),
