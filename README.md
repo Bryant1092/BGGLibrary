@@ -25,6 +25,7 @@ shared "want to play" lists, and sends alerts when a checked-out game comes back
 - [Testing](#testing)
 - [Troubleshooting](#troubleshooting)
 - [Costs and limits](#costs-and-limits)
+- [Outages and worst cases](#outages-and-worst-cases)
 - [After the convention](#after-the-convention)
 - [Changes during BGG.CON 2026](#changes-during-bggcon-2026)
 
@@ -233,6 +234,60 @@ Start from what you see, then check the place listed.
   live status only for rows on screen) and the server backs off for 10 minutes on a 429/503. Please keep
   it that way; being blocked would break the app for everyone.
 
+## Outages and worst cases
+
+Everything that went wrong at BGG.CON 2026 outside our code (Tabletop.Events, the library desk,
+BGG's posts, iPhone, Wi-Fi), what the app does about it now, and what to build so the next con
+keeps working. **Goal: when anything upstream breaks, the app degrades and says why; it never
+just stops.**
+
+### What happened
+
+| When | What broke | What users saw before the fix | Handled now by |
+|---|---|---|---|
+| Nov 19, ~1:39–9:10 PM | **Library desk stopped scanning** (Tabletop.Events itself was up). Staff wrote checkouts on paper, then typed the backlog in; every typed entry got the typing time, not the real time. Tabletop.Events' "newest check-ins" sort was unreliable during the catch-up. | Statuses frozen with no warning; a flood of wrong "is back" alerts when the backlog was typed in; wrong play times. | Server desk watcher (`checkDesk`, `meta/deskStatus`), desk banners, "as of" / "Likely" wording, alerts held 10 min during catch-up and bursts (`heldBack`), late-typed check-ins skipped for play times (`typedLate`), out-of-order lists distrusted with a direct-check fallback, manual switch in `public/notice.json`. |
+| Nov 21, from ~1:05 PM | **Tabletop.Events stopped answering entirely** (library and convention API timed out after 45 s, from GitHub and from the server). Scanning down too. | **No banner at all** (the desk detector needs data to notice scans stopped); every screen spun ~50 s; "Couldn't reach the game library"; tapping a search result did nothing; "Wi-Fi is struggling" blamed the phone. Server checks hit their 90 s limit every run (~3,400 vCPU-s per hour of outage vs ~60 normally). | Manual switch turned on by hand; offline fixes the same day: games open from saved data ("Status unknown"), Library lists all saved games, one 9 s try instead of ~50 s of retries, no Wi-Fi blame while the switch is on. Remaining items are in "To do during the con" below. |
+| Nov 19 | **BGG's news post put two prize tables under one heading** (daily drawing + Big Group Game). | "Yesterday" shown twice; wrong pickup deadline. | Parser names non-daily tables from "Winners for … are:"; tests in `util/prize-drawing.spec.ts`. |
+| Nov 20 | **Popular games turned over in seconds** (a Hell of a Deal copy was on the shelf 65 s, another 20 s); bells only watched one copy of five. | Missed alerts. | Bells answer to any copy (`functions/copies.js`). Still missed: anything checked in and out between two 2-minute checks. |
+| All con | **iPhone quirks**: notification taps ignore the service worker's `navigate`; sticky bars stop short of a scroller's padding; focus left in a closed keyboard hides the tab bar; web pushes are text + app icon only. | Taps opened the wrong page; floating bar; missing tab bar. | `notification-taps.service.ts`, `.bl-sheet:has(.action-bar)`, visualViewport blur fix. |
+| All con | **Crowded hotel Wi-Fi / sign-in pages** (captive portal). | Long spinners. | Timeouts + retries (`network-health.ts`), service worker serves saved API answers after 8 s, on-phone search list, saved schedule. |
+
+### Playbook: what to do when…
+
+| Situation | How you'll know | Do this |
+|---|---|---|
+| **Desk not scanning, Tabletop.Events up** | Desk banner appears on its own after 30 min without scans (9 AM–11 PM) | Usually nothing. If staff confirm paper checkouts, set `"deskDown": true` and `"deskDownSince"` in `public/notice.json` and push (~3 min); set it back and fill `"deskBackAt"` when scanning resumes. |
+| **Tabletop.Events not answering** | No banner yet (see "Build before next con"). Signs: server logs show `maximum request timeout`; Actions → "TTE lookup" prints `HEALTH 000` | Turn the switch on with a `"message"` saying Tabletop.Events is down (as on Nov 21). The app then fails fast, shows saved data and holds alerts. Server keeps trying every 2 min (costs CPU but stays free; check "Usage audit"). |
+| **Firebase down** (rare) | Sign-in / lists fail | Lists show from the phone's Firestore cache; alerts stop. Nothing to do but wait. |
+| **GitHub Pages down** | App won't update | Installed app keeps running from the service worker; no action. |
+| **Need to check free-tier usage** | Any time | Actions → "Usage today" (totals) or "Usage audit" (breakdown). |
+| **A bad deploy** | Something broke after a push | App: revert the commit and push. Server: Actions → deploy Firebase from the previous commit (~4 min; each server deploy adds ~50 MB of stored images, free limit 0.5 GB). |
+
+### Build before the next con
+
+Ordered by how much they'd have helped this time:
+
+- [ ] **Detect "Tabletop.Events down" automatically.** Server: when its own calls fail or time
+      out (e.g. 3 runs in a row), write `tteDownSince` to `meta/deskStatus`; the app shows the
+      outage banner and fast-fail mode from that, no manual switch needed. Clear it on the first
+      success.
+- [ ] **Server circuit breaker.** Short fetch timeout (~10 s) and back off to one probe every few
+      minutes while Tabletop.Events is down, so an outage doesn't burn ~3,400 vCPU-s an hour.
+- [ ] **Offline-first everywhere**: finish the "To do during the con" list (shelf rows, one
+      banner, add from search, copies message), save Exhibitors on the phone, and prefetch the
+      whole schedule when the app is installed, not only when Events is opened.
+- [ ] **Outage drill in CI**: a Playwright test that blocks `tabletop.events` and checks every
+      tab still renders, game details open, search works and nothing spins longer than ~10 s.
+- [ ] **Faster, more complete alerts**: the 30-second watcher reading both check-ins and
+      checkouts, per-game copy counts, "back briefly" entries, one grouped push per check (plan
+      from Nov 21; deploy when Tabletop.Events is stable, during closed hours).
+- [ ] **Replace the deprecated `/librarygames` endpoint** and re-test sorting by check-in time.
+- [ ] **Before each con:** run `npm run shelves` (search list + shelf order), check the convention
+      is found, rebuild the map if the hall changed, set the $1 budget alert, and run the outage
+      drill.
+- [ ] **Ask the BGG library desk** how returns are handled (scanned at the counter and shelved
+      later?) and whether there's a contact for outages, so the banner text can be accurate.
+
 ## After the convention
 
 **Shut down (Sunday night, Nov 22 2026)**
@@ -281,8 +336,8 @@ private to the repo owner, so other contributors will need them shared).
 - [ ] Add ESLint for `functions/index.js` and a small test for its alert rules (`heldBack`,
       late check-ins).
 - [ ] Replace Tabletop.Events' deprecated `/librarygames` endpoint and test it before the next con.
-- [ ] Optional: give the deploy account the Monitoring Viewer role so free-tier usage can be
-      checked from a phone.
+- [x] ~~Monitoring Viewer role~~: not needed; the deploy account can already read usage
+      (Actions → "Usage today" / "Usage audit").
 - [ ] **Speed:** remove Bootstrap's CSS (232 KB, ~4 classes still used: `visually-hidden`,
       `card`, `spinner`, `row`) and `@ng-bootstrap/ng-bootstrap` (unused). Bootstrap's base styles
       touch every screen, so check each one on an iPhone after. Bootstrap Icons is already gone.
