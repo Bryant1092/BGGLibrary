@@ -35,6 +35,27 @@ jobs:
           gcloud scheduler jobs list --project bgg-library-test --location us-central1 --format="value(name.basename(),schedule,state)" 2>&1 | tail -5
           echo "== Artifact Registry (0.5 GB free)"
           gcloud artifacts repositories list --project bgg-library-test --format="value(name.basename(),sizeBytes)" 2>&1 | tail -5
+      - name: Builds, images, secrets, logs
+        run: |
+          echo "== Cloud Build this month (free: 2,500 build-minutes/month)"
+          gcloud builds list --project bgg-library-test --region us-central1 --limit 200 \
+            --filter="createTime>=$(date -u +%Y-%m-01T00:00:00Z)" --format="value(createTime,duration)" 2>&1 \
+            | python3 -c "
+          import sys,re
+          rows=[l.split() for l in sys.stdin if l.strip()]
+          secs=0
+          for r in rows:
+              m=re.match(r'(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]+)S)?', (r[1] if len(r)>1 else '').replace('PT',''))
+              if m: secs+=int(m.group(1) or 0)*3600+int(m.group(2) or 0)*60+float(m.group(3) or 0)
+          print(f'  {len(rows)} builds, {secs/60:.1f} build-minutes; last: {rows[0][0] if rows else \"-\"}')"
+          echo "== Artifact Registry images (free: 0.5 GB)"
+          gcloud artifacts repositories describe gcf-artifacts --project bgg-library-test --location us-central1 --format="value(sizeBytes)" 2>&1 | tail -1 | awk '{printf "  %.1f MB stored\n", $1/1e6}'
+          gcloud artifacts docker images list us-central1-docker.pkg.dev/bgg-library-test/gcf-artifacts --include-tags --format="value(package.basename(),createTime.date('%m-%d %H:%M'))" 2>&1 | sort | uniq -c | head -12
+          gcloud artifacts repositories describe gcf-artifacts --project bgg-library-test --location us-central1 --format="value(cleanupPolicies)" 2>&1 | cut -c1-200
+          echo "== Secret Manager (free: 6 active versions, 10,000 accesses/month)"
+          for s in $(gcloud secrets list --project bgg-library-test --format="value(name)" 2>/dev/null); do
+            echo "  $s: $(gcloud secrets versions list $s --project bgg-library-test --filter=state=ENABLED --format='value(name)' | wc -l) enabled version(s)"
+          done
       - name: Usage breakdown
         run: |
           export TOKEN=$(gcloud auth print-access-token)
@@ -79,9 +100,19 @@ jobs:
           print('== Firestore reads by day this month')
           for ts in series('firestore.googleapis.com/document/read_ops_count', month, today, 86400):
               print('  ' + ', '.join(f"{datetime.fromisoformat(p['interval']['startTime'].replace('Z','+00:00')).astimezone(ZoneInfo('America/Los_Angeles')):%b %d} {val(p):.0f}" for p in sorted(ts['points'], key=lambda p: p['interval']['endTime'])))
-          print('== Network egress this month (1 GiB free in North America)')
-          for ts in series('run.googleapis.com/container/network/sent_bytes_count', month, now, span(month, now), group='resource.label.service_name'):
-              print(f"  {ts['resource']['labels'].get('service_name'):22} {sum(val(p) for p in ts['points'])/1e6:,.1f} MB sent")
+          print('== Network sent this month, by function and destination (free: 1 GiB/month to the internet, North America)')
+          for ts in series('run.googleapis.com/container/network/sent_bytes_count', month, now, span(month, now), group=['resource.label.service_name', 'metric.label.kind']):
+              print(f"  {ts['resource']['labels'].get('service_name'):22} {ts['metric']['labels'].get('kind','?'):10} {sum(val(p) for p in ts['points'])/1e6:,.1f} MB")
+          print('== Network received this month (incoming is free)')
+          for ts in series('run.googleapis.com/container/network/received_bytes_count', month, now, span(month, now), group=['resource.label.service_name']):
+              print(f"  {ts['resource']['labels'].get('service_name'):22} {sum(val(p) for p in ts['points'])/1e6:,.1f} MB")
+          print('== Sent per hour, last 6 h (checkwatchedgames + checkprizedrawings)')
+          for ts in series('run.googleapis.com/container/network/sent_bytes_count', now - timedelta(hours=6), now, 3600, group=['resource.label.service_name']):
+              pts = sorted(ts['points'], key=lambda p: p['interval']['endTime'])
+              print(f"  {ts['resource']['labels'].get('service_name'):22} " + ', '.join(f'{val(p)/1e6:.2f}' for p in pts) + ' MB/h')
+          print('== Logs ingested this month (free: 50 GiB)')
+          for ts in series('logging.googleapis.com/billing/bytes_ingested', month, now, span(month, now)):
+              print(f"  {sum(val(p) for p in ts['points'])/1e6:,.1f} MB")
           EOF
       - name: Clean up key
         if: always()
