@@ -91,7 +91,15 @@ jobs:
               const g = d?.exists ? (d.get('games') || d.get('items') || d.get('gameIds')) : null; if (Array.isArray(g)) games.push(g.length); }
             if (games.length) console.log(`games per list: ${stats(games).replace('people', 'lists')}`);
             const top = await db.collection('meta').doc('conCheckouts').get();
-            if (top.exists) { const t = top.get('games') || top.get('top') || []; console.log(`== meta/conCheckouts: ${Array.isArray(t) ? t.length : '?'} games tracked`); }
+            // Library-wide checkouts the server counted (public library data, not personal).
+            if (top.exists) { const t = top.get('games') || [];
+              console.log(`== Most checked out (server count, copies added together; counting since ${top.get('countingSince')?.toDate?.().toISOString()}, last update ${top.get('updatedAt')?.toDate?.().toISOString()})`);
+              t.slice(0, 15).forEach((g, i) => console.log(`  ${i + 1}. ${g.name}: ${g.count} (${g.ids.length} copies)`)); }
+            const st = await db.collection('meta').doc('conCheckoutState').get();
+            if (st.exists) { const per = Object.values(st.get('perId') || {});
+              const total = per.reduce((a, g) => a + (g.c || 0), 0);
+              const names = new Set(per.filter(g => g.c > 0).map(g => g.b ? 'b' + g.b : g.n.toLowerCase()));
+              console.log(`== Checkouts counted by the server: ${total} across ${per.filter(g => g.c > 0).length} copies, ${names.size} different games`); }
           })().catch(e => { console.error(e.message); process.exit(1); });
           JS
           node stats.js
