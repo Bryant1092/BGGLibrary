@@ -9,7 +9,7 @@ on:
       target:
         description: What to deploy
         type: choice
-        options: [firestore, functions, firestore-then-functions]
+        options: [firestore, functions, firestore-then-functions, delete-functions]
         default: firestore
 
 jobs:
@@ -27,8 +27,14 @@ jobs:
         run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
 
       - name: Install functions deps
-        if: inputs.target != 'firestore'
+        if: inputs.target == 'functions' || inputs.target == 'firestore-then-functions'
         run: cd functions && npm ci --no-audit --no-fund
+
+      # Stop before deploying if the functions don't even load (syntax error, bad require, a
+      # top-level crash). Added 2026-11-20; README → Checks before deploy.
+      - name: Check functions load
+        if: inputs.target == 'functions' || inputs.target == 'firestore-then-functions'
+        run: node --check functions/index.js && node --test "functions/test/*.test.js" && node -e "require('./functions/index.js')"
 
       - name: Deploy
         env:
@@ -39,12 +45,31 @@ jobs:
             firestore) $FB deploy --only firestore ;;
             functions) $FB deploy --only functions ;;
             firestore-then-functions) $FB deploy --only firestore && $FB deploy --only functions ;;
+            # After the con (README → After the convention): removes the server functions and
+            # their Cloud Scheduler jobs. Firestore data is not touched.
+            delete-functions)
+              $FB functions:delete checkWatchedGames checkPrizeDrawings syncWatchIndex --region us-central1 --force
+              echo "== Functions left:"; $FB functions:list || true
+              exit 0 ;;
           esac
           # Stay in the free tier: delete old function container images after 1 day (Artifact
           # Registry storage past 0.5 GB is billed). Not fatal if the account can't set it.
           if [ "${{ inputs.target }}" != firestore ]; then
             $FB functions:artifacts:setpolicy --days 1 --force || echo "::warning::Could not set the image cleanup policy"
           fi
+
+      # After deleting the functions: remove their stored container images (Artifact Registry,
+      # billed past 0.5 GB) and show what's still scheduled. Not fatal if not allowed.
+      - name: Clean up after delete
+        if: inputs.target == 'delete-functions'
+        run: |
+          gcloud auth activate-service-account --key-file="$RUNNER_TEMP/sa.json" --quiet
+          gcloud config set project bgg-library-test --quiet
+          echo "== Scheduler jobs:"; gcloud scheduler jobs list --location us-central1 || true
+          echo "== Image repositories:"; gcloud artifacts repositories list --location us-central1 || true
+          gcloud artifacts repositories delete gcf-artifacts --location us-central1 --quiet \
+            || echo "::warning::Could not delete gcf-artifacts (it also cleans itself after 1 day)"
+          echo "== Cloud Run services:"; gcloud run services list --region us-central1 || true
 
       - name: Clean up key
         if: always()
