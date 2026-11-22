@@ -20,10 +20,8 @@ jobs:
             n=$(grep -oi 'azul' /tmp/p.html | wc -l)
             echo "$u -> $out | 'azul' x$n | $(wc -c </tmp/p.html) bytes"
           done
-          curl -sL -A "$UA" https://www.nobleknight.com/ -o /tmp/nk.html
-          echo "== NK forms"; grep -oiE '<form[^>]*>|<input[^>]*(name|id)="[^"]*search[^"]*"[^>]*>|Search\?[A-Za-z]+=' /tmp/nk.html | sort -u | head -20
-          grep -oiE '"[^"]*/Search[^"]*"' /tmp/nk.html | sort -u | head -10
-          curl -sL -A "$UA" -o /tmp/bn.html -w 'BN home %{http_code}\n' https://www.barnesandnoble.com/
-          grep -oiE '<form[^>]*>|name="Ntt"|/s/[^"]{0,30}' /tmp/bn.html | sort -u | head -10
-          for u in 'https://www.nobleknight.com/Search/azul' 'https://www.nobleknight.com/Search?Ntt=azul' 'https://www.nobleknight.com/Search?searchText=azul' 'https://www.barnesandnoble.com/s/azul%20board%20game' 'https://www.barnesandnoble.com/search?q=azul'; do
-            out=$(curl -sL -A "$UA" -o /tmp/p.html -w '%{http_code} %{url_effective}' --max-time 25 "$u"); n=$(grep -oi 'azul' /tmp/p.html | wc -l); echo "$u -> $out | x$n"; done
+          for u in 'https://www.nobleknight.com/Search?text=azul' 'https://www.barnesandnoble.com/search?q=azul%20board%20game' 'https://www.booksamillion.com/'; do
+            out=$(curl -sL -A "$UA" -H 'Accept: text/html' -H 'Accept-Language: en-US' -o /tmp/p.html -w '%{http_code} %{url_effective}' --max-time 25 "$u"); n=$(grep -oi 'azul' /tmp/p.html | wc -l); echo "$u -> $out | x$n"; done
+          grep -oE '<a [^>]*href="[^"]*/products/[^"]*"' /tmp/p.html | head -0
+          curl -sL -A "$UA" 'https://www.barnesandnoble.com/search?q=azul%20board%20game' | grep -oE 'href="/products/[^"]+"' | sort -u | head -8
+          curl -sL -A "$UA" 'https://www.nobleknight.com/Search?text=azul' | grep -oiE 'azul[^<"]{0,40}' | sort -u | head -8
