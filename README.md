@@ -368,6 +368,7 @@ Built from an iPhone during the con (Nov 18–22). Newest first; the commit hist
 
 | Date | Change |
 |---|---|
+| Nov 22 | Buy list "Check prices" sorted A–Z by store name |
 | Nov 22 | Buy list "Check prices" adds Barnes & Noble, Books-A-Million, Miniature Market, Noble Knight, Tanuki Games and Game Kastle |
 | Nov 21 | Direct bell checks (after a restart, new bells, untrusted check-in list) also look at the game's other copies |
 | Nov 21 | Server watcher checks every minute instead of every 2 (one run at a time so runs can't overlap) |

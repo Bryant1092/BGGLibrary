@@ -126,18 +126,17 @@ export class BuyListComponent implements OnInit {
     // "Harmonies: Crescendo (English edition)" -> "Harmonies: Crescendo": edition notes hurt store searches.
     const q = encodeURIComponent(g.name.replace(/\s*[(\[].*?[)\]]\s*/g, ' ').replace(/\s+[-–]\s+(English|Multilingual).*$/i, '').trim());
     const bggId = this.details().get(g.id)?.bgg_id;
+    // Always A–Z by store name (asked 2026-11-22), so a store is easy to find in a long list.
+    const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     return [
-      // Big stores.
       { name: 'Amazon', note: 'search', url: `https://www.amazon.com/s?k=${q}+board+game` },
       { name: 'Target', note: 'search', url: `https://www.target.com/s?searchTerm=${q}` },
       { name: 'Barnes & Noble', note: 'search', url: `https://www.barnesandnoble.com/search?q=${q}+board+game` },
       // Blocks automated checks, so this address couldn't be tested from here (2026-11-22).
       { name: 'Books-A-Million', note: 'search', url: `https://www.booksamillion.com/search2?query=${q}+board+game` },
-      // Online game stores that ship to Texas.
       { name: 'Miniature Market', note: 'online game store', url: `https://www.miniaturemarket.com/search?search=${q}` },
       { name: 'GameNerdz', note: 'online game store', url: `https://www.gamenerdz.com/search.php?search_query=${q}` },
       { name: 'Noble Knight', note: 'new, used and out of print', url: `https://www.nobleknight.com/Search?text=${q}` },
-      // Texas stores.
       { name: 'Board Games Dallas', note: 'Common Ground Games, Dallas', url: `https://www.boardgamesdallas.com/search?q=${q}` },
       { name: 'Boardwalk Games', note: 'Dallas area store', url: `https://www.boardwalk-games.com/search?q=${q}` },
       { name: 'House Rules Board Games', note: 'Dallas area store', url: `https://houserulesboardgames.com/search?q=${q}` },
@@ -147,7 +146,7 @@ export class BuyListComponent implements OnInit {
       { name: 'BGG Marketplace', note: 'used copies', url: bggId
         ? `https://boardgamegeek.com/geekmarket/browse?objecttype=thing&objectid=${bggId}`
         : `https://boardgamegeek.com/geekmarket/browse?query=${q}` },
-    ];
+    ].sort(byName);
   }
 
   status(item: BggItem): string { return statusText(item, this.now); }
