@@ -26,6 +26,7 @@ shared "want to play" lists, and sends alerts when a checked-out game comes back
 - [Troubleshooting](#troubleshooting)
 - [Costs and limits](#costs-and-limits)
 - [Outages and worst cases](#outages-and-worst-cases)
+- [Usage at BGG.CON Fall 2026](#usage-at-bggcon-fall-2026)
 - [After the convention](#after-the-convention)
 - [Changes during BGG.CON 2026](#changes-during-bggcon-2026)
 
@@ -287,6 +288,76 @@ Ordered by how much they'd have helped this time:
       drill.
 - [ ] **Ask the BGG library desk** how returns are handled (scanned at the counter and shelved
       later?) and whether there's a contact for outages, so the banner text can be accurate.
+
+## Usage at BGG.CON Fall 2026
+
+Measured Nov 22, 2026 after shutdown, for planning the next con. Re-run any time (totals only,
+nothing personal is printed because this repo's logs are public): **Con stats** (`con-stats.yml`:
+accounts, lists, bells, alerts, Firestore per day), **Usage audit** (`usage-audit.yml`: functions,
+network, images, storage, enabled services) and **Usage today** (`usage.yml`).
+
+**People**
+
+| | |
+|---|---|
+| Accounts | **10** (created Nov 15–16; 6 Google sign-in, 4 email/password). `users/` has 11 documents: one has no sign-in account (test or deleted account). All 10 opened the app during con week. |
+| Lists | 10 lists, 11 holders (1 shared); 6 people made lists |
+| Ratings | 6 people, 58 games rated (45 liked); 5 people marked 20 games to buy |
+| Friends | 7 people connected (36 friend links) |
+| Event reminders | 1 person, 2 events |
+| **Phone notifications turned on** | **only 2 people** (4 devices). Everyone else saw alerts only with the app open. |
+| Bells | peaked at 68 (5 people, one with 58 from automatic list bells), 64 on Saturday night |
+| Alerts | 518 kept (Fri 199, Sat 206, Sun 113); **one person had 388**; 107 (21%) were late-typed check-ins |
+| Alerts by hour | busiest 7 AM (library opening), noon and 3 PM; steady 20–35/hour until midnight |
+
+**Firebase usage vs free limits** (Blaze plan, free tier never exceeded; bill $0)
+
+| What | Con week | Free limit | Notes |
+|---|---|---|---|
+| Firestore reads | peak **10,500/day** (Sat), ~5–7k on normal days | 50,000/day | ~1,000 reads per active person per day. Likely mostly app listeners, which re-read everything after 30 min offline (not measured per screen). |
+| Firestore writes | peak 1,950/day | 20,000/day | |
+| Firestore deletes | peak ~490/day | 20,000/day | |
+| Firestore stored | 17 MB | 1 GiB | grows with alerts |
+| Open listeners | peak ~200 at once | — | |
+| Function CPU (month) | ~17,800 s | 180,000 vCPU-s | watcher 9,550 s · prize drawings 7,644 s · bell sync 561 s |
+| Function runs (month) | watcher 5,494 · prizes 965 · bell sync 2,707 | 2M requests | |
+| Watcher cost per hour | ~60 s/h every 2 min, ~115 s/h every 1 min, **810 s/h during the Nov 21 outage** | | timeouts during outages cost ~7× normal |
+| Data sent to internet | ~29 MB | 1 GiB | |
+| Data sent to Google services | 373 MB (353 MB from prize drawings) | free in same region | |
+| Server images | ~116 MB (~50 MB per functions deploy) | 0.5 GB | 1-day cleanup rule keeps it low; don't deploy 10× in a day |
+| Cloud Build | 34 builds, 17 min | 2,500 min | |
+| Logs | 23 MB | 50 GiB | |
+
+**What this means for next time**
+
+- **Room to grow:** the limit that hits first is Firestore reads. At ~1,000 reads per person
+  per day, 50k/day fits about **40 people on a busy day**; plan for ~30 to keep a buffer. Writes
+  and function time are far from their limits. Reads cost $0.03 per 100k past the limit, so even
+  going over is cents, but keep the $1 budget alert.
+- **Every 1 minute was fine** (about 10% of free function time over 3 days). Every 30 s would be
+  ~28%. The real risk is outages: timeouts made one hour cost 7× normal.
+- **Before the con:** switch to Blaze, set the $1 budget alert, add the deploy key and GitHub
+  secret, deploy Firestore rules, then functions (Deploy Firebase workflow), check with Usage
+  today. After: Deploy Firebase → `delete-functions`, then switch back to Spark.
+
+**Ideas to improve the app, from these numbers**
+
+1. **Get people to turn on phone notifications.** Only 2 of 10 did, and alerts are the main
+   reason to use the app. Ask right after the first bell or list, with a short explainer for
+   adding the app to the Home Screen (iPhone needs that for notifications).
+2. **Too many alerts for some people.** One person got 388 in three days, mostly from automatic
+   bells on a whole list. Ideas: a cap or digest ("5 of your games came back"), automatic bells
+   off by default, or only for games marked "want to play".
+3. **Prize drawings check is the heaviest server job per run** (7.9 s and ~365 KB per run vs
+   1.7 s for the watcher). Check every 30 min, or only around drawing times.
+4. **Cut Firestore reads:** fewer always-on listeners (e.g. Alerts only while its tab is open),
+   and smaller documents for long lists. This is what limits how many people can use it for free.
+5. **Clear old alerts automatically** (a Firestore TTL policy, e.g. after 14 days) so storage and
+   the Alerts tab stay small.
+6. **Outages:** see [Outages and worst cases](#outages-and-worst-cases); back off faster when
+   Tabletop.Events stops answering, since that's when function time spikes.
+7. **Features barely used:** event reminders (1 person) and shared lists (1). Make them easier to
+   find, or don't invest more there.
 
 ## After the convention
 
