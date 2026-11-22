@@ -293,8 +293,11 @@ Ordered by how much they'd have helped this time:
 **Shut down (Sunday night, Nov 22 2026)**
 
 1. Delete the three functions (`checkWatchedGames`, `checkPrizeDrawings`, `syncWatchIndex`) and
-   downgrade the Firebase project from Blaze to Spark.
-2. Clear server-only state in `meta/` and old `eventStars`.
+   downgrade the Firebase project from Blaze to Spark. Done Nov 22 ~4 PM with the Deploy
+   Firebase workflow's `delete-functions` choice (also removes their scheduler jobs and stored
+   images). The Blaze → Spark switch is done by hand in the Firebase console.
+2. ~~Clear server-only state in `meta/` and old `eventStars`.~~ Kept on purpose (Nov 22): all
+   Firestore data stays for analysis. It stays free on Spark.
 3. Prize badge numbers clear themselves 14 days after the con.
 4. Delete the deploy service account's key in Google Cloud (IAM → Service accounts → Keys) and
    the `FIREBASE_SERVICE_ACCOUNT` secret in the GitHub repo settings.
