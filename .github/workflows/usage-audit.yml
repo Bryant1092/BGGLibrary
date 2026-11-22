@@ -54,6 +54,13 @@ jobs:
           for s in $(gcloud secrets list --project bgg-library-test --format="value(name)" 2>/dev/null); do
             echo "  $s: $(gcloud secrets versions list $s --project bgg-library-test --filter=state=ENABLED --format='value(name)' | wc -l) enabled version(s)"
           done
+          echo "== Cloud Storage buckets (free: 5 GB in us-central1)"
+          gcloud storage buckets list --project bgg-library-test --format="value(name,location)" 2>&1 | head -10
+          for b in $(gcloud storage buckets list --project bgg-library-test --format="value(name)" 2>/dev/null); do
+            echo "  $b: $(gcloud storage du -s gs://$b 2>/dev/null | awk '{printf "%.1f MB", $1/1e6}')"
+          done
+          echo "== Enabled APIs that can bill"
+          gcloud services list --enabled --project bgg-library-test --format="value(config.name)" 2>&1 | grep -iE "compute|run|cloudfunctions|scheduler|storage|artifact|secret|build|pubsub|eventarc|identitytoolkit|firestore|logging|bigquery" | sort
       - name: Usage breakdown
         run: |
           export TOKEN=$(gcloud auth print-access-token)
