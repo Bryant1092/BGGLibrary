@@ -118,18 +118,31 @@ export class BuyListComponent implements OnInit {
    * needs no account or key and sends nothing about the person. Search addresses checked
    * 2026-11-17 (each returned results for "ark nova"); BoardGamePrices.com was left out
    * because it has no working search link. Local Dallas stores are included for the con.
+   * Added 2026-11-22: Barnes & Noble, Books-A-Million, Miniature Market, Noble Knight, Tanuki
+   * Games and Game Kastle (each checked with "azul" except Books-A-Million, which blocks
+   * automated requests). Collected (Fort Worth) was left out: its ComicHub shop has no search link.
    */
   stores(g: { id: string; name: string }): { name: string; note: string; url: string }[] {
     // "Harmonies: Crescendo (English edition)" -> "Harmonies: Crescendo": edition notes hurt store searches.
     const q = encodeURIComponent(g.name.replace(/\s*[(\[].*?[)\]]\s*/g, ' ').replace(/\s+[-–]\s+(English|Multilingual).*$/i, '').trim());
     const bggId = this.details().get(g.id)?.bgg_id;
     return [
+      // Big stores.
       { name: 'Amazon', note: 'search', url: `https://www.amazon.com/s?k=${q}+board+game` },
       { name: 'Target', note: 'search', url: `https://www.target.com/s?searchTerm=${q}` },
+      { name: 'Barnes & Noble', note: 'search', url: `https://www.barnesandnoble.com/search?q=${q}+board+game` },
+      // Blocks automated checks, so this address couldn't be tested from here (2026-11-22).
+      { name: 'Books-A-Million', note: 'search', url: `https://www.booksamillion.com/search2?query=${q}+board+game` },
+      // Online game stores that ship to Texas.
+      { name: 'Miniature Market', note: 'online game store', url: `https://www.miniaturemarket.com/search?search=${q}` },
       { name: 'GameNerdz', note: 'online game store', url: `https://www.gamenerdz.com/search.php?search_query=${q}` },
-      { name: 'Board Games Dallas', note: 'Dallas store', url: `https://www.boardgamesdallas.com/search?q=${q}` },
+      { name: 'Noble Knight', note: 'new, used and out of print', url: `https://www.nobleknight.com/Search?text=${q}` },
+      // Texas stores.
+      { name: 'Board Games Dallas', note: 'Common Ground Games, Dallas', url: `https://www.boardgamesdallas.com/search?q=${q}` },
       { name: 'Boardwalk Games', note: 'Dallas area store', url: `https://www.boardwalk-games.com/search?q=${q}` },
       { name: 'House Rules Board Games', note: 'Dallas area store', url: `https://houserulesboardgames.com/search?q=${q}` },
+      { name: 'Tanuki Games', note: 'Austin store, imports', url: `https://www.tanukigamesatx.com/search?q=${q}` },
+      { name: 'Game Kastle', note: 'Austin store, smaller online stock', url: `https://gamekastle.com/search?q=${q}` },
       // Used copies, by BoardGameGeek id when the game's details have loaded.
       { name: 'BGG Marketplace', note: 'used copies', url: bggId
         ? `https://boardgamegeek.com/geekmarket/browse?objecttype=thing&objectid=${bggId}`
