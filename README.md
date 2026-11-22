@@ -328,6 +328,32 @@ network, images, storage, enabled services) and **Usage today** (`usage.yml`).
 | Cloud Build | 34 builds, 17 min | 2,500 min | |
 | Logs | 23 MB | 50 GiB | |
 
+**The whole con, from BGG's email (Nov 22) next to what our server counted**
+
+| | BGG official | Our server (`meta/conCheckoutState`, counting from Nov 18 8:25 AM) |
+|---|---|---|
+| Badges sold / attendees | 3,083 / 2,942 | — (our 10 users ≈ 0.3% of attendees) |
+| States / countries | 48 + DC / 14 | — |
+| Exhibitors | 137 people, 56 companies | — |
+| Scheduled events / demos / playtests | 210 / 55 / 15+ | — |
+| Library items | 9,107 | — |
+| Checkouts | 10,708+ (BGG says some weren't recorded due to a system error) | **10,713** across 3,186 copies |
+| Different games checked out | 2,860+ | **2,829** |
+| Top games | 1. Hell of a Deal · 2. Forest Shuffle: Smoky Mountains · 3. Wingspan Pocket | 1. Hell of a Deal (82) · 2. Magical Athlete (63) · 3. Forest Shuffle: Smoky Mountains (59) · 4. Wingspan Pocket (57) |
+
+- Our counting matched BGG's within a few checkouts, so "Most played this con" can be trusted.
+- Magical Athlete is #2 for us but not in BGG's top 3. Likely reasons (not confirmed): we add
+  copies of the same game together by BGG id across editions, BGG may count per edition, or
+  checkouts lost in their system error. Hot Games tables aren't in either count.
+- About 10,700 checkouts over ~4.5 days is roughly 120 per hour while the library is open, which
+  is why the watcher reads one "checked in since" list per run instead of one request per game.
+- **If more attendees used the app:** at ~1,000 Firestore reads per person per day, 1% of
+  attendees (~30 people) fits the free 50k/day. 5% (~150) would be ~150k reads/day: over the
+  free tier on Blaze, but only about $0.03/day for reads. On Spark, Firestore would stop working
+  for everyone once the daily limit is hit, so a bigger audience needs Blaze (with the budget
+  alert) or fewer reads per person (idea 4 below). Server cost barely changes with more people:
+  the watcher makes the same Tabletop.Events requests for 1 bell or 1,000.
+
 **What this means for next time**
 
 - **Room to grow:** the limit that hits first is Firestore reads. At ~1,000 reads per person
