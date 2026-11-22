@@ -1,0 +1,130 @@
+# Counts how the app was used during a con, for planning the next one (README → Usage at BGG.CON).
+# Prints totals only — no names, emails or game-by-user data — because this repo's logs are public.
+# Reads a few thousand Firestore documents (well inside the free 50k/day).
+name: Con stats (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: First day of the con week (YYYY-MM-DD, Central)
+        default: '2026-11-15'
+      to:
+        description: Last day (YYYY-MM-DD, Central)
+        default: '2026-11-22'
+
+jobs:
+  stats:
+    if: github.repository == 'Bryant1092/BGGLibrary'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Service account
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+      - name: App data
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          FROM: ${{ inputs.from }}
+          TO: ${{ inputs.to }}
+        run: |
+          mkdir s && cd s && npm init -y >/dev/null && npm i firebase-admin@12 --no-audit --no-fund >/dev/null 2>&1
+          cat > stats.js <<'JS'
+          const admin = require('firebase-admin');
+          admin.initializeApp({ projectId: 'bgg-library-test' });
+          const db = admin.firestore();
+          const day = d => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+          const hour = d => Number(new Date(d).toLocaleString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }));
+          const ms = v => v?.toMillis ? v.toMillis() : (typeof v === 'number' ? v : (v ? Date.parse(v) : NaN));
+          const inCon = d => d >= process.env.FROM && d <= process.env.TO;
+          const tally = (m, k) => m.set(k, (m.get(k) || 0) + 1);
+          const show = (title, m) => console.log(title + '\n  ' + [...m].sort().map(([k, v]) => `${k} ${v}`).join(', '));
+          const stats = (xs) => { const s = [...xs].sort((a, b) => a - b); if (!s.length) return 'none';
+            const q = p => s[Math.min(s.length - 1, Math.floor(p * s.length))];
+            return `people ${s.length}, total ${s.reduce((a, b) => a + b, 0)}, median ${q(.5)}, max ${s[s.length - 1]}`; };
+          (async () => {
+            // Sign-ins (Firebase Auth)
+            let users = [], tok;
+            do { const r = await admin.auth().listUsers(1000, tok); users.push(...r.users); tok = r.pageToken; } while (tok);
+            console.log(`== Accounts: ${users.length}`);
+            const created = new Map(), lastIn = new Map(), lastSeen = new Map();
+            for (const u of users) {
+              tally(created, day(u.metadata.creationTime));
+              if (u.metadata.lastSignInTime) tally(lastIn, day(u.metadata.lastSignInTime));
+              if (u.metadata.lastRefreshTime) tally(lastSeen, day(u.metadata.lastRefreshTime));
+            }
+            show('Accounts created per day', created);
+            show('Last active per day (last token refresh: the app was opened)', lastSeen);
+            const activeCon = users.filter(u => inCon(day(u.metadata.lastRefreshTime || u.metadata.lastSignInTime || 0))).length;
+            console.log(`Accounts active during the con week: ${activeCon}`);
+            const providers = new Map(); users.forEach(u => u.providerData.forEach(p => tally(providers, p.providerId)));
+            show('Sign-in methods', providers);
+
+            // Per-person collections
+            const sub = { gameLists: [], reactions: [], watches: [], eventStars: [], alerts: [], pushSubs: [], friends: [] };
+            const alertDay = new Map(), alertHour = new Map(); let late = 0, alertsTotal = 0;
+            const buy = [], liked = [];
+            const userDocs = await db.collection('users').get();
+            console.log(`== users/ documents: ${userDocs.size}`);
+            for (const u of userDocs.docs) {
+              for (const name of Object.keys(sub)) {
+                const snap = await u.ref.collection(name).get();
+                sub[name].push(snap.size);
+                if (name === 'reactions') { buy.push(snap.docs.filter(d => d.get('buy')).length); liked.push(snap.docs.filter(d => d.get('liked') === true).length); }
+                if (name === 'alerts') snap.docs.forEach(d => { alertsTotal++; const t = ms(d.get('createdAt')); if (!isNaN(t)) { tally(alertDay, day(t)); tally(alertHour, String(hour(t)).padStart(2, '0')); } if (d.get('late')) late++; });
+              }
+            }
+            for (const [k, v] of Object.entries(sub)) console.log(`${k.padEnd(10)} ${stats(v.filter(n => n > 0))}  (of ${v.length} accounts)`);
+            console.log(`marked to buy: ${stats(buy.filter(n => n > 0))}`);
+            console.log(`liked:         ${stats(liked.filter(n => n > 0))}`);
+            console.log(`== Alerts kept: ${alertsTotal} (late check-ins: ${late})`);
+            show('Alerts per day', alertDay);
+            show('Alerts by hour of day (Central)', alertHour);
+
+            // Shared lists: games per list, how many people hold each list
+            const holders = new Map();
+            for (const u of userDocs.docs) (await u.ref.collection('gameLists').get()).docs.forEach(d => tally(holders, d.id));
+            console.log(`== Lists: ${holders.size} distinct, held by ${[...holders.values()].reduce((a, b) => a + b, 0)} (shared lists count once per holder)`);
+            const games = [];
+            for (const id of holders.keys()) { const d = await db.collection('gameLists').doc(id).get().catch(() => null);
+              const g = d?.exists ? (d.get('games') || d.get('items') || d.get('gameIds')) : null; if (Array.isArray(g)) games.push(g.length); }
+            if (games.length) console.log(`games per list: ${stats(games).replace('people', 'lists')}`);
+            const top = await db.collection('meta').doc('conCheckouts').get();
+            if (top.exists) { const t = top.get('games') || top.get('top') || []; console.log(`== meta/conCheckouts: ${Array.isArray(t) ? t.length : '?'} games tracked`); }
+          })().catch(e => { console.error(e.message); process.exit(1); });
+          JS
+          node stats.js
+      - name: Firestore per day
+        run: |
+          gcloud auth activate-service-account --key-file="$RUNNER_TEMP/sa.json" --quiet
+          export TOKEN=$(gcloud auth print-access-token)
+          python3 - <<'EOF'
+          import json, os, urllib.parse, urllib.request
+          from datetime import datetime, timedelta, timezone
+          from zoneinfo import ZoneInfo
+          P='bgg-library-test'; PT=ZoneInfo('America/Los_Angeles')
+          end=datetime.now(timezone.utc); start=(datetime.now(PT)-timedelta(days=9)).replace(hour=0,minute=0,second=0,microsecond=0).astimezone(timezone.utc)
+          def series(metric, align='ALIGN_SUM', period=86400, reducer='REDUCE_SUM'):
+              q={'filter':f'metric.type="{metric}"','interval.startTime':start.strftime('%Y-%m-%dT%H:%M:%SZ'),'interval.endTime':end.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                 'aggregation.alignmentPeriod':f'{period}s','aggregation.perSeriesAligner':align,'aggregation.crossSeriesReducer':reducer}
+              r=urllib.request.urlopen(urllib.request.Request(f'https://monitoring.googleapis.com/v3/projects/{P}/timeSeries?'+urllib.parse.urlencode(q),headers={'Authorization':'Bearer '+os.environ['TOKEN']}))
+              out={}
+              for s in json.load(r).get('timeSeries',[]):
+                  for p in s['points']:
+                      t=datetime.fromisoformat(p['interval']['endTime'].replace('Z','+00:00')).astimezone(PT)-timedelta(seconds=1)
+                      v=p['value']; out[t.strftime('%b %d')]=out.get(t.strftime('%b %d'),0)+float(v.get('int64Value',v.get('doubleValue',0)))
+              return out
+          for name,m in [('reads','firestore.googleapis.com/document/read_ops_count'),('writes','firestore.googleapis.com/document/write_ops_count'),('deletes','firestore.googleapis.com/document/delete_ops_count'),('listener connections (peak)','firestore.googleapis.com/network/snapshot_listeners')]:
+              try:
+                  d=series(m, 'ALIGN_MAX' if 'listeners' in m else 'ALIGN_SUM', reducer='REDUCE_SUM')
+                  print(f'== Firestore {name} per day (Pacific days, free quota resets midnight Pacific)'); print('  '+', '.join(f'{k} {int(v)}' for k,v in sorted(d.items())))
+              except Exception as e: print(f'== {name}: not readable ({e})')
+          try:
+              d=series('firestore.googleapis.com/storage/data_and_index_storage_bytes','ALIGN_MAX')
+              print('== Firestore stored (data + indexes, free 1 GiB)'); print('  '+', '.join(f'{k} {v/1e6:.1f} MB' for k,v in sorted(d.items())))
+          except Exception as e: print(f'== storage: not readable ({e})')
+          EOF
+      - name: Clean up key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
