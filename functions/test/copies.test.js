@@ -1,7 +1,7 @@
 // Run: node --test functions/test   (also runs before every deploy)
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { copyKey, matchCheckins } = require('../copies');
+const { copyKey, matchCheckins, sameGameCopies } = require('../copies');
 
 const tteTime = v => v ? new Date(String(v).trim().replace(' ', 'T') + 'Z').getTime() : 0;
 const at = s => tteTime(s);
@@ -61,4 +61,26 @@ test('stops at check-ins older than the last run', () => {
   const r = matchCheckins(items, bells, at('2026-11-21 03:40:00'), tteTime);
   assert.equal(r.back.size, 0);
   assert.equal(r.older, true);
+});
+
+test('direct check: a name search keeps only the same game, newest check-in first', () => {
+  const items = [
+    copy('C1', '2026-11-21 01:00:00', true),
+    { id: 'X', name: 'Hell of a Deal: Expansion', last_checkin_date: '2026-11-21 05:00:00', is_checked_out: 0 },
+    copy('C2', '2026-11-21 04:00:00', false),
+    copy('C3', null, true),
+  ];
+  assert.deepEqual(sameGameCopies(items, copyKey(HOAD)).map(g => g.id), ['C2', 'C1', 'C3']);
+  assert.equal(sameGameCopies(items, '').length, 0);
+});
+
+test('direct check: another copy back since the last good run answers the bell', () => {
+  const copies = sameGameCopies([copy('C1', '2026-11-21 01:00:00', true), copy('C2', '2026-11-21 04:00:00', false)], copyKey(HOAD));
+  const { back } = matchCheckins(copies, new Map([['C1', copyKey(HOAD)]]), at('2026-11-21 03:55:00'), tteTime);
+  assert.equal(back.get('C1')?.id, 'C2');
+});
+
+test('direct check: a copy sitting on the shelf for hours does not send "is back"', () => {
+  const copies = sameGameCopies([copy('C1', '2026-11-21 01:00:00', true), copy('C2', '2026-11-20 20:00:00', false)], copyKey(HOAD));
+  assert.equal(matchCheckins(copies, new Map([['C1', copyKey(HOAD)]]), at('2026-11-21 03:55:00'), tteTime).back.size, 0);
 });

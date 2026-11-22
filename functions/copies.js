@@ -48,4 +48,14 @@ function matchCheckins(items, bellNames, since, tteTime) {
   return { back, older };
 }
 
-module.exports = { copyKey, matchCheckins };
+/**
+ * The copies of one game from a Tabletop.Events name search (which also returns other games
+ * whose names contain the words), newest check-in first, ready for matchCheckins.
+ * Dates are 'YYYY-MM-DD HH:MM:SS' in UTC, so comparing the strings sorts them by time.
+ */
+function sameGameCopies(items, key) {
+  return items.filter(g => key && copyKey(g.name) === key)
+    .sort((a, b) => String(b.last_checkin_date || '').localeCompare(String(a.last_checkin_date || '')));
+}
+
+module.exports = { copyKey, matchCheckins, sameGameCopies };

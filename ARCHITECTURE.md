@@ -311,7 +311,10 @@ then typed the backlog in, and Tabletop.Events stamped every entry with the typi
   (`matchCheckins`) matches every check-in by name (`copyKey`, same rule as the app's
   `BggService.copiesOf`), so any copy on the shelf answers the bell. No extra requests: it reads
   the same check-in list. `bellNames` (in memory) learns each bell's name from its direct fetch;
-  held-back alerts re-check the copy that came back. The app's automatic bell waits 15 minutes
+  held-back alerts re-check the copy that came back. Direct checks (first run after a restart, new bells,
+  untrusted check-in list) also search the game's other copies (`sameGameCopies`; one extra
+  request per game, skipped once a game is known to have one copy) and count a copy only if it
+  was checked in since the last good run (2026-11-21). The app's automatic bell waits 15 minutes
   after an alert for that game (`WatchService.alertedRecently`). Tests: `functions/test/`.
 - **Alerts tab**: `alerts.service.ts` (Firestore `users/{uid}/alerts`, or local storage when signed
   out; 7 days, up to 100; unseen count = tab badge) and `alerts/alerts.component.ts`.

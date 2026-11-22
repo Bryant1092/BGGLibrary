@@ -39,7 +39,7 @@ const { defineSecret } = require('firebase-functions/params');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
 const webpush = require('web-push');
-const { copyKey, matchCheckins } = require('./copies');
+const { copyKey, matchCheckins, sameGameCopies } = require('./copies');
 
 admin.initializeApp();
 
@@ -330,6 +330,10 @@ let checkinCursor = 0;
  */
 const bellNames = new Map();
 const knownBells = new Set();
+/** Bells whose game has only one copy (learned from a copies lookup), so direct checks skip it. */
+const singleCopy = new Set();
+/** When the last fully successful run was (survives a failed run, unlike checkinCursor). */
+let lastGoodRun = 0;
 let sortBrokenUntil = 0, lastFullCheck = 0;
 const SORT_DISTRUST_MS = 30 * 60 * 1000;
 const SORT_FALLBACK_EVERY_MS = 6 * 60 * 1000;
@@ -345,7 +349,7 @@ function newestFirst(items, field) {
 async function gamesBack(byGame, now) {
   const back = new Map();
   // Sorted list known to be unreliable: check every bell directly, but only every
-  // SORT_FALLBACK_EVERY_MS (not every 2 min), to stay gentle with Tabletop.Events.
+  // SORT_FALLBACK_EVERY_MS (not every minute), to stay gentle with Tabletop.Events.
   if (now < sortBrokenUntil) {
     if (now - lastFullCheck < SORT_FALLBACK_EVERY_MS) return new Map();
     checkinCursor = 0;
@@ -376,20 +380,34 @@ async function gamesBack(byGame, now) {
     }
   }
 
+  // Direct checks (first run after a restart, new bells, untrusted check-in list) look at the
+  // bell's own copy AND its other copies (2026-11-21). Before, other copies were left to the
+  // check-in list, which only sees check-ins after this run: a copy that came back while the
+  // list was distrusted (it was for 30 min on Nov 19) or just before a restart was missed.
+  // Other copies count only if checked in since the last good run (a few minutes' overlap),
+  // the same rule as the list, so a copy that's been sitting on the shelf for hours doesn't
+  // send "is back". One extra request per game, skipped for games known to have one copy.
+  const directSince = (lastGoodRun || now - 5 * 60 * 1000) - 3 * 60 * 1000;
   for (let i = 0; i < direct.length; i += PARALLEL) {
     await Promise.all(direct.slice(i, i + PARALLEL).map(async id => {
       const { status, result: game } = await fetchGame(id);
       if (status === 404) return; // gone from the library: nothing to wait for
       if (!game) { ok = false; return; }
-      bellNames.set(id, copyKey(game.name));
-      // Direct checks (first run, new bells, untrusted list) only see the bell's own copy;
-      // other copies are caught by the check-in list on the next run.
-      if (Number(game.is_checked_out) === 0) back.set(id, game);
+      const key = copyKey(game.name);
+      bellNames.set(id, key);
+      if (Number(game.is_checked_out) === 0) { back.set(id, game); return; }
+      if (!key || singleCopy.has(id)) return;
+      const r = await tteJson(`${LIBRARY_GAMES}?query=${encodeURIComponent(game.name.trim())}&is_in_circulation=1&_items_per_page=50`);
+      if (!r?.items) { ok = false; return; }
+      const copies = sameGameCopies(r.items, key);
+      if (copies.length <= 1) { singleCopy.add(id); return; }
+      const match = matchCheckins(copies, new Map([[id, key]]), directSince, tteTime);
+      if (match.back.has(id)) back.set(id, match.back.get(id));
     }));
   }
 
   // Only move on when everything was checked; otherwise the next run checks every bell again.
-  if (ok) { checkinCursor = now; byGame.forEach((_, id) => knownBells.add(id)); }
+  if (ok) { checkinCursor = lastGoodRun = now; byGame.forEach((_, id) => knownBells.add(id)); }
   else checkinCursor = 0;
   return back;
 }

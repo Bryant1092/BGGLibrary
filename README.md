@@ -368,6 +368,7 @@ Built from an iPhone during the con (Nov 18–22). Newest first; the commit hist
 
 | Date | Change |
 |---|---|
+| Nov 21 | Direct bell checks (after a restart, new bells, untrusted check-in list) also look at the game's other copies |
 | Nov 21 | Server watcher checks every minute instead of every 2 (one run at a time so runs can't overlap) |
 | Nov 21 | Pop-ups above the tab bar stack instead of overlapping (toast above "New from BGG"); Alerts tab status "May be wrong" → "Not sure" so it fits its pill |
 | Nov 21 | Tabletop.Events outage handling: games open offline, Library lists all games from the phone, fast-fail requests, one banner |
