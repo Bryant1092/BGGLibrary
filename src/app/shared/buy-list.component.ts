@@ -153,8 +153,8 @@ export class BuyListComponent implements OnInit {
       { name: 'BGG Marketplace', mono: 'BGG', note: 'Used copies', url: bggId
         ? `https://boardgamegeek.com/geekmarket/browse?objecttype=thing&objectid=${bggId}`
         : `https://boardgamegeek.com/geekmarket/browse?query=${q}` },
-      // Common Ground Games' website.
-      { name: 'Board Games Dallas', mono: 'BG', note: 'Dallas', url: `https://www.boardgamesdallas.com/search?q=${q}` },
+      // The store is Common Ground Games; boardgamesdallas.com is its website (renamed 2026-11-22).
+      { name: 'Common Ground Games', mono: 'CG', note: 'Dallas', url: `https://www.boardgamesdallas.com/search?q=${q}` },
       { name: 'Boardwalk Games', mono: 'BW', note: 'Dallas area', url: `https://www.boardwalk-games.com/search?q=${q}` },
       // Books-A-Million and Walmart block automated checks, so these couldn't be tested from here (2026-11-22).
       { name: 'Books-A-Million', mono: 'BAM', note: 'Online', url: `https://www.booksamillion.com/search2?query=${q}+board+game` },
