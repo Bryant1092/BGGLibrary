@@ -181,7 +181,7 @@ All in `functions/index.js`; details in [ARCHITECTURE.md](ARCHITECTURE.md#server
 
 | Function | When | Does |
 |---|---|---|
-| `checkWatchedGames` | every 2 min | "Game is back" push for bells; event reminders. Library part paused 2–7 AM Dallas time. |
+| `checkWatchedGames` | every 1 min (was 2 min until Nov 21, 7:55 PM; one run at a time) | "Game is back" push for bells; event reminders. Library part paused 2–7 AM Dallas time. |
 | `checkPrizeDrawings` | every 10 min | Prize-drawing win alerts by badge number; tracks "Most played this con" and this con's average time out / on the shelf per game (`meta/conPlayTimes`). |
 | `syncWatchIndex` | on each bell change | Keeps the one-document bell summary (`meta/watchIndex`) in step. |
 
@@ -257,7 +257,7 @@ just stops.**
 | Situation | How you'll know | Do this |
 |---|---|---|
 | **Desk not scanning, Tabletop.Events up** | Desk banner appears on its own after 30 min without scans (9 AM–11 PM) | Usually nothing. If staff confirm paper checkouts, set `"deskDown": true` and `"deskDownSince"` in `public/notice.json` and push (~3 min); set it back and fill `"deskBackAt"` when scanning resumes. |
-| **Tabletop.Events not answering** | No banner yet (see "Build before next con"). Signs: server logs show `maximum request timeout`; Actions → "TTE lookup" prints `HEALTH 000` | Turn the switch on with a `"message"` saying Tabletop.Events is down (as on Nov 21). The app then fails fast, shows saved data and holds alerts. Server keeps trying every 2 min (costs CPU but stays free; check "Usage audit"). |
+| **Tabletop.Events not answering** | No banner yet (see "Build before next con"). Signs: server logs show `maximum request timeout`; Actions → "TTE lookup" prints `HEALTH 000` | Turn the switch on with a `"message"` saying Tabletop.Events is down (as on Nov 21). The app then fails fast, shows saved data and holds alerts. Server keeps trying every minute (costs CPU but stays free; check "Usage audit"). |
 | **Firebase down** (rare) | Sign-in / lists fail | Lists show from the phone's Firestore cache; alerts stop. Nothing to do but wait. |
 | **GitHub Pages down** | App won't update | Installed app keeps running from the service worker; no action. |
 | **Need to check free-tier usage** | Any time | Actions → "Usage today" (totals) or "Usage audit" (breakdown). |
@@ -368,6 +368,7 @@ Built from an iPhone during the con (Nov 18–22). Newest first; the commit hist
 
 | Date | Change |
 |---|---|
+| Nov 21 | Server watcher checks every minute instead of every 2 (one run at a time so runs can't overlap) |
 | Nov 21 | Pop-ups above the tab bar stack instead of overlapping (toast above "New from BGG"); Alerts tab status "May be wrong" → "Not sure" so it fits its pill |
 | Nov 21 | Tabletop.Events outage handling: games open offline, Library lists all games from the phone, fast-fail requests, one banner |
 | Nov 20 | Bells answer to any copy of a game (5-copy games like Hell of a Deal); 15-minute quiet period for automatic bells |

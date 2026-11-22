@@ -154,7 +154,7 @@ All access is checked by `firestore.rules`; every write lists exactly which fiel
 
 `functions/index.js`, Cloud Functions 2nd gen, region `us-central1`, times in `America/Chicago`.
 
-**`checkWatchedGames`, every 2 minutes**
+**`checkWatchedGames`, every minute** (every 2 minutes until Nov 21, 2026)
 1. `sendEventReminders`: collection-group query `eventStars where remindAt <= now`; sends a push
    (skipped if the event started more than 5 minutes ago), then clears `remindAt`. Runs at all hours.
 2. Library part, paused **2–7 AM Dallas** (nothing moves at the library): reads **one** document,
@@ -284,7 +284,7 @@ via the hotel front desk. Convention days and hours come from `config/convention
 Added after the Nov 19 2026 outage (scanning down ~1:39–9:10 PM; staff wrote barcodes by hand,
 then typed the backlog in, and Tabletop.Events stamped every entry with the typing time).
 
-- **Server** (`functions/index.js`, `checkDesk` inside `checkWatchedGames`, every 2 min): reads the
+- **Server** (`functions/index.js`, `checkDesk` inside `checkWatchedGames`, every minute): reads the
   newest check-in times. No scans for `DESK_OUTAGE_MS` (30 min) between 9 AM and 11 PM Dallas =
   outage; the first new scan after it starts a catch-up window (`CATCH_UP_MS`, 90 min). Saved to
   `meta/deskStatus`. Tabletop.Events' sort by check-in time was unreliable then, so out-of-order

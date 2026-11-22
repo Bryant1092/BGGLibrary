@@ -10,7 +10,7 @@
  *   users/{uid}/watches/{gameId}   { name, shelf, at }   a bell that's on
  *   users/{uid}/pushSubs/{id}      { sub, at }           a phone that allowed notifications
  *
- * Every 2 minutes:
+ * Every minute (every 2 minutes before Nov 21, 2026):
  *   1. Read ONE summary document, meta/watchIndex, listing every bell ("uid__gameId").
  *      It's kept up to date by syncWatchIndex below whenever a bell is added or
  *      removed. (Reading every bell each run cost one read per bell, ~43,000 reads
@@ -108,7 +108,7 @@ async function loadBellKeys(db, now) {
 // typed, so for a while: "game is back" alerts fire for games that came back hours ago
 // (and may be out again), and play times get made-up lengths.
 //
-// So every 2 minutes (inside checkWatchedGames) the server reads the newest check-in times
+// So every minute (inside checkWatchedGames) the server reads the newest check-in times
 // (checkDesk). A gap of DESK_OUTAGE_MS or more that started during the day, then a new
 // check-in = staff catching up. For CATCH_UP_MS after:
 // - alerts wait ALERT_HOLD_MS and are re-checked before sending (heldBack below), and
@@ -216,14 +216,20 @@ const heldBack = new Map();
 const BURST = 3;
 
 exports.checkWatchedGames = onSchedule({
-  schedule: 'every 2 minutes',
+  // Every minute since 2026-11-21 7:55 PM (was every 2 minutes): halves the wait for an
+  // "is back" alert. Measured cost: ~10% of the free function CPU through Sunday.
+  schedule: 'every 1 minutes',
   timeZone: 'America/Chicago',
   region: 'us-central1',
   secrets: [VAPID_PRIVATE_KEY],
   memory: '256MiB',
   timeoutSeconds: 90,
-  // One run at a time, so two overlapping runs can't send the same alert twice.
+  // One run at a time, so two overlapping runs can't send the same alert twice. Both are
+  // needed: maxInstances alone still lets a second request into the same instance
+  // (concurrency defaults to 80), and with runs a minute apart a slow run during a
+  // Tabletop.Events outage could overlap the next. The overlapping run is just skipped.
   maxInstances: 1,
+  concurrency: 1,
   retryCount: 0,
 }, async () => {
   const db = admin.firestore();
@@ -309,7 +315,7 @@ exports.checkWatchedGames = onSchedule({
  * from one address for 10 people (2026-11-16). Tabletop.Events publishes no limit but
  * blocks "abuse" (tabletop.events/developer), so instead each run asks for the games
  * checked in since the previous run, newest first (usually one page), and keeps the
- * belled ones that are on the shelf. Same 2-minute timing, so alerts are just as quick.
+ * belled ones that are on the shelf. Same 1-minute timing, so alerts are just as quick.
  *
  * Asked about directly, one by one (the old way), only when the list can't be trusted:
  * - a bell added since the last run (its game may have come back just before), and
