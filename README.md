@@ -352,7 +352,7 @@ network, images, storage, enabled services) and **Usage today** (`usage.yml`).
   free tier on Blaze, but only about $0.03/day for reads. On Spark, Firestore would stop working
   for everyone once the daily limit is hit, so a bigger audience needs Blaze (with the budget
   alert) or fewer reads per person (idea 4 below). Server cost barely changes with more people:
-  the watcher makes the same Tabletop.Events requests for 1 bell or 1,000.
+  the watcher makes nearly the same Tabletop.Events requests for 1 bell or 1,000 (only checks after a restart go one game at a time).
 
 **What this means for next time**
 
