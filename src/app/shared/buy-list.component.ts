@@ -32,10 +32,23 @@ import { SheetComponent } from './sheet.component';
       display: flex; align-items: center; justify-content: center; }
     /* "Prices" sits on the row, left of the remove button (row actions go on the right, as + and the bell do elsewhere). */
     .prices { flex: none; min-height: 44px; padding: 0 12px; margin-right: 6px; border: 0; border-radius: 22px; background: var(--bl-tonal); color: var(--bl-on-tonal); font: inherit; font-size: 14px; font-weight: 700; }
-    .stores { display: flex; flex-direction: column; }
-    .store { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; border-bottom: 1px solid var(--bl-hair); color: var(--bl-text); text-decoration: none; font-weight: 600; font-size: 16px; }
-    .store:last-child { border-bottom: 0; }
-    .store small { display: flex; align-items: center; gap: 4px; color: var(--bl-muted); font-weight: 500; font-size: 13px; text-align: right; }
+    /* Two columns of store cards (mockup 7 on the canvas, 2026-11-22): every store fits on one
+       screen. Rows share one height (grid-auto-rows: 1fr) so a two-line name doesn't make the
+       grid uneven. Letter tiles, not store logos: no trademark permission needed and nothing
+       loaded from other sites. Still links underneath, since each opens another website. */
+    .stores { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 8px; margin: 12px 0; }
+    .store { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 8px 10px 8px 8px; box-sizing: border-box;
+      border-radius: 14px; background: var(--bl-field); border: 1px solid var(--bl-control-border); color: var(--bl-text); text-decoration: none;
+      -webkit-tap-highlight-color: transparent; transition: transform .1s ease, background-color .1s ease; }
+    .store:active { background: var(--bl-tonal); transform: scale(.97); }
+    .mono { flex: none; width: 32px; height: 32px; border-radius: 8px; background: var(--bl-accent-soft); color: var(--bl-accent-text);
+      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; letter-spacing: -.02em; }
+    .mono.long { font-size: 10px; }
+    .store-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .store-txt strong { font-size: 15px; line-height: 18px; font-weight: 650;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .store-txt small { font-size: 12px; color: var(--bl-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .store-sub { margin: 4px 0 0; font-size: 13px; color: var(--bl-muted); display: flex; align-items: center; gap: 5px; }
     .store-note { margin: 0; font-size: 13px; color: var(--bl-muted); }
   `,
   template: `
@@ -71,12 +84,16 @@ import { SheetComponent } from './sheet.component';
     @if (pricesFor(); as g) {
       <app-sheet [label]="'Check prices for ' + g.name" (closed)="pricesFor.set(null)">
         <h2>Check prices · {{ g.name }}</h2>
+        <p class="store-sub">Each opens the store's own search for this game <bl-icon name="external" [size]="13" /></p>
         <div class="stores">
           @for (s of stores(g); track s.name) {
-            <a class="store" [href]="s.url" target="_blank" rel="noopener">{{ s.name }}<small>{{ s.note }} <bl-icon name="external" [size]="14" /></small></a>
+            <a class="store" [href]="s.url" target="_blank" rel="noopener" [attr.aria-label]="s.name + ', ' + s.note + ' (opens the store’s website)'">
+              <span class="mono" [class.long]="s.mono.length > 2" aria-hidden="true">{{ s.mono }}</span>
+              <span class="store-txt"><strong>{{ s.name }}</strong><small>{{ s.note }}</small></span>
+            </a>
           }
         </div>
-        <p class="store-note">Each store opens its own search for this game. Prices change; the app doesn't track them.</p>
+        <p class="store-note">Prices change; the app doesn't track them.</p>
       </app-sheet>
     }
   `,
@@ -121,31 +138,35 @@ export class BuyListComponent implements OnInit {
    * Added 2026-11-22: Barnes & Noble, Books-A-Million, Miniature Market, Noble Knight, Tanuki
    * Games and Game Kastle (each checked with "azul" except Books-A-Million, which blocks
    * automated requests). Collected (Fort Worth) was left out: its ComicHub shop has no search link.
+   * Walmart added the same day (14 stores = an even two-column grid).
    */
-  stores(g: { id: string; name: string }): { name: string; note: string; url: string }[] {
+  stores(g: { id: string; name: string }): { name: string; mono: string; note: string; url: string }[] {
     // "Harmonies: Crescendo (English edition)" -> "Harmonies: Crescendo": edition notes hurt store searches.
     const q = encodeURIComponent(g.name.replace(/\s*[(\[].*?[)\]]\s*/g, ' ').replace(/\s+[-–]\s+(English|Multilingual).*$/i, '').trim());
     const bggId = this.details().get(g.id)?.bgg_id;
     // Always A–Z by store name (asked 2026-11-22), so a store is easy to find in a long list.
     const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     return [
-      { name: 'Amazon', note: 'search', url: `https://www.amazon.com/s?k=${q}+board+game` },
-      { name: 'Target', note: 'search', url: `https://www.target.com/s?searchTerm=${q}` },
-      { name: 'Barnes & Noble', note: 'search', url: `https://www.barnesandnoble.com/search?q=${q}+board+game` },
-      // Blocks automated checks, so this address couldn't be tested from here (2026-11-22).
-      { name: 'Books-A-Million', note: 'search', url: `https://www.booksamillion.com/search2?query=${q}+board+game` },
-      { name: 'Miniature Market', note: 'online game store', url: `https://www.miniaturemarket.com/search?search=${q}` },
-      { name: 'GameNerdz', note: 'online game store', url: `https://www.gamenerdz.com/search.php?search_query=${q}` },
-      { name: 'Noble Knight', note: 'new, used and out of print', url: `https://www.nobleknight.com/Search?text=${q}` },
-      { name: 'Board Games Dallas', note: 'Common Ground Games, Dallas', url: `https://www.boardgamesdallas.com/search?q=${q}` },
-      { name: 'Boardwalk Games', note: 'Dallas area store', url: `https://www.boardwalk-games.com/search?q=${q}` },
-      { name: 'House Rules Board Games', note: 'Dallas area store', url: `https://houserulesboardgames.com/search?q=${q}` },
-      { name: 'Tanuki Games', note: 'Austin store, imports', url: `https://www.tanukigamesatx.com/search?q=${q}` },
-      { name: 'Game Kastle', note: 'Austin store, smaller online stock', url: `https://gamekastle.com/search?q=${q}` },
+      { name: 'Amazon', mono: 'A', note: 'Online', url: `https://www.amazon.com/s?k=${q}+board+game` },
+      { name: 'Barnes & Noble', mono: 'BN', note: 'Online', url: `https://www.barnesandnoble.com/search?q=${q}+board+game` },
       // Used copies, by BoardGameGeek id when the game's details have loaded.
-      { name: 'BGG Marketplace', note: 'used copies', url: bggId
+      { name: 'BGG Marketplace', mono: 'BGG', note: 'Used copies', url: bggId
         ? `https://boardgamegeek.com/geekmarket/browse?objecttype=thing&objectid=${bggId}`
         : `https://boardgamegeek.com/geekmarket/browse?query=${q}` },
+      // Common Ground Games' website.
+      { name: 'Board Games Dallas', mono: 'BG', note: 'Dallas', url: `https://www.boardgamesdallas.com/search?q=${q}` },
+      { name: 'Boardwalk Games', mono: 'BW', note: 'Dallas area', url: `https://www.boardwalk-games.com/search?q=${q}` },
+      // Books-A-Million and Walmart block automated checks, so these couldn't be tested from here (2026-11-22).
+      { name: 'Books-A-Million', mono: 'BAM', note: 'Online', url: `https://www.booksamillion.com/search2?query=${q}+board+game` },
+      // Small online stock (2 results for "azul", 10 for "catan").
+      { name: 'Game Kastle', mono: 'GK', note: 'Austin', url: `https://gamekastle.com/search?q=${q}` },
+      { name: 'GameNerdz', mono: 'GN', note: 'Online games', url: `https://www.gamenerdz.com/search.php?search_query=${q}` },
+      { name: 'House Rules Board Games', mono: 'HR', note: 'Dallas', url: `https://houserulesboardgames.com/search?q=${q}` },
+      { name: 'Miniature Market', mono: 'MM', note: 'Online games', url: `https://www.miniaturemarket.com/search?search=${q}` },
+      { name: 'Noble Knight', mono: 'NK', note: 'Out of print', url: `https://www.nobleknight.com/Search?text=${q}` },
+      { name: 'Tanuki Games', mono: 'TG', note: 'Austin, imports', url: `https://www.tanukigamesatx.com/search?q=${q}` },
+      { name: 'Target', mono: 'T', note: 'Online', url: `https://www.target.com/s?searchTerm=${q}` },
+      { name: 'Walmart', mono: 'W', note: 'Online', url: `https://www.walmart.com/search?q=${q}+board+game` },
     ].sort(byName);
   }
 
