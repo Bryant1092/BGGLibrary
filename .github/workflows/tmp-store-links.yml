@@ -1,0 +1,22 @@
+name: tmp store link check
+on: { push: { branches: [tmp/store-links] } }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          UA='Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+          for u in \
+            'https://www.barnesandnoble.com/s/azul' \
+            'https://www.booksamillion.com/search2?query=azul' \
+            'https://www.booksamillion.com/search?query=azul' \
+            'https://www.nobleknight.com/Search?searchTerm=azul' \
+            'https://www.nobleknight.com/Search?Keyword=azul' \
+            'https://www.nobleknight.com/Search?q=azul' \
+            'https://www.miniaturemarket.com/search?search=azul' \
+            'https://www.tanukigamesatx.com/search?q=azul' \
+            'https://gamekastle.com/search?q=azul' ; do
+            out=$(curl -sL -A "$UA" -o /tmp/p.html -w '%{http_code} %{url_effective}' --max-time 25 "$u")
+            n=$(grep -oi 'azul' /tmp/p.html | wc -l)
+            echo "$u -> $out | 'azul' x$n | $(wc -c </tmp/p.html) bytes"
+          done
