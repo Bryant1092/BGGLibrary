@@ -16,6 +16,7 @@ shared "want to play" lists, and sends alerts when a checked-out game comes back
 
 - [What the app does](#what-the-app-does)
 - [Tech at a glance](#tech-at-a-glance)
+- [Design rules](#design-rules)
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
 - [Keeping library data fresh](#keeping-library-data-fresh)
@@ -65,6 +66,19 @@ and `public/notice.json` can force the banner on by hand (`deskDown: true`). Det
 | Notifications and "Most played" | Firebase Cloud Functions (2nd gen, Node 22) + Web Push (VAPID) | `functions/index.js` |
 | Search list and shelf lists | Pre-built JSON shipped with the app | `public/shelves/`, `scripts/build-shelf-index.mjs` |
 | Hosting | GitHub Pages (`gh-pages` branch of the fork) | built output only |
+
+## Design rules
+
+Rules the owner has asked for. Follow them in the app **and in every mockup**.
+
+- **Never write the word "Shelf" as a label.** Show the location pin icon and the shelf code:
+  📍 K, not "Shelf K". In code: `<bl-icon name="pin" [size]="14" [stroke]="2.2" />` followed by
+  `<span class="visually-hidden">Shelf</span>` so screen readers still say it. (Asked Nov 2026,
+  more than once.) Plain sentences such as "Look on shelf K or ask at the desk" are fine.
+  Still to change: the big shelf badge on My Lists rows (`lists.component.html`, `.bl-shelf-badge`)
+  shows "SHELF" above the code.
+- **Mockups before building**, on the mockups canvas, in the app's dark theme.
+- **Short notes and labels** that fit on one line on an iPhone.
 
 ## Getting started
 
