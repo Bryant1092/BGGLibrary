@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1795485138488,
+  "timestamp": 1795485552994,
   "index": "/BGGLibrary/index.html",
   "assetGroups": [
     {
@@ -22,9 +22,11 @@
         "/BGGLibrary/chunk-DP67Y6XB.js",
         "/BGGLibrary/chunk-EQHXX5TE.js",
         "/BGGLibrary/chunk-EUNU5NQQ.js",
+        "/BGGLibrary/chunk-FKCOC3ZJ.js",
         "/BGGLibrary/chunk-JWTPXETJ.js",
         "/BGGLibrary/chunk-KDHVGNBH.js",
         "/BGGLibrary/chunk-L34GGDOX.js",
+        "/BGGLibrary/chunk-LSR6I7JH.js",
         "/BGGLibrary/chunk-M547L7BD.js",
         "/BGGLibrary/chunk-MFC3ZYJF.js",
         "/BGGLibrary/chunk-N54GGJ4H.js",
@@ -32,8 +34,6 @@
         "/BGGLibrary/chunk-OUYAC3FM.js",
         "/BGGLibrary/chunk-QEI2CERQ.js",
         "/BGGLibrary/chunk-R5IHLZXC.js",
-        "/BGGLibrary/chunk-R5NAD4BN.js",
-        "/BGGLibrary/chunk-RZPL4VNT.js",
         "/BGGLibrary/chunk-STY2J73Q.js",
         "/BGGLibrary/chunk-SVVYQ2OT.js",
         "/BGGLibrary/chunk-T5BLAW43.js",
@@ -45,10 +45,10 @@
         "/BGGLibrary/chunk-ZFRUVEG4.js",
         "/BGGLibrary/favicon.ico",
         "/BGGLibrary/index.html",
-        "/BGGLibrary/main-KJYJFX45.js",
+        "/BGGLibrary/main-VQB4GXVS.js",
         "/BGGLibrary/manifest.webmanifest",
         "/BGGLibrary/polyfills-RP2QB4T4.js",
-        "/BGGLibrary/styles-7XQT72ON.css"
+        "/BGGLibrary/styles-P4UMIFTV.css"
       ],
       "patterns": []
     },
@@ -225,9 +225,11 @@
     "/BGGLibrary/chunk-DP67Y6XB.js": "c8e111c333402868063d4de1104d1dc800c57c9f",
     "/BGGLibrary/chunk-EQHXX5TE.js": "4f7f7911f7035d59092db4231e6901410721940a",
     "/BGGLibrary/chunk-EUNU5NQQ.js": "676e47c9bf6d63fc2475e0a5f4f7af23576eabbd",
+    "/BGGLibrary/chunk-FKCOC3ZJ.js": "0dc7b4ff52a52a6b48aee7853449be6010fe494e",
     "/BGGLibrary/chunk-JWTPXETJ.js": "bf75ef92d27114431939f110203dafd0df994aa9",
     "/BGGLibrary/chunk-KDHVGNBH.js": "3d47fd055bcafcdae533060cfa5e579b0ceae88b",
     "/BGGLibrary/chunk-L34GGDOX.js": "fa6a1c9f7bafd6c9d3db297a0555a58e4952a971",
+    "/BGGLibrary/chunk-LSR6I7JH.js": "2f1ee7e6adf06a27f5b686d6b4d01c6edb983430",
     "/BGGLibrary/chunk-M547L7BD.js": "29cd564f1c90e7eaa80ae02c0d74e3e5aa32a75a",
     "/BGGLibrary/chunk-MFC3ZYJF.js": "9d65ba49c548a44a8ca160d9bcc906b223fcbe4d",
     "/BGGLibrary/chunk-N54GGJ4H.js": "73b4388e24c34e0c48b17ec0107259262b4178e5",
@@ -235,8 +237,6 @@
     "/BGGLibrary/chunk-OUYAC3FM.js": "86b658e9545498738cbbec2848d0084af529fdbc",
     "/BGGLibrary/chunk-QEI2CERQ.js": "e98d1f3e3854a463d95295210c47de7b4283631c",
     "/BGGLibrary/chunk-R5IHLZXC.js": "469d194ed33d880c8317240d8604e0dd7f75ee92",
-    "/BGGLibrary/chunk-R5NAD4BN.js": "80a1b9816abf40e7cbc582e2ce5f05d587881cbf",
-    "/BGGLibrary/chunk-RZPL4VNT.js": "8149bc2b3a4e742de651af4756788bc771212183",
     "/BGGLibrary/chunk-STY2J73Q.js": "3572c3403d895108c2a17244e9c4a4267ba85440",
     "/BGGLibrary/chunk-SVVYQ2OT.js": "d4527d9adbed8c20b5c872aac13d2b70be0bd2d7",
     "/BGGLibrary/chunk-T5BLAW43.js": "b956afbd3fe5fa1c9d334066d8d2932025e972af",
@@ -255,8 +255,8 @@
     "/BGGLibrary/icons/icon-512x512.png": "d24a09790572ab7b9b1fba5e357411f0495c259b",
     "/BGGLibrary/icons/icon-72x72.png": "386e78d6dc23614566cd68c5fd03c720e3c10241",
     "/BGGLibrary/icons/icon-96x96.png": "370da15df6d29df497952d29078b3d6774993e15",
-    "/BGGLibrary/index.html": "4f556cf2cc927e494cf819a86fc1b7ecdf96ba2f",
-    "/BGGLibrary/main-KJYJFX45.js": "d549057d3bed09900279a95f4bc7dcb4d68b496f",
+    "/BGGLibrary/index.html": "5ee75b8d5a2759197d4e477a7346b89f551c3b76",
+    "/BGGLibrary/main-VQB4GXVS.js": "bc69e8eaeede743c1ded4669b4d5ed6ee933b6b4",
     "/BGGLibrary/manifest.webmanifest": "02fd681aa859fb7e11b7fcdf99d3a14607b751db",
     "/BGGLibrary/maps/bggcon-2026/floor-atrium.svg": "262ac9a949ed9a1c472dce0b630ad01745057a90",
     "/BGGLibrary/maps/bggcon-2026/floor-exhibition.svg": "e22a76e06b91fb3ee2e76e7868ee486b036018c2",
@@ -349,7 +349,7 @@
     "/BGGLibrary/shelves/x.json": "7acedd55964750bab246f15ba63d2304022a4018",
     "/BGGLibrary/shelves/y.json": "896351df380ea0d53d217c4ca98faf77d5674d10",
     "/BGGLibrary/shelves/z.json": "8383f8c74c73cbeaee81b978be7da1070314b54d",
-    "/BGGLibrary/styles-7XQT72ON.css": "72fb571a78e55bae4ecdf247ac7c865fb8f206b5"
+    "/BGGLibrary/styles-P4UMIFTV.css": "c9e9e087ebd9801785a21d616b8e16878d395f9c"
   },
   "navigationUrls": [
     {
