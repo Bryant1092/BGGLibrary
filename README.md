@@ -399,8 +399,12 @@ network, images, storage, enabled services) and **Usage today** (`usage.yml`).
      VAPID_PRIVATE_KEY` so existing phone notifications keep working. If the copy is ever lost,
      make a new key pair (`npx web-push generate-vapid-keys`), put the public half in
      `src/app/config/push.ts` and `functions/index.js`, and people turn notifications on again.
-   - Remaining: switch Blaze → Spark in the Firebase console (Usage and billing → Details &
-     settings → Modify plan). Checked Nov 23: no functions, scheduler jobs or stored images left.
+   - Switched Blaze → Spark Nov 23 ~6 PM (Firebase console → Usage and billing → Details &
+     settings → Modify plan). Checked first: no functions, scheduler jobs or stored images left.
+     Checked after: billing off, sign-in and lists work, all data readable (Con stats workflow).
+     On Spark, Google's usage graphs (Monitoring) answer 403, so the Usage today / Usage audit
+     workflows and the per-day part of Con stats stop working until Blaze is back; the app
+     counts in Con stats still work.
 2. ~~Clear server-only state in `meta/` and old `eventStars`.~~ Kept on purpose (Nov 22): all
    Firestore data stays for analysis. It stays free on Spark.
 3. Prize badge numbers clear themselves 14 days after the con.
