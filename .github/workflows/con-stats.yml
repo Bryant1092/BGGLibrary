@@ -111,12 +111,12 @@ jobs:
             // When BGG posted the con's news (prize drawing winners etc.): public convention updates.
             try {
               const r = await fetch('https://tabletop.events/api/convention/CC4FC78E-17EC-11F1-9082-3FD444321FD1/updates?_items_per_page=100').then(x => x.json());
-              const items = (r.result?.items || []).filter(u => Number(u.published) === 1);
+              const items = (r.result?.items || []).filter(u => Number(u.published) === 1 && u.date_posted);
               console.log(`== Convention news posts: ${items.length}`);
-              for (const u of items.sort((a, b) => String(a.date_published || a.date_created).localeCompare(String(b.date_published || b.date_created)))) {
-                const when = u.date_published || u.date_created; const t = Date.parse(String(when).replace(' ', 'T') + 'Z');
-                const prize = /prize|winner|drawing/i.test((u.name || '') + ' ' + (u.body || '')) ? ' [prize]' : '';
-                console.log(`  ${isNaN(t) ? when : new Date(t).toLocaleString('en-US', { timeZone: 'America/Chicago', weekday: 'short', hour: 'numeric', minute: '2-digit' })} · ${u.name}${prize}`);
+              for (const u of items.sort((a, b) => String(a.date_posted).localeCompare(String(b.date_posted)))) {
+                const when = u.date_posted; const t = Date.parse(String(when).replace(' ', 'T') + 'Z');
+                const body = String(u.body_html || ''); const prize = /badge\s*#|prize drawing|winners/i.test(body) ? ' [prize winners]' : '';
+                console.log(`  ${isNaN(t) ? when : new Date(t).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' })} · ${u.name}${prize}`);
               }
             } catch (e) { console.log('news posts: not readable (' + e.message + ')'); }
             const st = await db.collection('meta').doc('conCheckoutState').get();
