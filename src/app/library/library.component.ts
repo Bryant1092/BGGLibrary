@@ -33,6 +33,8 @@ import { PrizeService } from '../service/prize.service';
 import { InViewDirective } from '../shared/in-view.directive';
 import { RatingControlsComponent } from '../shared/rating-controls.component';
 import { NoticeTagComponent } from '../shared/notice-tag.component';
+import { NewGamesService } from '../service/new-games.service';
+import { parseTteDate } from '../util/time-ago';
 
 /**
  * 12 per page. Tabletop.Events' response time grows with page size (measured
@@ -225,7 +227,21 @@ export class LibraryComponent implements OnInit, OnDestroy {
     if (!f.query && !f.shelf && (deskManual() || this.loadError())) return this.localSearch.all();
     return [];
   });
-  localMode = computed(() => !this.conMode() && this.filters().sort !== 'returned' && this.localMatches().length > 0);
+  localMode = computed(() => !this.conMode() && this.filters().sort !== 'returned' && this.filters().sort !== 'newest' && this.localMatches().length > 0);
+
+  /** "New in the library" (NewGamesService): the New chip = the Newest sort, grouped by week. */
+  newGames = inject(NewGamesService);
+  newMode = computed(() => !this.conMode() && this.filters().sort === 'newest');
+  newChip = computed(() => {
+    const n = this.newGames.count();
+    return n ? `New · ${n > 99 ? '99+' : n}` : 'New';
+  });
+  /** Banner above the results while there are unseen new games and you're not already looking. */
+  newBanner = computed(() => !this.newMode() && !this.filters().query && !this.filters().shelf && this.newGames.count() > 0);
+
+  toggleNew(): void {
+    this.setSort(this.newMode() ? 'name' : 'newest');
+  }
 
   conCheckouts = inject(ConCheckoutsService);
   conMode = signal(false);
@@ -254,7 +270,17 @@ export class LibraryComponent implements OnInit, OnDestroy {
     const busy = this.busyIds();
     const list = this.currentList()?.name;
     const returnedMode = this.filters().sort === 'returned';
-    return this.items().map(item => ({
+    const newestMode = this.filters().sort === 'newest';
+    const tagSince = this.newGames.tagSince();
+    // New view: copies of one game show once ("· 2 copies"), like the mockup.
+    const copies = new Map<string, number>();
+    let items = this.items();
+    if (newestMode) {
+      for (const item of items) { const k = (item.name || '').trim().toLowerCase(); copies.set(k, (copies.get(k) || 0) + 1); }
+      const shown = new Set<string>();
+      items = items.filter(item => { const k = (item.name || '').trim().toLowerCase(); if (shown.has(k)) return false; shown.add(k); return true; });
+    }
+    return items.map(item => ({
       item,
       isNew: returnedMode && isNewArrival(item),
       status: !returnedMode ? statusText(item, now) : isNewArrival(item) ? 'New arrival' : returnedText(item, now),
@@ -267,6 +293,10 @@ export class LibraryComponent implements OnInit, OnDestroy {
       inList: ids.has(item.id),
       busy: busy.has(item.id),
       addLabel: ids.has(item.id) ? `Remove ${item.name} from ${list}` : `Add ${item.name} to ${list || 'a list'}`,
+      /** New view only: "Added Wed · 2 copies", the NEW tag, and its week (rowGroups). */
+      added: newestMode ? addedText(item, now, copies.get((item.name || '').trim().toLowerCase()) || 1) : '',
+      newTag: newestMode && (parseTteDate(item.date_created)?.getTime() || 0) > tagSince,
+      week: newestMode ? weekLabel(parseTteDate(item.date_created)?.getTime() || 0, now) : '',
     }));
   });
 
@@ -278,6 +308,16 @@ export class LibraryComponent implements OnInit, OnDestroy {
    */
   rowGroups = computed(() => {
     const rows = this.rows();
+    if (this.filters().sort === 'newest') {
+      // Grouped by the week they were added ("This week", "Last week", "Nov 10–16").
+      const groups: { title: string; note: string; rows: typeof rows }[] = [];
+      for (const row of rows) {
+        const last = groups[groups.length - 1];
+        if (last && last.title === row.week) last.rows.push(row);
+        else groups.push({ title: row.week, note: '', rows: [row] });
+      }
+      return groups;
+    }
     if (this.filters().sort !== 'returned') {
       return [{ title: '', note: '', rows }];
     }
@@ -316,6 +356,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
   hotGamesMap = computed(() => this.hotMatches().length ? this.map.hotGamesRequest() : null);
 
   ngOnInit(): void {
+    this.newGames.refresh();
     this.requests.pipe(
       switchMap(({ page, append }) => {
         (append ? this.loadingMore : this.loading).set(true);
@@ -525,6 +566,7 @@ export class LibraryComponent implements OnInit, OnDestroy {
       // Back to library results: run the search even if the sort itself didn't change.
       if (sort === this.filters().sort) { this.search(); return; }
     }
+    if (sort === 'newest') this.newGames.markSeen();
     if (sort !== this.filters().sort) {
       this.filters.update(f => ({ ...f, sort }));
       this.search();
@@ -654,4 +696,36 @@ export class LibraryComponent implements OnInit, OnDestroy {
     this.pendingAdd = null;
     this.sheet.set(null);
   }
+}
+
+/** Central-time midnight of the Monday starting the week that holds `ms`. */
+function weekStart(ms: number): number {
+  const d = new Date(new Date(ms).toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.getTime();
+}
+
+/** "This week", "Last week" or "Nov 10–16" for the New view's groups. */
+export function weekLabel(addedMs: number, now: number): string {
+  if (!addedMs) return 'Earlier';
+  const start = weekStart(addedMs), thisWeek = weekStart(now);
+  const weeks = Math.round((thisWeek - start) / (7 * 24 * 3600 * 1000));
+  if (weeks <= 0) return 'This week';
+  if (weeks === 1) return 'Last week';
+  const a = new Date(start), b = new Date(start + 6 * 24 * 3600 * 1000);
+  const month = (d: Date) => d.toLocaleDateString('en-US', { month: 'short' });
+  return a.getMonth() === b.getMonth()
+    ? `${month(a)} ${a.getDate()}–${b.getDate()}`
+    : `${month(a)} ${a.getDate()} – ${month(b)} ${b.getDate()}`;
+}
+
+/** "Added Wed · 2 copies" (this week) or "Added Nov 3". */
+export function addedText(item: Pick<BggItem, 'date_created'>, now: number, copies: number): string {
+  const ms = parseTteDate(item.date_created)?.getTime();
+  if (!ms) return '';
+  const opts: Intl.DateTimeFormatOptions = weekStart(ms) === weekStart(now)
+    ? { weekday: 'short', timeZone: 'America/Chicago' }
+    : { month: 'short', day: 'numeric', timeZone: 'America/Chicago' };
+  return `Added ${new Date(ms).toLocaleDateString('en-US', opts)}${copies > 1 ? ` · ${copies} copies` : ''}`;
 }

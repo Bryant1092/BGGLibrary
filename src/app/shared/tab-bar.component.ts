@@ -1,3 +1,4 @@
+import { NewGamesService } from '../service/new-games.service';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ConInfoService } from '../service/con-info.service';
@@ -24,8 +25,13 @@ import { IconComponent } from './icon.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <nav class="bl-tabbar" aria-label="Main">
-      <a routerLink="/library/home" routerLinkActive="active" ariaCurrentWhenActive="page">
-        <bl-icon name="grid" [size]="24" />Library
+      <!-- Games added to the library since you last opened the New view (NewGamesService, 2026-11-23). -->
+      <a routerLink="/library/home" routerLinkActive="active" ariaCurrentWhenActive="page" [attr.aria-label]="libraryLabel()">
+        <span class="bl-tab-icon">
+          <bl-icon name="grid" [size]="24" />
+          @if (newGames()) { <span class="bl-count" aria-hidden="true">{{ newGames() > 9 ? '9+' : newGames() }}</span> }
+        </span>
+        Library
       </a>
       <a routerLink="/library/user" routerLinkActive="active" ariaCurrentWhenActive="page">
         <bl-icon name="list" [size]="24" />My Lists
@@ -58,6 +64,13 @@ import { IconComponent } from './icon.component';
   `,
 })
 export class TabBarComponent {
+  private newGamesService = inject(NewGamesService);
+  newGames = this.newGamesService.count;
+  libraryLabel = computed(() => {
+    const n = this.newGames();
+    return n ? `Library, ${n} new ${n === 1 ? 'game' : 'games'}` : null;
+  });
+  constructor() { this.newGamesService.refresh(); }
   private info = inject(ConInfoService);
   unread = this.info.unreadCount;
   private friends = inject(FriendsService);

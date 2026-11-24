@@ -219,6 +219,11 @@ body {
 .bl-win-banner .text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .bl-win-banner strong { font-size: 16px; }
 .bl-win-banner .text span { font-size: 14px; color: var(--bl-muted); }
+/* New in the library (2026-11-23): chip tint while there are unseen new games, banner, NEW tag. */
+.bl-chip.bl-chip-new { background: var(--bl-accent-soft); color: var(--bl-accent-text); border-color: transparent; }
+.bl-new-banner .bl-new-see { flex: none; font-size: 14px; font-weight: 700; color: var(--bl-accent-text); }
+.bl-added { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--bl-muted); }
+.bl-new-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: .04em; background: var(--bl-accent-soft); color: var(--bl-accent-text); }
 .bl-controls { display: flex; flex-direction: column; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--bl-hair); }
 .bl-subrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; font-size: 14px; color: var(--bl-muted); }
 .bl-section { margin: 0; padding: 16px 16px 6px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--bl-muted); }

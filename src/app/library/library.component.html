@@ -33,6 +33,14 @@
         <bl-icon name="chevronRight" [size]="20" />
       </button>
     }
+    @if (newBanner()) {
+      <button type="button" class="bl-win-banner bl-new-banner" (click)="toggleNew()">
+        <bl-icon name="star" [size]="24" />
+        <span class="text"><strong>{{ newGames.count() }} new {{ newGames.count() === 1 ? 'game' : 'games' }} since your last visit</strong>
+          <span>Added to the BGG Library · plan your list early</span></span>
+        <span class="bl-new-see">See new</span><bl-icon name="chevronRight" [size]="20" />
+      </button>
+    }
     <div class="bl-controls">
       <div class="bl-search" role="search">
         <label class="visually-hidden" for="library-search">Search games</label>
@@ -47,6 +55,11 @@
       </div>
 
       <div class="bl-chips">
+        <!-- New in the library (NewGamesService): the Newest sort grouped by week; the number = games added since you last looked. -->
+        <button type="button" class="bl-chip" [class.on]="newMode()" [class.bl-chip-new]="!newMode() && newGames.count()" [attr.aria-pressed]="newMode()"
+                aria-label="New games" (click)="toggleNew()">
+          {{ newChip() }}
+        </button>
         <!-- Browse a shelf: first, because it's what you reach for while standing at the shelves. -->
         <button type="button" class="bl-chip" [class.on]="!!filters().shelf" (click)="sheet.set('shelf')">
           <bl-icon name="shelves" [size]="16" /> {{ shelfChip() }} <bl-icon name="chevronDown" [size]="14" [stroke]="2.4" />
@@ -238,6 +251,9 @@
                   @if (row.hot) { <span class="bl-hot-tag"><bl-icon name="flame" [size]="13" />Hot Games</span> }
                   <app-notice-tag [game]="row.item" />
                 </span>
+                @if (row.added) {
+                  <span class="bl-added">@if (row.newTag) { <span class="bl-new-tag">NEW</span> }{{ row.added }}</span>
+                }
                 <span class="bl-meta">
                   <span><bl-icon name="users" [size]="15" /><span class="visually-hidden">Players</span>{{ row.players }}</span>
                   <span><bl-icon name="clock" [size]="15" />{{ row.minutes }} min</span>

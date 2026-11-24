@@ -433,7 +433,9 @@ before each con — Sep 2026: 772 copies, Nov 2026: 571 (most Nov 14–18 during
 May 2026: 144, Aug–Sep 2025: 330 — and almost nothing Dec–Apr. A "New" view (newest first,
 grouped by week, "N new since your last visit") works on the free Spark plan: the phone asks
 Tabletop.Events directly, no server needed. Phone notifications for new games would need the
-server (Blaze).
+server (Blaze). **Built Nov 23:** `NewGamesService` + the Library's **New** chip (the Newest sort,
+grouped by week, copies shown once, NEW tag since your last look), a banner and a number on the
+Library tab. "Last look" is per phone (localStorage); first time counts the last 7 days.
 
 **What this means for next time**
 
@@ -561,6 +563,7 @@ Built from an iPhone during the con (Nov 18–22). Newest first; the commit hist
 
 | Date | Change |
 |---|---|
+| Nov 23 | Library: New chip, "N new games since your last visit" banner and tab number (new games BGG adds between cons) |
 | Nov 23 | Every add-to-list button (Library, search, shelves, Most played, Friends' picks, a friend's list) shows a small "List" label under the round ＋ / ✓ |
 | Nov 23 | Screen readers: add-to-list, bell and map buttons no longer announce a pressed state on top of a label that already says it |
 | Nov 22 | "Board Games Dallas" store renamed to its real name, Common Ground Games |
