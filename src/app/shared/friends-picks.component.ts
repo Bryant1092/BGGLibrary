@@ -155,7 +155,7 @@ type Filter = 'all' | 'most' | 'any';
             </span>
           </button>
           @if (!wantedByMe(p)) {
-            <button type="button" class="bl-add" [class.on]="added().has(p.game.id!)" [attr.aria-label]="'Me too: add ' + p.game.name + ' to your list'" (click)="meToo(p.game)">
+            <button type="button" class="bl-add" [class.on]="added().has(p.game.id!)" [attr.aria-label]="added().has(p.game.id!) ? p.game.name + ' added to your list' : 'Me too: add ' + p.game.name + ' to your list'" (click)="meToo(p.game)">
               <bl-icon [name]="added().has(p.game.id!) ? 'check' : 'plus'" [stroke]="2.5" />
             </button>
           }
