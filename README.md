@@ -403,6 +403,14 @@ Tabletop.Events outages.
   midnight. "Most played this con" rides on the same job every 10 minutes all day; it can run
   every 15–30 minutes instead.
 
+**"New in the library" between cons (idea, Nov 23).** Tabletop.Events has each copy's add date
+(`date_created`; the API sorts by it). `Library new games` workflow: BGG adds games in batches
+before each con — Sep 2026: 772 copies, Nov 2026: 571 (most Nov 14–18 during setup),
+May 2026: 144, Aug–Sep 2025: 330 — and almost nothing Dec–Apr. A "New" view (newest first,
+grouped by week, "N new since your last visit") works on the free Spark plan: the phone asks
+Tabletop.Events directly, no server needed. Phone notifications for new games would need the
+server (Blaze).
+
 **What this means for next time**
 
 - **Room to grow:** the limit that hits first is Firestore reads. At ~1,000 reads per person
