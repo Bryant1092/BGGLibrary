@@ -73,7 +73,7 @@ const STATUS_ALL_MAX = 120;
           their + and it popped in half a second later (reported 2026-11-16). A tap before
           the record has arrived fetches it first (addTap).
         -->
-        <button type="button" class="bl-add" [class.on]="listIds().has(g.id)" [disabled]="busyIds().has(g.id) || fetching().has(g.id)" [attr.aria-pressed]="listIds().has(g.id)"
+        <button type="button" class="bl-add" [class.on]="listIds().has(g.id)" [disabled]="busyIds().has(g.id) || fetching().has(g.id)"
                 [attr.aria-label]="(listIds().has(g.id) ? 'Remove ' : 'Add ') + g.name + (listName() ? (listIds().has(g.id) ? ' from ' : ' to ') + listName() : '')"
                 (click)="addTap(g)">
           <bl-icon [name]="listIds().has(g.id) ? 'check' : 'plus'" [stroke]="2.5" />

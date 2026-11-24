@@ -295,7 +295,7 @@ import { ThumbComponent } from './thumb.component';
       <div class="action-bar">
         <button type="button" class="bl-btn" [class.secondary]="inList()" [disabled]="busy()" (click)="toggle.emit()">{{ actionLabel() }}</button>
         @if (game().is_checked_out) {
-          <button type="button" class="bl-btn secondary bell" [class.on]="watched()" [attr.aria-pressed]="watched()" (click)="watchToggle.emit()"
+          <button type="button" class="bl-btn secondary bell" [class.on]="watched()" (click)="watchToggle.emit()"
                   [attr.aria-label]="watched() ? &quot;Notifying you when it&#39;s back. Turn off&quot; : &quot;Notify me when it&#39;s back&quot;">
             <bl-icon [name]="watched() ? 'bell' : 'bellOff'" [size]="20" />
             {{ watched() ? 'Notifying' : 'Notify me' }}

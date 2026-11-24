@@ -107,7 +107,7 @@ const LETTER_ORDER = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
               </span>
             </span>
           </button>
-          <button type="button" class="bl-add" [class.on]="row.inList" [disabled]="row.busy" [attr.aria-pressed]="row.inList"
+          <button type="button" class="bl-add" [class.on]="row.inList" [disabled]="row.busy"
                   [attr.aria-label]="(row.inList ? 'Remove ' + row.game.name + ' from ' : 'Add ' + row.game.name + ' to ') + (listName() || 'a list')"
                   (click)="addGame(row.game)">
             <bl-icon [name]="row.inList ? 'check' : 'plus'" [stroke]="2.5" />

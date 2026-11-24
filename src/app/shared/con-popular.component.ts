@@ -128,7 +128,6 @@ const COLLAPSED_KEY = 'bgglibrary.conTopCollapsed';
           </button>
           <!-- Shown at once (it used to pop in once details arrived); a tap before then fetches them first (addTap). -->
           <button type="button" class="bl-add" [class.on]="!!r.item && inList().has(r.item.id)" [disabled]="(!!r.item && busy().has(r.item.id)) || fetching().has(r.game.name)"
-                  [attr.aria-pressed]="!!r.item && inList().has(r.item.id)"
                   [attr.aria-label]="(r.item && inList().has(r.item.id) ? 'Remove ' : 'Add ') + r.game.name" (click)="addTap(r.game, r.item)">
             <bl-icon [name]="r.item && inList().has(r.item.id) ? 'check' : 'plus'" [stroke]="2.5" />
           </button>

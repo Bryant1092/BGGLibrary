@@ -172,7 +172,7 @@ const tidy = (s: string) => s.toLowerCase().replace(/(^|[\s/(-])([a-zà-ü’'])
         } @else {
           <button type="button" class="search" (click)="openList()"><bl-icon name="search" [size]="18" /> Find a room, booth or exhibitor</button>
         }
-        <button type="button" class="icon-btn" [attr.aria-label]="listOpen() ? 'Show the map' : 'Show places as a list'" [attr.aria-pressed]="listOpen()" (click)="listOpen() ? listOpen.set(false) : openList()">
+        <button type="button" class="icon-btn" [attr.aria-label]="listOpen() ? 'Show the map' : 'Show places as a list'" (click)="listOpen() ? listOpen.set(false) : openList()">
           <bl-icon [name]="listOpen() ? 'map' : 'list'" [size]="22" />
         </button>
       </div>
@@ -193,13 +193,13 @@ const tidy = (s: string) => s.toLowerCase().replace(/(^|[\s/(-])([a-zà-ü’'])
         <img class="floor-img" [src]="floor().src" alt="" draggable="false" (load)="onLoad()">
         @for (r of roomViews(); track r.id) {
           <div class="shape" [style.left.px]="r.x" [style.top.px]="r.y" [style.width.px]="r.w" [style.height.px]="r.h" [style.z-index]="r.on ? 3 : 1" [style.filter]="r.outline">
-            <button type="button" [attr.aria-label]="r.aria" [attr.aria-pressed]="r.on" (click)="selectRoom(r.id)"
+            <button type="button" [attr.aria-label]="r.aria" (click)="selectRoom(r.id)"
                     [style.clip-path]="r.clip" [style.background]="r.fill" [style.opacity]="r.opacity"></button>
           </div>
         }
         @for (b of boothViews(); track b.num) {
           <div class="shape" [style.left.px]="b.x" [style.top.px]="b.y" [style.width.px]="b.w" [style.height.px]="b.h" [style.z-index]="b.on ? 5 : 2" [style.filter]="b.outline" [style.opacity]="b.dim ? 0.4 : 1">
-            <button type="button" [attr.aria-label]="b.aria" [attr.aria-pressed]="b.on" (click)="selectBooth(b.num)"
+            <button type="button" [attr.aria-label]="b.aria" (click)="selectBooth(b.num)"
                     [style.clip-path]="b.clip" [style.background]="b.fill"></button>
           </div>
           @if (b.logo) {

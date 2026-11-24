@@ -77,6 +77,16 @@ Rules the owner has asked for. Follow them in the app **and in every mockup**.
   more than once.) Plain sentences such as "Look on shelf K or ask at the desk" are fine.
   Still to change: the big shelf badge on My Lists rows (`lists.component.html`, `.bl-shelf-badge`)
   shows "SHELF" above the code.
+- **"Add to list" is always the round ＋ / ✓ button** (`.bl-add`): ＋ when the game isn't on the
+  list, ✓ when it is, in every row that can add a game. Never a "＋ List" text button. Planned:
+  a small constant "List" label under it, like the "Bell" and "Played" labels on My Lists rows,
+  because research says icons need a visible label the first time (Nielsen Norman Group: icon
+  labels should always be visible; Apple: each button must clearly show its purpose).
+- **Screen readers and toggles:** a button that turns on/off either keeps the same label and uses
+  `aria-pressed`, or changes its label ("Add Azul to Saturday" / "Remove Azul from Saturday")
+  with no `aria-pressed` — never both (WAI-ARIA practice). The add buttons, the game sheet's bell
+  and the map buttons change their labels, so they have no `aria-pressed` (fixed Nov 23). Filter
+  chips and options keep one label and use `aria-pressed`.
 - **Mockups before building**, on the mockups canvas.
 
 ## Getting started
@@ -550,6 +560,7 @@ Built from an iPhone during the con (Nov 18–22). Newest first; the commit hist
 
 | Date | Change |
 |---|---|
+| Nov 23 | Screen readers: add-to-list, bell and map buttons no longer announce a pressed state on top of a label that already says it |
 | Nov 22 | "Board Games Dallas" store renamed to its real name, Common Ground Games |
 | Nov 22 | "Check prices" is a two-column grid of store cards (letter tiles, equal heights); Walmart added |
 | Nov 22 | Buy list "Check prices" sorted A–Z by store name |
