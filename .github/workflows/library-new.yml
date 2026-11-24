@@ -1,0 +1,37 @@
+# What BGG added to its library recently (public Tabletop.Events data). For planning a
+# "New in the library" feature: shows the newest games and how many were added each month.
+name: Library new games (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      newest:
+        description: How many of the newest games to list
+        default: '40'
+
+jobs:
+  newest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Newest games and adds per month
+        env:
+          N: ${{ inputs.newest }}
+        run: |
+          url="https://tabletop.events/api/library/0AEB11DA-2B7D-11EC-B400-855F800FD618/librarygames"
+          echo "== Newest $N copies (by date added, UTC)"
+          curl -sS -G "$url" --data-urlencode "_order_by=date_created" --data-urlencode "_sort_order=desc" \
+            --data-urlencode "_items_per_page=$N" \
+            | jq -r '.result.items[] | [ .date_created, .name, (.catalog_number // "-"), ("circ " + ((.is_in_circulation // "-")|tostring)) ] | @tsv'
+          echo "== Copies added per month (whole library)"
+          : > /tmp/dates
+          page=1
+          while :; do
+            body=$(curl -sS -m 60 -G "$url" --data-urlencode "_items_per_page=100" --data-urlencode "_page_number=$page" \
+              --data-urlencode "_order_by=date_created" --data-urlencode "_sort_order=desc")
+            echo "$body" | jq -r '.result.items[] | .date_created[0:7]' >> /tmp/dates
+            total=$(echo "$body" | jq -r '.result.paging.total_pages')
+            [ "$page" -ge "${total:-1}" ] && break
+            page=$((page+1)); sleep 0.3
+          done
+          sort /tmp/dates | uniq -c | tail -30
+          echo "Total copies: $(wc -l < /tmp/dates)"
