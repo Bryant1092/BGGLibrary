@@ -311,9 +311,28 @@ network, images, storage, enabled services) and **Usage today** (`usage.yml`).
 | Alerts by hour | busiest 7 AM (library opening), noon and 3 PM; steady 20–35/hour until midnight |
 
 **Firebase usage vs free limits** (Blaze plan. Google Cloud billing for Nov 1–23: cost $0.45,
-savings $0.45, **total $0.00**. The billing account is a Google Cloud **free trial** with a $300
-credit that ends **Feb 14, 2027**; after that, Blaze for the next con needs a paid billing
-account. Check before setting the server up again, and keep the $1 budget alert.)
+savings $0.45, **total $0.00**. The savings were the always-free tier, not the trial: the $300
+trial credit was untouched, so a paid account should also come out at $0. The billing account
+is a Google Cloud **free trial** that ends **Feb 14, 2027**; after that, Blaze for the next con
+needs a paid billing account. Keep the $1 budget alert.)
+
+Billing report by SKU (Nov 1–23, before free-tier savings; Billing → Reports → Group by SKU,
+Savings: None):
+
+| SKU | Usage | Cost before free tier |
+|---|---|---|
+| Cloud Run functions CPU (request-based, us-central1) | 18,154 vCPU-s | **$0.44** |
+| Cloud Run functions memory | 4,447 GiB-s | $0.01 |
+| Firestore internet data out | 0.07 GiB | $0.00 |
+| Cloud Run functions internet data out | 0.03 GiB | $0.00 |
+| Logging | 0.02 GiB | $0.00 |
+| Firestore writes (billed count) | 9,383 | $0.00 |
+| Artifact Registry, Cloud Storage, small ops | ~0 | $0.00 |
+
+Almost all of it is function CPU time, spent on Nov 15–22 (busiest Nov 19 and 21, the outage
+day). To cut it: run the functions at the smaller CPU size (`cpu: 'gcf_gen1'`, about 1/6 of a
+vCPU, needs `concurrency: 1`), check prize drawings less often, and back off sooner during
+Tabletop.Events outages.
 
 | What | Con week | Free limit | Notes |
 |---|---|---|---|
