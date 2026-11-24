@@ -188,7 +188,7 @@ All in `functions/index.js`; details in [ARCHITECTURE.md](ARCHITECTURE.md#server
 
 ```bash
 cd functions && npm install && cd ..
-firebase functions:secrets:set VAPID_PRIVATE_KEY   # once per project
+firebase functions:secrets:set VAPID_PRIVATE_KEY   # once per project (paste the saved copy, see below)
 firebase deploy --only functions
 ```
 
@@ -393,6 +393,14 @@ network, images, storage, enabled services) and **Usage today** (`usage.yml`).
    downgrade the Firebase project from Blaze to Spark. Done Nov 22 ~4 PM with the Deploy
    Firebase workflow's `delete-functions` choice (also removes their scheduler jobs and stored
    images). The Blaze → Spark switch is done by hand in the Firebase console.
+   - Before switching: the push key's private half (`VAPID_PRIVATE_KEY`) lives only in Secret
+     Manager, which can't be read on Spark. A copy is saved in the owner's password manager
+     (Nov 23), not in this repo. Next con, set it again with `firebase functions:secrets:set
+     VAPID_PRIVATE_KEY` so existing phone notifications keep working. If the copy is ever lost,
+     make a new key pair (`npx web-push generate-vapid-keys`), put the public half in
+     `src/app/config/push.ts` and `functions/index.js`, and people turn notifications on again.
+   - Remaining: switch Blaze → Spark in the Firebase console (Usage and billing → Details &
+     settings → Modify plan). Checked Nov 23: no functions, scheduler jobs or stored images left.
 2. ~~Clear server-only state in `meta/` and old `eventStars`.~~ Kept on purpose (Nov 22): all
    Firestore data stays for analysis. It stays free on Spark.
 3. Prize badge numbers clear themselves 14 days after the con.
