@@ -64,7 +64,7 @@ jobs:
             // Per-person collections
             const sub = { gameLists: [], reactions: [], watches: [], eventStars: [], alerts: [], pushSubs: [], friends: [] };
             const alertDay = new Map(), alertHour = new Map(); let late = 0, alertsTotal = 0;
-            const buy = [], liked = [];
+            const buy = [], liked = [], lag = [];
             const userDocs = await db.collection('users').get();
             console.log(`== users/ documents: ${userDocs.size}`);
             for (const u of userDocs.docs) {
@@ -72,6 +72,8 @@ jobs:
                 const snap = await u.ref.collection(name).get();
                 sub[name].push(snap.size);
                 if (name === 'reactions') { buy.push(snap.docs.filter(d => d.get('buy')).length); liked.push(snap.docs.filter(d => d.get('liked') === true).length); }
+                if (name === 'alerts') snap.docs.forEach(d => { const c = d.get('checkedInAt'), m = ms(d.get('createdAt'));
+                  if (c > 0 && !isNaN(m) && !d.get('late')) lag.push({ at: m, s: Math.round((m - c) / 1000) }); });
                 if (name === 'alerts') snap.docs.forEach(d => { alertsTotal++; const t = ms(d.get('createdAt')); if (!isNaN(t)) { tally(alertDay, day(t)); tally(alertHour, String(hour(t)).padStart(2, '0')); } if (d.get('late')) late++; });
               }
             }
@@ -81,6 +83,17 @@ jobs:
             console.log(`== Alerts kept: ${alertsTotal} (late check-ins: ${late})`);
             show('Alerts per day', alertDay);
             show('Alerts by hour of day (Central)', alertHour);
+            // How long after the desk scan each alert was made (not late-typed ones). Push delivery adds a few seconds.
+            const pct = (xs, p) => xs[Math.min(xs.length - 1, Math.floor(p * xs.length))];
+            const lagLine = (label, rows) => { const xs = rows.map(r => r.s).filter(x => x >= 0 && x < 6 * 3600).sort((a, b) => a - b);
+              if (!xs.length) return console.log(`  ${label}: none`);
+              const f = x => x < 120 ? `${x}s` : `${Math.round(x / 60)}m`;
+              console.log(`  ${label}: ${xs.length} alerts · median ${f(pct(xs, .5))} · 75% within ${f(pct(xs, .75))} · 90% within ${f(pct(xs, .9))} · ${xs.filter(x => x <= 60).length} within 1 min · ${xs.filter(x => x > 300).length} over 5 min`); };
+            const SWITCH = Date.parse('2026-11-22T01:56:00Z'); // every 1 min from Sat Nov 21 7:56 PM Central
+            console.log('== Alert delay after the desk scan');
+            lagLine('every 2 min (before Sat 7:56 PM)', lag.filter(r => r.at < SWITCH));
+            lagLine('every 1 min (after)', lag.filter(r => r.at >= SWITCH));
+            for (const d of [...new Set(lag.map(r => day(r.at)))].sort()) lagLine(d, lag.filter(r => day(r.at) === d));
 
             // Shared lists: games per list, how many people hold each list
             const holders = new Map();
@@ -95,6 +108,17 @@ jobs:
             if (top.exists) { const t = top.get('games') || [];
               console.log(`== Most checked out (server count, copies added together; counting since ${top.get('countingSince')?.toDate?.().toISOString()}, last update ${top.get('updatedAt')?.toDate?.().toISOString()})`);
               t.slice(0, 15).forEach((g, i) => console.log(`  ${i + 1}. ${g.name}: ${g.count} (${g.ids.length} copies)`)); }
+            // When BGG posted the con's news (prize drawing winners etc.): public convention updates.
+            try {
+              const r = await fetch('https://tabletop.events/api/convention/CC4FC78E-17EC-11F1-9082-3FD444321FD1/updates?_items_per_page=100').then(x => x.json());
+              const items = (r.result?.items || []).filter(u => Number(u.published) === 1);
+              console.log(`== Convention news posts: ${items.length}`);
+              for (const u of items.sort((a, b) => String(a.date_published || a.date_created).localeCompare(String(b.date_published || b.date_created)))) {
+                const when = u.date_published || u.date_created; const t = Date.parse(String(when).replace(' ', 'T') + 'Z');
+                const prize = /prize|winner|drawing/i.test((u.name || '') + ' ' + (u.body || '')) ? ' [prize]' : '';
+                console.log(`  ${isNaN(t) ? when : new Date(t).toLocaleString('en-US', { timeZone: 'America/Chicago', weekday: 'short', hour: 'numeric', minute: '2-digit' })} · ${u.name}${prize}`);
+              }
+            } catch (e) { console.log('news posts: not readable (' + e.message + ')'); }
             const st = await db.collection('meta').doc('conCheckoutState').get();
             if (st.exists) { const per = Object.values(st.get('perId') || {});
               const total = per.reduce((a, g) => a + (g.c || 0), 0);
