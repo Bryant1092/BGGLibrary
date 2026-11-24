@@ -376,6 +376,33 @@ Tabletop.Events outages.
   alert) or fewer reads per person (idea 4 below). Server cost barely changes with more people:
   the watcher makes nearly the same Tabletop.Events requests for 1 bell or 1,000 (only checks after a restart go one game at a time).
 
+**Friends' feedback and follow-up checks (Nov 23)**
+
+- **Devices:** 2 friends used Android in the phone's browser; everyone else used the website on
+  iPhone without adding it to the Home Screen. iPhone only allows web notifications for apps added
+  to the Home Screen, which explains why only 2 people (4 devices) had phone notifications.
+  Fix: on iPhone, show "Add to Home Screen" steps when someone rings their first bell.
+- **"The game was gone when I got there."** Measured from the alerts (time from the desk scan to
+  the alert, late-typed check-ins left out; phone delivery adds a few seconds):
+
+  | | Alerts | Median | Within 1 min | Over 5 min |
+  |---|---|---|---|---|
+  | Every 2 min (until Sat 7:56 PM) | 261 | 67 s | 45% | 22 |
+  | Every 1 min (after) | 148 | 41 s | 66% | 33 |
+
+  Every minute cut the typical wait by about half. The long ones are mostly the deliberate 10-min
+  hold after outages and restarts, and possibly alerts the app itself saved when it was opened
+  later (these can't be told apart yet: next time store who made the alert). Popular games go
+  out again within a minute or two (Hell of a Deal's copy was back for 65 s), so even a 30 s
+  check can't promise the copy is still there. Ideas: say "checked in 40 s ago" in the alert,
+  send "taken again" if it goes out before you get there, and show how fast a game usually
+  goes ("usually out again within 2 min") so people know to hurry or check other copies.
+- **Prize winners were posted in the evening every day:** Wed Nov 18 7:01 PM, Thu 8:40 PM,
+  Fri 10:35 PM, Sat 9:28 PM (from the convention news; Con stats lists them). Checking the news
+  every 10 minutes all day was wasted before ~6 PM. Next time: check the news only 6 PM to
+  midnight. "Most played this con" rides on the same job every 10 minutes all day; it can run
+  every 15–30 minutes instead.
+
 **What this means for next time**
 
 - **Room to grow:** the limit that hits first is Firestore reads. At ~1,000 reads per person
