@@ -310,7 +310,10 @@ network, images, storage, enabled services) and **Usage today** (`usage.yml`).
 | Alerts | 518 kept (Fri 199, Sat 206, Sun 113); **one person had 388**; 107 (21%) were late-typed check-ins |
 | Alerts by hour | busiest 7 AM (library opening), noon and 3 PM; steady 20–35/hour until midnight |
 
-**Firebase usage vs free limits** (Blaze plan, free tier never exceeded; bill $0)
+**Firebase usage vs free limits** (Blaze plan. Google Cloud billing for Nov 1–23: cost $0.45,
+savings $0.45, **total $0.00**. The billing account is a Google Cloud **free trial** with a $300
+credit that ends **Feb 14, 2027**; after that, Blaze for the next con needs a paid billing
+account. Check before setting the server up again, and keep the $1 budget alert.)
 
 | What | Con week | Free limit | Notes |
 |---|---|---|---|
