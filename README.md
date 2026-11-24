@@ -77,8 +77,7 @@ Rules the owner has asked for. Follow them in the app **and in every mockup**.
   more than once.) Plain sentences such as "Look on shelf K or ask at the desk" are fine.
   Still to change: the big shelf badge on My Lists rows (`lists.component.html`, `.bl-shelf-badge`)
   shows "SHELF" above the code.
-- **Mockups before building**, on the mockups canvas, in the app's dark theme.
-- **Short notes and labels** that fit on one line on an iPhone.
+- **Mockups before building**, on the mockups canvas.
 
 ## Getting started
 
