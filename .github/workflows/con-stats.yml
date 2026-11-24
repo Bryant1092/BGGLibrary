@@ -107,6 +107,9 @@ jobs:
         run: |
           gcloud auth activate-service-account --key-file="$RUNNER_TEMP/sa.json" --quiet
           export TOKEN=$(gcloud auth print-access-token)
+          echo "== Billing (Spark = no billing account attached)"
+          curl -s -H "Authorization: Bearer $TOKEN" https://cloudbilling.googleapis.com/v1/projects/bgg-library-test/billingInfo \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print('  billing enabled:', d.get('billingEnabled', False), '·', 'error: '+d['error']['message'] if 'error' in d else '')" || true
           python3 - <<'EOF'
           import json, os, urllib.parse, urllib.request
           from datetime import datetime, timedelta, timezone
